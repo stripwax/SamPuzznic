@@ -1,0 +1,24 @@
+get_input_raw:
+                ; keyscan routine from sam technical manual
+                ld hl, keyb_buffer
+                ld b,254
+    @loop:      ld c, HIKEY
+                in a,(c)
+                and 224
+                ld (hl), a
+                ld c, LOKEY
+                in a,(c)
+                and 31
+                or (hl)
+                ld (hl),a
+                inc hl
+                scf
+                rl b ; bug in Sam technical manual - it says RLC B here, which is incorrect
+                jr c, @loop
+                in a,(c)
+                and 31
+                ld (hl),a
+                ret
+
+    keyb_buffer: defs 9
+

@@ -1,0 +1,6 @@
+LOKEY: equ 254
+HIKEY: equ 249
+
+LMPR: equ 250
+HMPR: equ 251
+VMPR: equ 252

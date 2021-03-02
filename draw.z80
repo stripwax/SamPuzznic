@@ -1,0 +1,192 @@
+    box_at_hl:
+                ; draw top (left to right)
+                ld a,255
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                ; draw right side (downwards)
+                inc h
+                ld a,15
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                ; draw left side (upwards)
+                ld a,l
+                sub 7
+                ld l,a
+                ld a,240
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ; draw odd left side (downwards)
+                ld a,l
+                add 128
+                ld l,a
+                ld a,240
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ld (hl), a
+                inc h
+                ; draw bottom
+                ld a,255
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                ; draw right side (upwards)
+                dec h
+                ld a,15
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                dec h
+                ld (hl), a
+                ret
+
+; need a vertical slice, horizontal slice, and full 16x16 rect fill
+; vertical slice is for horizontal sliders;
+; horizontal slice is for vertical sliders and falling blocks;
+; full 16x16 rect fill is for shoving a block left or right, and for cursor itself.
+; can optimize later
+fillrect_16x16_black_at_de:
+                ; get a black (double) pixel
+                xor a
+                ; left to right and right to left even rows
+                ld b, 4
+    @evens:
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc d
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                inc d
+                djnz @-evens
+                dec d
+                ld a, e
+                add 128
+                ld e, a
+                xor a
+                ld b, 4
+    @odds:
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                inc de
+                ld (de), a
+                dec d
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec de
+                ld (de), a
+                dec d
+                djnz @-odds
+                ret

@@ -1,0 +1,624 @@
+; SNAKE-IN-A-DAY by tobermory@cookingcircle.co.uk.   8-Nov-2017.
+
+; Play with cursor keys and control to restart game.
+; Developed using SimCoupe and PYZ80 cross-compiler.
+
+; Converted from Gamkedo's Chris Deleon's Javascript demonstration of Snake done in 5 minutes here:  https://www.youtube.com/watch?v=xGmXxpIj6vs
+; Just intended as a simple example of how games can be done in Z80 on the Sam Coup� quite easily.  This took about 3 hours to follow his rapid prototyping example, and convert into Z80.
+; This uses one  routine - the pseudo-random number generator from Your Sinclair's Star Tips section.  It turns out wasn't originally written only by Jon Ritman as I thought, but Simon Brattel and Neil Mottershead.  Go figure.
+
+;----------------------------------------------
+; Entry point
+
+DEBUG: equ 1
+CHECK_INPUT: equ 1
+FPS: equ 50
+
+INCLUDE "SAM_IO_defs.z80"
+
+				dump 1,0						; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
+				autoexec						; Set to automatically load and call when sent to SimCoup�
+				org 32768						; Org to same address.  No clever paging needed here.
+main.start:
+				di
+    @set_low_page:
+				ld a,8+32						; Set low pages as screen buffer, with ROM paged out
+				out (250),a                     ; LMPR - pages A and B of address space
+                ld a, 8+96                      ; Set video output to same pages as above, with mode 4
+				out (252),a                     ; VMPR - mapped to video output - same as above
+    @set_palette:
+                ld hl, palette_bottom+15
+                ld bc, 16*256+248
+                otdr
+    @enable_video:
+                ld a,0 + 3
+                out (254),a
+	@set_stack:
+				ld sp,stack						; Use our own stack, point to below bottom of stack
+    @go:
+				jp main
+    
+    @stack_space:
+                defs 64
+
+stack:
+
+
+
+INCLUDE "input.z80"
+INCLUDE "input_raw.z80"
+INCLUDE "draw.z80"
+
+palette_bottom:
+    defb 0,16,32,48,64,18,96,120,0,17,34,51,68,85,102,127
+
+; Current state of a puzzle
+; We maintain a 12x12 grid of tile_info (each is a few bytes):
+;     {
+;         icon:5,  ; 5 bits=13 values, plus blank, plus wall, plus navigable-wall . Game only has 8 tiles
+;         falling:1, ; 1 bit
+;         on_slider:1, ; 1 bit
+;         blowing_up:1 ; 1 bit
+;         dirty:1 ; 1 bit, true if any status has changed (and so needs rendering)
+;         move_frame:3; 3 bits, sub-tile position in y (if falling) or x (if horizontal slider)
+;         unused: 5
+;    }
+;
+; We also maintain a list of "how many tiles of each kind are remaining"
+;
+; We also maintain a list of 'dirty tiles to redraw'
+; (can improve later to include just horizontal/vertical slices)
+; (need to improve later to handler sliders)
+;   {
+;        x: 8,
+;        y: 8,
+;   }
+;
+;
+; For slider, we maintain the following:
+;    {
+;        x:4,
+;        y:4,
+;        enabled:1 ; 0 if level has no slider, 1 if level has slider
+;        dir:1 ; 0 = updown, 1=leftright
+;        curr_dir:1 ; 0 = up (or left), 1 = down (or right)
+;        subtile_pos: 3 ; 3 bits, sub_tile position in y (if updown) or x (if leftright)
+;        unused :2
+;    }
+;
+; We keep track of any 'bonus' numbers to float
+;   {
+;       frame: 8 ; 
+;       bonus_amount: 7;
+;       show_bonus: 1 ; yes/no
+;   }
+; 
+; We have "render flags" to remind us what to redraw:
+;   {
+;       redraw_remaining: 1,
+;       redraw_clock: 1,
+;       unused: 6,
+;   }
+;
+; We track the controller flags:
+;   {
+;       x: 4,  ; could optimise
+;       y: 4,  ; could optimise
+;       tile_ptr: 16, ; pointer to the cell in *tiles
+;       up_pressed: 1,
+;       up_actioned: 1,
+;       down_pressed: 1,
+;       down_actioned: 1,
+;       left_pressed: 1,
+;       left_actioned: 1,
+;       right_pressed: 1,
+;       right_actioned: 1,
+;       fire_held: 1,
+;   }
+
+
+tile_info_size: equ 2
+; following are memcpy from definition of a given puzzle
+puzzle_copy_start:
+tiles: defs 12*12*tile_info_size
+slider_info: defs 2
+clock_min_bcd: defb 0
+clock_sec_bcd: defb 0
+puzzle_copy_end:
+puzzle_copy_len: equ puzzle_copy_end - puzzle_copy_start
+; following are initialized to zero at start of game loop
+clock_tick_frame: defb 0
+bonus_info: defs 2
+
+controller_flags:
+controller_flags_x_pos: defb 0
+controller_flags_y_pos: defb 0
+controller_flags_tile_ptr: defw 0
+controller_flags_dirs_acks: defb 0
+controller_flags_fire: defb 0
+
+render_flags: defb 0
+; following is calculated just prior to start of game loop
+remaining_tiles: defs 8
+
+dirty_tiles: defs 10*8*2 ; shouldn't need anything like this much
+dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
+
+game_loop:
+                ; actions to carry out per-frame:
+                ; read controller input
+                ; modify cursor if necessary, based on input (e.g. letting go of FIRE)
+                ; move tile, if necessary, based on input (e.g. FIRE+LEFT or FIRE+RIGHT) and note dirty region
+                ; update tile status if it is now on slider (or due to be on slider)
+                ; update tile status if it is in freefall including decrement fall position/counter and note dirty region
+                ; (and work out if any new tiles should be in freefall and update them too)
+                ; process sliders and tiles on sliders and note dirty region
+                ; determine matches for stationary tiles (including tiles on sliders)
+                ; update render frames for existing match destruction animation
+                ; update render frames for existing bonus animation
+                ; check if match destruction animation/timer has completed and update remaining blocks count (and set flag)
+                ;     and check if remaining blocks == zero and set flag for winning
+                ; update clock time
+                ; determine if clock time < 30 seconds (and set flag to change colour and play new tune)
+                ; determine if clock time <= 0 seconds (and set flag for game over / retry loop)
+                ; sort dirty regions by y coordination
+                ; sort tiles to redraw by y coordinate
+                ; ** wait for frame (e.g. wait for bottom border via HPEN)
+                ; draw clock
+                ; erase dirty regions
+                ; draw tiles and slider   (which will clear dirty flag)
+                ; play music
+                ; play sound effects
+                ; 
+
+game_loop:
+                if DEBUG==1
+                    call print_debug
+                endif
+                if CHECK_INPUT==1
+                call get_input
+                endif
+                call update_cursor_position
+                call move_tile
+                call slider_tile_detect
+                call fall_tile_detect
+                call slider_update
+                call check_match
+                call render_destruct ; this will call decrement on remaining blocks upon completion
+                call render_bonus
+                call update_clock
+                call check_clock_30
+                call check_clock_game_over
+                call sort_by_y
+                call wait_frame
+                call draw_clock
+                call redraw_dirty
+                call draw_sliders
+                call draw_overlays
+                call music_tick
+                call sfx_tick
+                jr game_loop
+
+if DEBUG
+print_debug:
+                ; render the keyboard matrix
+                ld hl, 0
+                ld (hl), 255
+                inc hl
+                ld (hl), 0
+                inc hl
+                ld (hl), 255
+                inc h
+                ld l,0
+
+                ld de, keyb_buffer
+                ld c,9
+    @outer_loop:
+                ld b,8
+                ld a,(de)
+    @inner_loop:
+                rrca
+                jr c, @key_detected
+    @key_not_detected:
+                ld (hl), 0
+                jr @next
+    @key_detected:
+                ld (hl), 255
+    @next:
+                inc hl
+                ld (hl), 0
+                inc hl
+                djnz @-inner_loop
+                inc de
+                inc h
+                ld l,0
+                dec c
+                jr nz, @-outer_loop
+
+    @keys_and_latches:
+                inc h
+                inc h
+                ld l,0
+                ld a, (controller_flags_dirs_acks)
+                ld b,8
+    @inner_loop:
+                rrca
+                jr c, @+key_detected
+    @key_not_detected:
+                ld (hl), 17*1
+                jr @+next
+    @key_detected:
+                ld (hl), 17*3
+    @next:
+                inc hl
+                ld (hl), 0
+                inc hl
+                djnz @-inner_loop
+                ret
+ENDIF
+
+
+update_cursor_position:
+    @check_up:
+                ld a, (controller_flags_dirs_acks)
+                bit 0,a
+                jr z, @+check_down
+                bit 1,a
+                jr nz, @+check_down
+                ; mark UP key as ackd (avoid repeats)
+                or 2
+                ld (controller_flags_dirs_acks), a
+                ; (flag old position as dirty)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                call push_dirty_tile
+
+                ; decrement Y
+                dec a
+                bit 7,a
+                ; clamp to [0,11]
+                jr z, @+ok
+                ld a,0
+    @ok:
+                ld (controller_flags_y_pos), a
+                jr @check_left
+    @check_down:
+                ld a, (controller_flags_dirs_acks)
+                bit 2,a
+                jr z, @+check_left
+                bit 3,a
+                jr nz, @+check_left
+                ; mark DOWN key as ackd (avoid repeats)
+                or 8
+                ld (controller_flags_dirs_acks), a
+                ; (flag old position as dirty)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                call push_dirty_tile
+                ; increment Y
+                ld a, (controller_flags_y_pos)
+                inc a
+                sub 11
+                ; clamp to [0,11]
+                jr c, @+ok
+                ld a,0
+    @ok:
+                add 11
+                ld (controller_flags_y_pos), a
+    @check_left: 
+                ld a, (controller_flags_dirs_acks)
+                bit 4,a
+                jr z, @+check_right
+                bit 5,a
+                jr nz, @+check_right
+                ; mark DOWN key as ackd (avoid repeats)
+                or 32
+                ld (controller_flags_dirs_acks), a
+                ; (flag old position as dirty)
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                call push_dirty_tile
+                ; decrement Y
+                dec a
+                bit 7,a
+                ; clamp to [0,9]
+                jr z, @+ok
+                ld a,0
+    @ok:
+                ld (controller_flags_x_pos), a
+                jr @done
+    @check_right: 
+                ld a, (controller_flags_dirs_acks)
+                bit 6,a
+                jr z, @+done
+                bit 7,a
+                jr nz, @+done
+                ; mark DOWN key as ackd (avoid repeats)
+                or 128
+                ld (controller_flags_dirs_acks), a
+                ; (flag old position as dirty)
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                call push_dirty_tile
+                ; decrement Y
+                ld a, (controller_flags_x_pos)
+                inc a
+                sub 9
+                ; clamp to [0,9]
+                jr c, @+ok
+                ld a,0
+    @ok:
+                add 9
+                ld (controller_flags_x_pos), a
+    @done:
+                ret
+
+move_tile:
+                ret
+
+slider_tile_detect:
+                ret
+
+fall_tile_detect:
+                ret
+
+slider_update:
+                ret
+
+check_match:
+                ret
+
+render_destruct:
+                ; this will call decrement on remaining blocks upon completion
+                ret
+
+render_bonus:
+                ret
+
+update_clock:
+                ld a, (clock_tick_frame)
+                and a ; set Z if a is zero
+                ; 0 is the 'first' tick, but we need to handle specially
+                ; so that we can set it to the FPS counter
+                jr z, @just_tick
+                ; if we are > 0 then we decrement
+                dec a
+                ld (clock_tick_frame), a
+                ; .. and if we are NOW zero then a full second has elapsed
+                jr z, @+next_sec
+                ret
+    @next_sec:
+                ; decrement number of remaining seconds
+                ld a, (clock_sec_bcd)
+                dec a
+                daa
+                ; did we underflow (0 -> 99) ?
+                jr c, @+next_min
+                ; no? ok, just save back the number of seconds
+                ld (clock_sec_bcd), a
+                ret
+    @next_min:
+                ld a, (clock_min_bcd)
+                and a; set Z if a is zero
+                ret z ; clock is done, we're on last minute and seconds just decremented to 0
+                dec a
+                daa
+                ld (clock_min_bcd), a
+                ld a, %01011001 ; 59 bcd
+                ld (clock_sec_bcd), a
+                ret
+    @just_tick:
+                ld a, FPS-1
+                ld (clock_tick_frame), a
+                ret
+
+check_clock_30:
+                ret
+
+check_clock_game_over:
+                ret
+
+sort_by_y:
+                ret
+
+wait_frame:
+                ; status FRAME line signals the very start (top) of the frame
+    @busy_wait:
+                in a,(249)
+                bit 3,a
+                jr nz, @-busy_wait
+                ret
+
+draw_clock:
+                ; method: convert 4-bit (bcd) digit into
+                ; a lookup into font data. one 8x8 char takes 8 bytes (monochrome)
+                ld hl, 64*128
+                ld a, (clock_min_bcd)
+                ld c, a
+                ; top minute decimal
+                ; can we skip it? any puzzles with a time limit > 9:59 ?
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                inc h
+                ld l,0
+                ; bottom minute decimal
+                ld a, c
+                and 15
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                inc h
+                ld l,0
+                ld a, (clock_sec_bcd)
+                ld c, a
+                ; top minute second
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+                
+                inc h
+                ld l,0
+                ; bottom second decimal
+                ld a, c
+                and 15
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                ret
+
+redraw_dirty:
+                ; step through list of dirty tile (x,y) coords
+                ; and erase rects
+                ld hl, dirty_tiles
+    @next:
+                ld a, (hl)
+                ; is it end marker?
+                bit 7, a
+                jr nz, @+end
+                inc hl
+                ld d, (hl)
+                inc hl
+                ; a = x and d = y
+                ; multiply both a and d by 8
+                add a,a
+                add a,a
+                add a,a
+                add a, 32
+                ld e, a
+                sla d
+                sla d
+                sla d
+
+                ; FIXME - should actually draw the tile at this position
+                ; rather than just drawing a blank box
+                call fillrect_16x16_black_at_de
+                jr @-next
+    @end:
+                ; FIXME - should just inline
+                call clear_dirty_tiles_list
+                ret
+
+draw_sliders:
+                ; 
+                ret
+
+draw_overlays:
+                ; stuff like the bonus score that floats over the tiles
+                ; also the cursor
+                call draw_cursor
+                ret
+
+draw_cursor:
+                ld a, (controller_flags_x_pos)
+                ; 16 pixels wide = multiply by 8
+                add a,a
+                add a,a
+                add a,a
+                add 32
+                ld l,a
+                ld a, (controller_flags_y_pos)
+                ; 16 pixels high = multiply by 8
+                ; (since 256 bytes = 2 rows
+                add a,a
+                add a,a
+                add a,a
+                ld h, a
+                call box_at_hl
+                ret
+
+
+music_tick:
+                ret
+
+sfx_tick:
+                ret
+
+
+main:
+                ; clock_tick_frame counts from 49 to 0 (inclusive).
+                ; but 0 means "time to redraw the clock"
+                xor a
+                ld (clock_tick_frame), a
+                ld a, 1
+                ld (clock_min_bcd), a
+                ld a, %01011001 ; 59 bcd
+                ld (clock_sec_bcd), a
+
+                call clear_dirty_tiles_list
+
+                jp game_loop
+
+clear_dirty_tiles_list:
+                ld hl, dirty_tiles
+                ld (hl), 255 ; end marker
+                ld (dirty_tiles_tail), hl
+                ret
+
+push_dirty_tile:
+                ; de = (x, y) tile data to push
+                ld hl, (dirty_tiles_tail)
+                ld (hl), e
+                inc hl
+                ld (hl), d
+                inc hl
+                ld (hl), 255 ; end marker
+                ld (dirty_tiles_tail), hl
+                ret

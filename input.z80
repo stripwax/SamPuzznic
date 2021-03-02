@@ -1,0 +1,88 @@
+; todo: redefinable keys
+; todo: include joystick
+
+get_input:
+                ; joystick left, right, up, down, fire
+                ; keyboard left arrow, right arrow, up arrow, down arrow, space
+                call get_input_raw
+                ; todo - analyse what keys are pressed
+                ; if key is pressed, and key flag is not set, set flag (and clear ack flag)
+                ; if key is not pressed, clear key flag (and clear ack flag)
+                ;up=row_9_bit_1
+                ;down=row_9_bit_2
+                ;left=row_9_bit_3
+                ;right=row_9_bit_4
+                ;fire(space)=row_8_bit_0
+                ; REMEMBER: if key is down then bit reads ZERO.  if key is not down then bit reads ONE
+                ld hl, keyb_buffer+7
+                bit 0,(hl)
+                jr z, @space_pressed
+    @space_not_pressed:
+                ld hl, controller_flags_fire
+                ld (hl), 0
+                jr @+next
+    @space_pressed:
+                ld hl, controller_flags_fire
+                ld (hl), 1
+    @next:
+                ld a, (controller_flags_dirs_acks)
+                ld hl, keyb_buffer+8
+                ; CHECK UP
+                bit 1,(hl) ; UP key was pressed
+                jr nz, @+notpressed
+    @pressed:
+                bit 0, a
+                jr nz, @+next  ; key was pressed before
+                ; key was not pressed before
+                and %11111101 ; clear ack flag
+                or 1 ; set key flag
+                jr @+next
+    @notpressed:
+                and %11111100 ; clear bits 0 and 1
+
+    @next:
+                ; CHECK DOWN
+                bit 2,(hl) ; DOWN key was pressed
+                jr nz, @+notpressed
+    @pressed:
+                bit 2, a
+                jr nz, @+next  ; key was pressed before
+                ; key was not pressed before
+                and %11110111 ; clear ack flag
+                or 4 ; set key flag
+                jr @+next
+    @notpressed:
+                and %11110011 ; clear bits 1 and 2
+
+    @next:
+                ; CHECK LEFT
+                bit 3,(hl) ; LEFT key was pressed
+                jr nz, @+notpressed
+    @pressed:
+                bit 4, a
+                jr nz, @+next  ; key was pressed before
+                ; key was not pressed before
+                and %11011111 ; clear ack flag
+                or 16 ; set key flag
+                jr @+next
+    @notpressed:
+                and %11001111 ; clear bits 1 and 2
+
+    @next:
+                ; CHECK RIGHT
+                bit 4,(hl) ; RIGHT key was pressed
+                jr nz, @+notpressed
+    @pressed:
+                bit 6, a
+                jr nz, @+next  ; key was pressed before
+                ; key was not pressed before
+                and %01111111 ; clear ack flag
+                or 64 ; set key flag
+                jr @+next
+    @notpressed:
+                and %00111111 ; clear bits 1 and 2
+
+    @next:
+                ld (controller_flags_dirs_acks), a
+                ret
+
