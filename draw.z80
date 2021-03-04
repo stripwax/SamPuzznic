@@ -113,7 +113,20 @@
 fillrect_16x16_black_at_de:
                 ; get a black (double) pixel
                 xor a
+                jr _draw_debug_tile_at_de_colorbyte_a
+
+draw_debug_tile_at_de_tile_a:
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
+                ; multiply a by 17 to get a conveniently-coloured two-nibble (two pixel) value in a
+                ld b,a
+                sla a
+                sla a
+                sla a
+                sla a
+                add b
                 ; left to right and right to left even rows
+    _draw_debug_tile_at_de_colorbyte_a:
                 ld b, 4
     @evens:
                 ld (de), a
@@ -150,10 +163,7 @@ fillrect_16x16_black_at_de:
                 inc d
                 djnz @-evens
                 dec d
-                ld a, e
-                add 128
-                ld e, a
-                xor a
+                set 7, e ; move down one row of pixels
                 ld b, 4
     @odds:
                 ld (de), a
