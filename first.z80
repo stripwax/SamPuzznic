@@ -548,10 +548,18 @@ sort_by_y:
 
 wait_frame:
                 ; status FRAME line signals the very start (top) of the frame
+                IF DEBUG
+                ld a, 0
+                out (254), a
+                ENDIF
     @busy_wait:
                 in a,(249)
                 bit 3,a
                 jr nz, @-busy_wait
+                IF DEBUG
+                ld a, 6
+                out (254), a
+                ENDIF
                 ret
 
 draw_clock:
