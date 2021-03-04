@@ -683,12 +683,14 @@ redraw_dirty:
                 ; FIXME - should draw the real tile at this position
                 ; rather than just drawing a blank box
                 ; call fillrect_16x16_black_at_de
-                call draw_debug_tile_at_de_tile_a
+                call draw_tile_at_de_tile_a
                 jr @-next
     @end:
                 ; FIXME - should just inline
                 call clear_dirty_tiles_list
                 ret
+
+draw_tile_at_de_tile_a: equ draw_debug_tile_at_de_tile_a
 
 draw_sliders:
                 ; 
@@ -739,6 +741,7 @@ main:
                 call clear_dirty_tiles_list
 
                 call debug_memcpy_level_data
+                call render_puzzle_tiles
                 jp game_loop
 
 clear_dirty_tiles_list:
@@ -759,22 +762,36 @@ push_dirty_tile:
                 ret
 
 debug_memcpy_level_data:
-                ld hl, PUZZLEDATA_L1_1
+                ld hl, PUZZLEDATA_L3_3
                 ld de, tiles
                 ld bc, 12*12 ; FIXME SHOULD BE 12 x 10
                 LDIR
                 ret
 
-PUZZLEDATA_L1_1:
-                defb 1,1,1,1,1,1,1,1,1,1,2,2
-                defb 1,4,0,8,0,0,4,8,4,1,2,2
-                defb 1,9,11,5,0,0,10,7,6,1,2,2
-                defb 1,1,4,1,0,0,1,4,1,1,2,2
-                defb 1,1,1,1,0,0,1,1,1,1,2,2
-                defb 1,1,0,0,0,0,0,0,1,1,2,2
-                defb 1,1,0,0,0,0,0,0,1,1,2,2
-                defb 1,1,0,10,9,8,7,0,1,1,2,2
-                defb 1,1,0,11,1,1,6,0,1,1,2,2
-                defb 1,1,0,8,1,1,5,0,1,1,2,2
-                defb 1,1,0,10,0,0,4,0,1,1,2,2
-                defb 1,1,1,1,1,1,1,1,1,1,1,1
+render_puzzle_tiles:
+                ld hl, tiles
+                ld bc, 12*256+12
+                ld de, 32 ; this is 12*0+0+32 i.e. x=0 and y=0
+    @next_col:
+                ld a, (hl)
+                push bc ; TODO OPTIMIZE THIS AWAY
+                call draw_tile_at_de_tile_a
+                res 7, e ; because, draw_tile_at_de_tile_a ends with DE one pixel row below above start pixel
+                inc d
+                pop bc ; TODO OPTIMIZE THIS AWAY
+                ld a, e
+                add 8
+                ld e, a
+                inc hl
+                djnz @-next_col
+                ld b, 12
+                ld e, 32 ; column zero
+                ld a, d ; next row
+                add 8   ; ...
+                ld d, a ; ...
+                dec c
+                jr nz, @-next_col
+                ret
+
+
+INCLUDE "puzzles.z80"
