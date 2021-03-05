@@ -2,19 +2,19 @@
                 ; draw top (left to right)
                 ld a,255
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
                 ; draw right side (downwards)
                 inc h
@@ -73,19 +73,19 @@
                 ; draw bottom
                 ld a,255
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
-                inc hl
+                inc l
                 ld (hl), a
                 ; draw right side (upwards)
                 dec h
@@ -130,35 +130,35 @@ draw_debug_tile_at_de_tile_a:
                 ld b, 4
     @evens:
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
                 inc d
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
                 inc d
                 djnz @-evens
@@ -167,35 +167,35 @@ draw_debug_tile_at_de_tile_a:
                 ld b, 4
     @odds:
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
-                inc de
+                inc e
                 ld (de), a
                 dec d
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
-                dec de
+                dec e
                 ld (de), a
                 dec d
                 djnz @-odds
