@@ -1,6 +1,5 @@
     box_at_hl:
                 ; draw top (left to right)
-                ld a,255
                 ld (hl), a
                 inc l
                 ld (hl), a
@@ -18,7 +17,6 @@
                 ld (hl), a
                 ; draw right side (downwards)
                 inc h
-                ld a,15
                 ld (hl), a
                 inc h
                 ld (hl), a
@@ -33,10 +31,11 @@
                 inc h
                 ld (hl), a
                 ; draw left side (upwards)
-                ld a,l
+                ld b, a
+                ld a, l
                 sub 7
-                ld l,a
-                ld a,240
+                ld l, a
+                ld a, b
                 ld (hl), a
                 dec h
                 ld (hl), a
@@ -52,10 +51,7 @@
                 ld (hl), a
                 dec h
                 ; draw odd left side (downwards)
-                ld a,l
-                add 128
-                ld l,a
-                ld a,240
+                set 7, l
                 ld (hl), a
                 inc h
                 ld (hl), a
@@ -71,7 +67,6 @@
                 ld (hl), a
                 inc h
                 ; draw bottom
-                ld a,255
                 ld (hl), a
                 inc l
                 ld (hl), a
@@ -89,7 +84,6 @@
                 ld (hl), a
                 ; draw right side (upwards)
                 dec h
-                ld a,15
                 ld (hl), a
                 dec h
                 ld (hl), a

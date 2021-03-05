@@ -146,6 +146,7 @@ controller_flags:
 controller_flags_tile_ptr: defw 0
 controller_flags_dirs_acks: defb 0
 controller_flags_fire: defb 0
+controller_flags_flashing_ctr: defb 0 ; counts number of frames for flashing cursor
 
 render_flags: defb 0
 ; following is calculated just prior to start of game loop
@@ -280,18 +281,14 @@ update_cursor_position:
                 ; If fire is held, and the cell does not contain a tile, then cursor
                 ; moves just as if fire is not held
                 
-                ; sickening self-modifying hack: if FIRE was pressed,
-                ; then move the tile under the cursor when moving left right
-                ; but if FIRE was not pressed, then don't
-                ld a, 201 ; opcode for ret
-                ld (modify_move_tile_left_right_nop_ret), a
                 ld a, (controller_flags_fire)
                 bit 0, a
-                jr z, @+check_directions
-                xor a ; opcode for nop
-                ld (modify_move_tile_left_right_nop_ret), a
-                jr @check_left ; don't check up or down
-
+                jp nz, @+check_dirs_with_fire_pressed
+                ; fire was not pressed
+                ; reset the flashing cursor counter
+    @movements_no_tile:
+                xor a
+                ld (controller_flags_flashing_ctr), a
     @check_directions:
                 ld a, (controller_flags_dirs_acks)
                 ; if NOTHING to do, do nothing
@@ -390,7 +387,7 @@ update_cursor_position:
                 jr z, @+check_right ; no
                 bit 5,a
                 ret nz ; yes but handled already
-                ; mark DOWN key as ackd (avoid repeats)
+                ; mark LEFT key as ackd (avoid repeats)
                 or 32
                 ld (controller_flags_dirs_acks), a
                 ; get new position
@@ -425,15 +422,16 @@ update_cursor_position:
                 ; (old location was the column right of this one)
                 inc e
                 call push_dirty_tile
-                jr @move_tile_left_right ; e= old x, d= y, a= new x
+                ret
 
     @check_right:
                 ; was RIGHT pressed?
                 bit 6,a
-                jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
+                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
+                ret z
                 bit 7,a
                 ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
-                ; mark DOWN key as ackd (avoid repeats)
+                ; mark RIGHT key as ackd (avoid repeats)
                 or 128
                 ld (controller_flags_dirs_acks), a
                 ; get new position
@@ -469,88 +467,111 @@ update_cursor_position:
                 ; (old location was the column left of this one)
                 dec e
                 call push_dirty_tile
-                ; fallthrough
-                ; jr move_tile_left_right ; e= old x, d= y, a= new x
+                ret
+    @done:
+                ret
 
-    @move_tile_left_right:
-                ; This is still part of update_cursor_positions.
-                ; We jump here when FIRE + LEFT (or RIGHT) is pressed
-                ; This subroutine ends with ret, which returns to the caller
-                ; of update_cursor_positions
-    modify_move_tile_left_right_nop_ret:
-                nop ; placeholder for nop, or ret, depending on whether FIRE was pressed
-
-                ; is the direction left or right? we just care about the direction
-                ; to increment, we know a is either e+1 or e-1
-                sub e
-                ld b, a ; b is either 1 or 255
-
-                ; make a copy of d and e, we'll use later for dirty tiles list
-                ld h, d
-                ld l, e
-
-                ; find index into tiles structure for 'old' x and y
-                ; TODO OPTIMIZE
-                ; multiply d by 12
-                ld a, d  ; a = y
+    @check_dirs_with_fire_pressed:
+                ; determine if there is a (movable) tile at current position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ; a = e = x, d = y
+                ;; TODO OPTIMIZE
+                ;; multiply d by 12
                 add a, a ; a = y*2
                 add a, d ; a = y*3
                 add a, a ; a = y*6
                 add a, a ; a = y*12
                 add a, e; a = y*12 + x
-                ld e, a ; e = y*12 + x
-                ld d, tiles/256
-                ; now, de = tiles + (y*12+x)
-                ; pick up the tile that is there
-                ld a, (de)
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                ; is it moveable tile (i.e. >= NUM_NON_TILES)
                 cp NUM_NON_TILES
-                ; no tile? or, tile was wall or immovable? great nothing to do
-                ret c
-                ; ok now find the other tile, should we check left or right?
-                bit 7, b
-                jr z, @go_right ; b = 1 => a = e+1 => we went right
-        @go_left:
-                ld b, a ; b is now the tile we WANT to move to this new place
-                dec e ; we go left
-                ld a, (de) ; and what's there
-                and a
-                ; there's something there? no good, can't move it.
+                ; yes? ok, then just move like there's no tile
+                jp c, @movements_no_tile
+                ; ok fire was pressed AND we have a moveable tile under us
+                ; now the excitement begins!!
+                ; inc frame counter for flashing cursor
+                ld a, (controller_flags_flashing_ctr)
+                inc a
+                ld (controller_flags_flashing_ctr), a
+                ; are we also pressing left or right?
+                ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
+                ld a, (controller_flags_dirs_acks)
+                and %11110000
+                ; if not, do nothing else
+                ret z
+    @check_push_left:
+                ; was LEFT pressed 
+                bit 4,a
+                jr z, @+check_push_right ; no
+                bit 5,a
+                ret nz ; yes but handled already
+                ; mark LEFT key as ackd (avoid repeats)
+                or 32
+                ld (controller_flags_dirs_acks), a
+                ; get new position (left = dec l, right = inc l)
+                dec l
+                ld a, (hl)
+                and a ; check if it is zero.  you can only push a tile into zero
                 ret nz
-                ; otherwise, left was empty, so we move the tile there
-                ld a, b
-                ld (de), a
-                inc e
-                xor a ; and put a blank in the place it came from
-                ld (de), a
-                ; finally, we update our dirty tiles list. both tiles are dirty
-                ld d, h
-                ld e, l
-                ; call push_dirty_tile ; we don't need to do this because the new cursor location is always dirty when moving cursor
-                dec e
+                ; all good, we can move there
+                ; copy old tile to new place
+                inc l
+                ld a, (hl)
+                dec l
+                ld (hl), a
+                inc l
+                ld (hl), 0
+                ; mark the OLD location as dirty
+                ; (de still contains the old location)
                 call push_dirty_tile
-                ret
-        @go_right:
-                ld b, a ; b is now the tile we WANT to move to this new place
-                inc e ; we go right
-                ld a, (de) ; and what's there
-                and a
-                ; there's something there? no good, can't move it.
-                ret nz
-                ; otherwise, right was empty, so we move the tile there
-                ld a, b
-                ld (de), a
+                ; move to the new location
                 dec e
-                xor a ; and put a blank in the place it came from
-                ld (de), a
-                ; finally, we update our dirty tiles list. both tiles are dirty
-                ld d, h
-                ld e, l
-                ; call push_dirty_tile ; we don't need to do this because  the new cursor location is always dirty when moving cursor
-                inc e
+                ; mark that as dirty also
                 call push_dirty_tile
+                ; and mark this as our new cursor position
+                ld a, e
+                ld (controller_flags_x_pos), a
                 ret
 
-    @done:
+    @check_push_right:
+                ; was RIGHT pressed?
+                bit 6,a
+                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
+                ret z
+                bit 7,a
+                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
+                ; mark RIGHT key as ackd (avoid repeats)
+                or 128
+                ld (controller_flags_dirs_acks), a
+                ; get new position (left = dec l, right = inc l)
+                inc l
+                ld a, (hl)
+                and a ; check if it is zero.  you can only push a tile into zero
+                ret nz
+                ; all good, we can move there
+                ; copy old tile to new place
+                dec l
+                ld a, (hl)
+                inc l
+                ld (hl), a
+                dec l
+                ld (hl), 0
+                ; mark the OLD location as dirty
+                ; (de still contains the old location)
+                call push_dirty_tile
+                ; move to the new location
+                inc e
+                ; mark that as dirty also
+                call push_dirty_tile
+                ; and mark this as our new cursor position
+                ld a, e
+                ld (controller_flags_x_pos), a
                 ret
 
 
@@ -802,6 +823,26 @@ draw_cursor:
                 add a,a
                 add a,a
                 ld h, a
+                ; TODO only draw the cursor if the flashing counter tells us to
+                ; i.e. redraw the title where the cursor would be, if the cursor is flashing
+                ; what does that mean? well, if fire is held then we draw the cursor
+                ; for four frames and then hide it for four frames, etc.  we have a ctr for it.
+                ;ld a, (controller_flags_flashing_ctr)
+                ;and 4
+                ;ret nz ; four frames with bit cleared => draw cursor. four frames with bit set => don't draw cursor
+                ; however we don't really want to have to draw the whole tile under the cursor, just the bit
+                ; where the cursor is.
+                ; so, cheat for now.  draw the cursor always, but in one of two colours.
+                ; red usually, but white/red if flashing.
+                ld a, (controller_flags_flashing_ctr)
+                and 4
+                jr nz, @white
+@red:
+                ld a, 17*2
+                call box_at_hl
+                ret
+@white:
+                ld a, 255
                 call box_at_hl
                 ret
 
