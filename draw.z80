@@ -194,3 +194,153 @@ draw_debug_tile_at_de_tile_a:
                 dec d
                 djnz @-odds
                 ret
+
+bitmap_at_de_tile_a:
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
+                ; w.r.t tile_bitmas
+                ; multiply a by 128 to get offset into bitmap data
+                ld l, 0
+                sra a ; shift lowest bit of a into c
+                rr l ; shift c into l
+                add a, tiles_bitmaps/256
+                ld h,a
+                ;ld hl, tiles_bitmaps
+                ; left to right and right to left even rows
+                ld b, 4
+    @evens:
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc d
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc d
+                inc hl
+                djnz @-evens
+                dec d
+                set 7, e ; move down one row of pixels
+                ld b, 4
+    @odds:
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                inc e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec d
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec e
+                inc hl
+                ld a, (hl)
+                ld (de), a
+                dec d
+                inc hl
+                djnz @-odds
+                ret

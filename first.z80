@@ -1,27 +1,16 @@
-; SNAKE-IN-A-DAY by tobermory@cookingcircle.co.uk.   8-Nov-2017.
+DEBUG: equ 0
+DEBUG_VSYNC: equ 1 + DEBUG
 
-; Play with cursor keys and control to restart game.
-; Developed using SimCoupe and PYZ80 cross-compiler.
-
-; Converted from Gamkedo's Chris Deleon's Javascript demonstration of Snake done in 5 minutes here:  https://www.youtube.com/watch?v=xGmXxpIj6vs
-; Just intended as a simple example of how games can be done in Z80 on the Sam Coup� quite easily.  This took about 3 hours to follow his rapid prototyping example, and convert into Z80.
-; This uses one  routine - the pseudo-random number generator from Your Sinclair's Star Tips section.  It turns out wasn't originally written only by Jon Ritman as I thought, but Simon Brattel and Neil Mottershead.  Go figure.
-
-;----------------------------------------------
-; Entry point
-
-DEBUG: equ 1
-CHECK_INPUT: equ 1
 FPS: equ 50
 NUM_NON_TILES: equ 4 ; 0 = blank, 1 = wall, 2 = bricks, 3 = wall but cursor can pass . 4 = triangle is the first tile, etc
-IMPENETRABLE_TILE: equ 3
+IMPENETRABLE_TILE: equ 2
 
 INCLUDE "SAM_IO_defs.z80"
 
 				dump 1,0						; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
 				autoexec						; Set to automatically load and call when sent to SimCoup�
 				org 32768						; Org to same address.  No clever paging needed here.
-main.start:
+init:
 				di
     @set_low_page:
 				ld a,8+32						; Set low pages as screen buffer, with ROM paged out
@@ -44,15 +33,20 @@ main.start:
                 defs 64
 
 stack:
+        ; point past stack space
 
 
+DS ALIGN 1024
+tiles_bitmaps:
+MDAT "tiles.b"
 
 INCLUDE "input.z80"
 INCLUDE "input_raw.z80"
 INCLUDE "draw.z80"
 
 palette_bottom:
-    defb 0,16,32,48,64,18,96,120,0,17,34,51,68,85,102,127
+;    defb 0,16,32,48,64,18,96,120,0,17,34,51,68,85,102,127
+    defb 0,127,95,89,46,42,40,47,45,110,106,68,76,63,112,29
 
 ; Current state of a puzzle
 ; We maintain a 12x12 grid of tile_info (each is a few bytes)
@@ -186,9 +180,7 @@ game_loop:
                 if DEBUG==1
                     call print_debug
                 endif
-                if CHECK_INPUT==1
                 call get_input
-                endif
                 call update_cursor_position
                 call move_tile
                 call slider_tile_detect
@@ -468,8 +460,6 @@ update_cursor_position:
                 dec e
                 call push_dirty_tile
                 ret
-    @done:
-                ret
 
     @check_dirs_with_fire_pressed:
                 ; determine if there is a (movable) tile at current position
@@ -646,7 +636,7 @@ sort_by_y:
 
 wait_frame:
                 ; status FRAME line signals the very start (top) of the frame
-                IF DEBUG
+                IF DEBUG_VSYNC
                 ld a, 0
                 out (254), a
                 ENDIF
@@ -654,7 +644,7 @@ wait_frame:
                 in a,(249)
                 bit 3,a
                 jr nz, @-busy_wait
-                IF DEBUG
+                IF DEBUG_VSYNC
                 ld a, 6
                 out (254), a
                 ENDIF
@@ -786,17 +776,17 @@ redraw_dirty:
                 ld b, tiles/256
                 ld a, (bc) ; the actual tile to draw
 
-                ; FIXME - should draw the real tile at this position
-                ; rather than just drawing a blank box
-                ; call fillrect_16x16_black_at_de
+                push hl
                 call draw_tile_at_de_tile_a
+                pop hl
                 jr @-next
     @end:
                 ; FIXME - should just inline
                 call clear_dirty_tiles_list
                 ret
 
-draw_tile_at_de_tile_a: equ draw_debug_tile_at_de_tile_a
+;draw_tile_at_de_tile_a: equ draw_debug_tile_at_de_tile_a
+draw_tile_at_de_tile_a: equ bitmap_at_de_tile_a
 
 draw_sliders:
                 ; 
@@ -824,7 +814,7 @@ draw_cursor:
                 add a,a
                 ld h, a
                 ; TODO only draw the cursor if the flashing counter tells us to
-                ; i.e. redraw the title where the cursor would be, if the cursor is flashing
+                ; i.e. redraw the title where the cursor would be,  the cursor is flashing
                 ; what does that mean? well, if fire is held then we draw the cursor
                 ; for four frames and then hide it for four frames, etc.  we have a ctr for it.
                 ;ld a, (controller_flags_flashing_ctr)
@@ -904,7 +894,9 @@ render_puzzle_tiles:
     @next_col:
                 ld a, (hl)
                 push bc ; TODO OPTIMIZE THIS AWAY
+                push hl
                 call draw_tile_at_de_tile_a
+                pop hl
                 res 7, e ; because, draw_tile_at_de_tile_a ends with DE one pixel row below above start pixel
                 inc d
                 pop bc ; TODO OPTIMIZE THIS AWAY
@@ -924,3 +916,4 @@ render_puzzle_tiles:
 
 
 INCLUDE "puzzles.z80"
+
