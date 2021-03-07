@@ -1,0 +1,7 @@
+
+check_match:
+                ret
+
+render_destruct:
+                ; this will call decrement on remaining blocks upon completion
+                ret

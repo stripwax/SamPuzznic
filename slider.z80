@@ -1,0 +1,12 @@
+; This is all about the sliders, which is what I call
+; those up-and-down elevators or left-to-right travelling blocks
+
+slider_tile_detect:
+                ret
+
+draw_sliders:
+                ; 
+                ret
+slider_update:
+                ret
+

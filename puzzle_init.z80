@@ -25,6 +25,18 @@ render_puzzle_tiles:
                 jr nz, @-next_col
                 ret
 
+count_remaining_tiles:
+                ; TODO inline with render_puzzle_tiles, since it's one-off at start of puzzle
+                ret
+
+render_remaining_tiles:
+                ; this draws the bitmaps AND the counts.
+                ; but ideally it only draws what it needs to (don't draw bitmaps if counts
+                ; still > 0)
+                ; and maybe we can stagger the updates over a few frames
+                ; 
+                ret
+
 debug_memcpy_level_data:
                 ld a, 20+2 ; level 3-3 (zero-based level so 0 is level 1, etc)
                 jp memcpy_level_data

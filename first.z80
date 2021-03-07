@@ -32,10 +32,6 @@ stack:
         ; point past stack space
 
 
-INCLUDE "input.z80"
-INCLUDE "input_raw.z80"
-INCLUDE "draw.z80"
-
 game_loop:
                 ; actions to carry out per-frame:
                 ; read controller input
@@ -92,36 +88,29 @@ game_loop:
                 call sfx_tick
                 jr game_loop
 
+; These are anticipatory, maybe we don't need them (or maybe we cannot disentangle
+; them from their current implementation; and maybe we don't need to)
 move_tile:
                 ; 
-                ret
-
-slider_tile_detect:
                 ret
 
 fall_tile_detect:
                 ret
 
-slider_update:
-                ret
-
-check_match:
-                ret
-
-render_destruct:
-                ; this will call decrement on remaining blocks upon completion
-                ret
-
+; We might need this for performance, so that we render tiles from top-to-bottom,
+; staying ahead of the raster at all times. (or staying behind the raster - whichever
+; works out better, and we'll probably know once we have ticking clock graphics and
+; music/sfx routines in place).
+; but also it might be fine, and the cost of sorting
+; might always outweight the benefit, so we might not need this.
 sort_by_y:
                 ret
 
-draw_sliders:
-                ; 
-                ret
 
 draw_overlays:
                 ; stuff like the bonus score that floats over the tiles
                 ; also the cursor
+                ; should probably make some of this macro and inline into game loop 
                 call draw_falling_tiles
                 call draw_cursor
                 call render_bonus
@@ -146,9 +135,15 @@ main:
                 call debug_memcpy_level_data
                 call memclr_tiles_flags
                 call render_puzzle_tiles
+                call count_remaining_tiles
+                call render_remaining_tiles
                 jp game_loop
 
 
+INCLUDE "match.z80"
+INCLUDE "input.z80"
+INCLUDE "input_raw.z80"
+INCLUDE "draw.z80"
 INCLUDE "game_state.z80"
 INCLUDE "clock.z80"
 INCLUDE "vsync_utils.z80"
@@ -157,6 +152,7 @@ INCLUDE "music.z80"
 INCLUDE "sfx.z80"
 INCLUDE "dirty_tiles.z80"
 INCLUDE "falling.z80"
+INCLUDE "slider.z80"
 INCLUDE "bonus.z80"
 INCLUDE "puzzle_init.z80"
 INCLUDE "puzzles.z80"
@@ -166,3 +162,4 @@ INCLUDE "palette.z80"
 IF DEBUG==1
 INCLUDE "debug.z80"
 ENDIF
+
