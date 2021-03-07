@@ -4,10 +4,50 @@ draw_cursor:
                 ld a, (controller_flags_tile_captured)
                 and a
                 jr z, @tile_not_captured
-                ; ...
-                ; .. TODO IMPLEMENT THIS
-                ; ...
-                ; ...
+                ; TODO below doesn't work, needs debugging
+                ; find the x or y offset of the tile and follow it.
+                ; TODO optimise this. maybe we should just store offset (y*12+x)
+                ; ld a, (controller_flags_y_pos)
+                ; ld e, a
+                ; ld a, (controller_flags_x_pos)
+                ; ;; multiply a by 12
+                ; ld d, a
+                ; add a, a ; a = y*2
+                ; add a, d ; a = y*3
+                ; add a, a ; a = y*6
+                ; add a, a ; a = y*12
+                ; add a, e; a = y*12 + x
+                ; ld l, a ; e = y*12 + x
+                ; ld h, (tiles-1)/256
+                ; ; is tile falling
+                ; ld a, (hl)
+                ; bit 4, a
+                ; jr z, @tile_not_captured
+                ; ; get the offset for top-left into hl
+                ; and 15
+                ; ld h, a
+                ; srl h
+                ; srl l
+                ; ld a, (controller_flags_x_pos)
+                ; ; 16 pixels wide = multiply by 8
+                ; add a,a
+                ; add a,a
+                ; add a,a
+                ; add 32
+                ; add a, l ; <-- this is what's different
+                ; ld l,a
+                ; ld a, (controller_flags_y_pos)
+                ; ; 16 pixels high = multiply by 8
+                ; ; (since 256 bytes = 2 rows
+                ; add a,a
+                ; add a,a
+                ; add a,a
+                ; add a, h ; <-- this is what's different
+                ; ld h, a
+                ; jr @+draw_cursor
+                ; ; .. TODO IMPLEMENT SLIDERS
+                ; ; ...
+                ; ; ...
 @tile_not_captured:
                 ld a, (controller_flags_x_pos)
                 ; 16 pixels wide = multiply by 8
@@ -34,6 +74,7 @@ draw_cursor:
                 ; where the cursor is.
                 ; so, cheat for now.  draw the cursor always, but in one of two colours.
                 ; red usually, but white/red if flashing.
+@draw_cursor:
                 ld a, (controller_flags_flashing_ctr)
                 and 4
                 jr nz, @white
@@ -87,9 +128,13 @@ update_cursor_position:
                 ld e, a
                 ld a, (controller_flags_y_pos)
                 dec a
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
+                ; ; ----------
                 ; ; if old y is zero, nothing to do, we can't go up
-                ; ; ret c ; carry since if y was zero, decrementing would carry
+                ; ret c ; carry since if y was zero, decrementing would carry
+                ; ; ----------
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
                 ; a = new y, e = x
                 ; see if the tile in the new position is
                 ; penetrable...
@@ -129,10 +174,14 @@ update_cursor_position:
                 ld a, (controller_flags_x_pos)
                 ld e, a
                 ld a, (controller_flags_y_pos)
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
+                ; ----------
                 ; ; if old y is at limit, nothing to do, we can't go down
-                ; ; cp 11
-                ; ; ret nc ; no carry since if y was 11 (or more), subtracting 11 would not carry
+                ; cp 11
+                ; ret nc ; no carry since if y was 11 (or more), subtracting 11 would not carry
+                ; ----------
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
                 inc a
                 ; a = new y, e = x
                 ; see if the tile in the new position is
@@ -173,9 +222,13 @@ update_cursor_position:
                 ld a, (controller_flags_x_pos)
                 ld e, a
                 dec e
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
+                ; ----------
                 ; ; if old x is at limit, nothing to do, we can't go left
-                ; ; ret c ; carry since if x was zero, decrementing would carry
+                ; ret c ; carry since if x was zero, decrementing would carry
+                ; ----------
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
                 ld a, (controller_flags_y_pos)
                 ld d, a
                 ; a = new x, d = y
@@ -215,10 +268,14 @@ update_cursor_position:
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
+                ; ----------
                 ; ; if old x is at limit, nothing to do, we can't go right
                 ; cp 9
                 ; ret nc ; no carry since if x was 9 (or more), subtracting 9 would not carry
+                ; ----------
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+
                 ld e, a
                 inc e
                 ld a, (controller_flags_y_pos)
@@ -325,7 +382,7 @@ update_cursor_position:
                 ; move to the new location
                 dec e
                 ld a,l
-                add 11
+                add 12 - 1 ; down one row and left one column
                 ld l, a
                 ; check if it's falling
                 call check_falling_tile_hl
@@ -383,7 +440,7 @@ update_cursor_position:
                 ; move to the new location
                 inc e
                 ld a,l
-                add 13
+                add 12 + 1 ; down one row and right one column
                 ld l, a
                 ; check if it's falling
                 call check_falling_tile_hl
