@@ -348,10 +348,9 @@ update_cursor_position:
     @check_push_right:
                 ; was RIGHT pressed?
                 bit 6,a
-                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
-                ret z
+                ret z ; no, RIGHT was not pressed, and we already checked LEFT, so we're done
                 bit 7,a
-                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
+                ret nz ; yes, right was pressed, but handled already
                 ; mark RIGHT key as ackd (avoid repeats)
                 or 128
                 ld (controller_flags_dirs_acks), a
