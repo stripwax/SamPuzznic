@@ -1,3 +1,4 @@
 DS ALIGN 1024
+; TODO: DOCUMENT WHY ALIGN 1024? I DON'T REMEMBER
 tiles_bitmaps:
 MDAT "tiles.b"
