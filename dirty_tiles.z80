@@ -1,3 +1,12 @@
+
+; data structures and functions for tagging which tiles need to be redrawn
+; These tiles correspond to non-moving locations in the grid- needing to be
+; redrawn due to the cursor passing over them, or an overlay being drawn
+; over them.
+; Really it's just a variable-length array of xy coords for lookup
+; into the tiles data, and a loop which iterates over and draws bitmaps
+; for each one (and clears the todo-list after drawing them all)
+
 clear_dirty_tiles_list:
                 ld hl, dirty_tiles
                 ld (hl), 255 ; end marker
