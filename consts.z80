@@ -1,3 +1,5 @@
+; game constants
+
 FPS: equ 50
 NUM_NON_TILES: equ 4 ; 0 = blank, 1 = wall, 2 = bricks, 3 = wall but cursor can pass . 4 = triangle is the first tile, etc
 IMPENETRABLE_TILE: equ 2
