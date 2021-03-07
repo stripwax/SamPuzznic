@@ -18,11 +18,7 @@ clear_falling_tiles:
                 ret
 
 falling_tiles:
-                ; ; fake this for now.  pick a tile - 3,1
-                ; defb 3
-                ; defb 1
-                ; defb 128
-                defs 120 ; worst case
+                defs 80 + 2 ; worst case
 
 falling_tiles_tail: defw falling_tiles
 
@@ -167,7 +163,7 @@ draw_falling_tiles:
                 ld a, 16
                 ld (bc), a
                 inc b
-                ; also get the correct tile ID in a (and westill need to draw this tile...)
+                ; also get the correct tile ID in a (and we still need to draw this tile...)
                 ; we're now 16 rows below where we were before
                 ; so add 256*8 to de
                 ld a, d
@@ -193,6 +189,11 @@ draw_falling_tiles:
                 ld a, c
                 sub 12 ; go back up one row (i.e. where the tile actually is now)
                 ld c, a
+                ; no longer falling, so clear flag
+                dec b
+                xor a
+                ld (bc), a
+                inc b
                 ; also get the correct tile ID in a (and westill need to draw this tile...)
                 ; we're now 16 rows below where we were before
                 ; so add 256*8 to de
@@ -211,7 +212,7 @@ draw_falling_tiles:
                 inc hl
                 ld (hl), a
                 inc hl
-                jr @-next
+                jp @-next
 
 @still_falling:
                 push hl
