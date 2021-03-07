@@ -38,11 +38,11 @@ draw_cursor:
                 and 4
                 jr nz, @white
 @red:
-                ld a, 17*2
+                ld a, palette_index_red * 17
                 call box_at_hl
                 ret
 @white:
-                ld a, 255
+                ld a, palette_index_white * 17
                 call box_at_hl
                 ret
 
@@ -269,6 +269,12 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 ; yes? ok, then just move like there's no tile
                 jp c, @movements_no_tile
+                ; is it already falling maybe? can't move a falling tile
+                dec h
+                ld a, (hl)
+                bit 4, a
+                jp nz, @movements_no_tile
+                inc h
                 ; ok fire was pressed AND we have a moveable tile under us
                 ; now the excitement begins!!
                 ; inc frame counter for flashing cursor
@@ -320,7 +326,7 @@ update_cursor_position:
                 inc e
                 call push_dirty_tile
                 ; mark the new locations as dirty also
-                inc e ; TODO hm am I drawing twice, if it's also falling?
+                dec e ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
                 ret
 

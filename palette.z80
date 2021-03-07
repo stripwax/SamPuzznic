@@ -2,3 +2,5 @@ palette_bottom:
 ;    defb 0,16,32,48,64,18,96,120,0,17,34,51,68,85,102,127
     defb 0,127,95,89,46,42,40,47,45,110,106,68,76,63,112,29
 
+palette_index_white: equ 1 ; this entry is white
+palette_index_red: equ 5 ; this entry is red
