@@ -10,16 +10,16 @@ init:
 				di
     @set_low_page:
 				ld a,8+32						; Set low pages as screen buffer, with ROM paged out
-				out (250),a                     ; LMPR - pages A and B of address space
+				out (LMPR),a                     ; LMPR - pages A and B of address space
                 ld a, 8+96                      ; Set video output to same pages as above, with mode 4
-				out (252),a                     ; VMPR - mapped to video output - same as above
+				out (VMPR),a                     ; VMPR - mapped to video output - same as above
     @set_palette:
                 ld hl, palette_bottom+15
                 ld bc, 16*256+248
                 otdr
     @enable_video:
-                ld a,0 + 3
-                out (254),a
+                ld a, %00000033 ; black border, screen enabled
+                out (BORDER),a
 	@set_stack:
 				ld sp,stack						; Use our own stack, point to below bottom of stack
     @go:

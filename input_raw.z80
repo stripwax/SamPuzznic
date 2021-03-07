@@ -1,7 +1,7 @@
 get_input_raw:
                 ; keyscan routine from sam technical manual
                 ld hl, keyb_buffer
-                ld b,254
+                ld b, %11111110 ; a8 selected
     @loop:      ld c, HIKEY
                 in a,(c)
                 and 224

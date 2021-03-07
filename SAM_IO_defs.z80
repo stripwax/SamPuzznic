@@ -4,3 +4,5 @@ HIKEY: equ 249
 LMPR: equ 250
 HMPR: equ 251
 VMPR: equ 252
+
+BORDER: equ 254
