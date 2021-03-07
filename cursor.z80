@@ -331,6 +331,17 @@ update_cursor_position:
                 ld a, (hl)
                 bit 4, a
                 jp nz, @movements_no_tile
+                ; similarly, it might not be falling yet (but the tile under
+                ; it could be mid falling, so effectively we're in 'mid air') - same rule
+                ; applies - you can't move it if it's in mid air
+                push hl
+                ld a, l
+                add 12
+                ld l, a
+                ld a, (hl)
+                pop hl
+                bit 4, a
+                jp nz, @movements_no_tile
                 inc h
                 ; ok fire was pressed AND we have a moveable tile under us
                 ; now the excitement begins!!
@@ -366,6 +377,7 @@ update_cursor_position:
                 ld (hl), a
                 inc l
                 ld (hl), 0
+                ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
                 ; check if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 12
@@ -424,6 +436,7 @@ update_cursor_position:
                 ld (hl), a
                 dec l
                 ld (hl), 0
+                ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
                 ; check if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 12

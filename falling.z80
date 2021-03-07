@@ -150,8 +150,15 @@ draw_falling_tiles:
                 ld a, 16 ; falling but zero offset for now ; TODO IS THIS RIGHT?
                 ld (bc), a
                 ; point at the x,y coord of the above tile and add to the falling list
+                ; hl is still valid, but we can trash it here (we pop later when we need it)
+                push de
+                dec hl
+                ld d, (hl)
+                dec hl
+                ld e, (hl)
                 dec d
                 call push_falling_tiles
+                pop de
 @finished_checking_falling_above:
                 ; now go back down one row
                 ld a, c
@@ -203,7 +210,7 @@ draw_falling_tiles:
                 inc a
                 ld (hl), a
                 inc hl
-                jr @-next
+                jp @-next
 @landed:
                 ; this is duplicate of some of logic above, but the ending is different
                 ; need to write where the tile is. get the correct address in bc:
