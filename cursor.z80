@@ -310,15 +310,19 @@ update_cursor_position:
                 inc l
                 ld (hl), 0
                 ; check if the one ABOVE us in the OLD location is now falling
-                dec d
                 ld a, l
                 sub 12
                 ld l, a
+                ld a, (hl)
+                cp NUM_NON_TILES
+                jr c, @+above_is_not_a_tile
+                dec d
                 push hl
                 call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
-                ; move to the new location
                 inc d
+@above_is_not_a_tile:
+                ; move to the new location
                 dec e
                 ld a,l
                 add 11
@@ -365,15 +369,19 @@ update_cursor_position:
                 dec l
                 ld (hl), 0
                 ; check if the one ABOVE us in the OLD location is now falling
-                dec d
                 ld a, l
                 sub 12
                 ld l, a
+                ld a, (hl)
+                cp NUM_NON_TILES
+                jr c, @+above_is_not_a_tile
+                dec d
                 push hl
                 call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
-                ; move to the new location
                 inc d
+@above_is_not_a_tile:
+                ; move to the new location
                 inc e
                 ld a,l
                 add 13
