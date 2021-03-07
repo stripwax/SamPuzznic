@@ -387,3 +387,45 @@ fillrect_16x2_black_at_de:
                 ld (de), a
                 ret
 
+fillrect_2x16_black_at_de:
+                ; get a black (double) pixel
+                xor a
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                inc d
+                ld (de), a
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+                xor a
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                dec d
+                ld (de), a
+                ret
+
