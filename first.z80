@@ -1,15 +1,11 @@
-DEBUG: equ 0
-DEBUG_VSYNC: equ 1 + DEBUG
-
-FPS: equ 50
-NUM_NON_TILES: equ 4 ; 0 = blank, 1 = wall, 2 = bricks, 3 = wall but cursor can pass . 4 = triangle is the first tile, etc
-IMPENETRABLE_TILE: equ 2
-
+INCLUDE "DEBUG_DEFS.z80"
+INCLUDE "consts.z80"
 INCLUDE "SAM_IO_defs.z80"
 
-				dump 1,0						; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
-				autoexec						; Set to automatically load and call when sent to SimCoup�
-				org 32768						; Org to same address.  No clever paging needed here.
+dump 1,0    ; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
+autoexec    ; Set to automatically load and call when sent to SimCoupé
+org 32768   ; Org to same address.  No clever paging needed here.
+
 init:
 				di
     @set_low_page:
@@ -36,118 +32,9 @@ stack:
         ; point past stack space
 
 
-DS ALIGN 1024
-tiles_bitmaps:
-MDAT "tiles.b"
-
 INCLUDE "input.z80"
 INCLUDE "input_raw.z80"
 INCLUDE "draw.z80"
-
-palette_bottom:
-;    defb 0,16,32,48,64,18,96,120,0,17,34,51,68,85,102,127
-    defb 0,127,95,89,46,42,40,47,45,110,106,68,76,63,112,29
-
-; Current state of a puzzle
-; We maintain a 12x12 grid of tile_info (each is a few bytes)
-; Actually there are multiple tables, each aligned to 256 boundaries
-;     tiles
-;     {
-;         icon:5,  ; 5 bits=13 values, plus blank, plus wall, plus navigable-wall . Game only has 8 tiles
-;     }
-;     tiles_flags:
-;     {
-;         falling:1, ; 1 bit
-;         on_slider:1, ; 1 bit
-;         blowing_up:1 ; 1 bit
-;         dirty:1 ; 1 bit, true if any status has changed (and so needs rendering)
-;         move_frame:3; 3 bits, sub-tile position in y (if falling) or x (if horizontal slider)
-;         unused: 1
-;    }
-;
-; We also maintain a list of "how many tiles of each kind are remaining"
-;
-; We also maintain a list of 'dirty tiles to redraw'
-; (can improve later to include just horizontal/vertical slices)
-; (need to improve later to handler sliders)
-;   {
-;        x: 8,
-;        y: 8,
-;   }
-;
-;
-; For slider, we maintain the following:
-;    {
-;        x:4,
-;        y:4,
-;        enabled:1 ; 0 if level has no slider, 1 if level has slider
-;        dir:1 ; 0 = updown, 1=leftright
-;        curr_dir:1 ; 0 = up (or left), 1 = down (or right)
-;        subtile_pos: 3 ; 3 bits, sub_tile position in y (if updown) or x (if leftright)
-;        unused :2
-;    }
-;
-; We keep track of any 'bonus' numbers to float
-;   {
-;       frame: 8 ; 
-;       bonus_amount: 7;
-;       show_bonus: 1 ; yes/no
-;   }
-; 
-; We have "render flags" to remind us what to redraw:
-;   {
-;       redraw_remaining: 1,
-;       redraw_clock: 1,
-;       unused: 6,
-;   }
-;
-; We track the controller flags:
-;   {
-;       x: 4,  ; could optimise
-;       y: 4,  ; could optimise
-;       tile_ptr: 16, ; pointer to the cell in *tiles
-;       up_pressed: 1,
-;       up_actioned: 1,
-;       down_pressed: 1,
-;       down_actioned: 1,
-;       left_pressed: 1,
-;       left_actioned: 1,
-;       right_pressed: 1,
-;       right_actioned: 1,
-;       fire_held: 1,
-;   }
-
-
-; following are memcpy'd from definition of a given puzzle
-DS ALIGN 256
-tiles_flags: defs 12*12
-DS ALIGN 256
-puzzle_copy_start:
-tiles: defs 12*12
-slider_info: defs 2
-clock_min_bcd: defb 0
-clock_sec_bcd: defb 0
-controller_flags_x_pos: defb 0 ; starting position
-controller_flags_y_pos: defb 0 ; starting position
-puzzle_copy_end:
-puzzle_copy_len: equ puzzle_copy_end - puzzle_copy_start
-
-; following are initialized to zero at start of game loop
-clock_tick_frame: defb 0
-bonus_info: defs 2
-
-controller_flags:
-controller_flags_tile_ptr: defw 0
-controller_flags_dirs_acks: defb 0
-controller_flags_fire: defb 0
-controller_flags_flashing_ctr: defb 0 ; counts number of frames for flashing cursor
-
-render_flags: defb 0
-; following is calculated just prior to start of game loop
-remaining_tiles: defs 8
-
-dirty_tiles: defs 10*8*2 ; shouldn't need anything like this much
-dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
 
 game_loop:
                 ; actions to carry out per-frame:
@@ -177,9 +64,12 @@ game_loop:
                 ; 
 
 game_loop:
-                if DEBUG==1
-                    call print_debug
-                endif
+                IF DEBUG==1
+                    IF DEBUG_KEYMATRIX==1
+                        call print_debug_keymatrix
+                    ENDIF
+                ENDIF
+
                 call get_input
                 call update_cursor_position
                 call move_tile
@@ -202,369 +92,6 @@ game_loop:
                 call sfx_tick
                 jr game_loop
 
-if DEBUG
-print_debug:
-                ; render the keyboard matrix
-                ld hl, 0
-                ld (hl), 255
-                inc hl
-                ld (hl), 0
-                inc hl
-                ld (hl), 255
-                inc h
-                ld l,0
-
-                ld de, keyb_buffer
-                ld c,9
-    @outer_loop:
-                ld b,8
-                ld a,(de)
-    @inner_loop:
-                rrca
-                jr c, @key_detected
-    @key_not_detected:
-                ld (hl), 0
-                jr @next
-    @key_detected:
-                ld (hl), 255
-    @next:
-                inc hl
-                ld (hl), 0
-                inc hl
-                djnz @-inner_loop
-                inc de
-                inc h
-                ld l,0
-                dec c
-                jr nz, @-outer_loop
-
-    @keys_and_latches:
-                inc h
-                inc h
-                ld l,0
-                ld a, (controller_flags_dirs_acks)
-                ld b,8
-    @inner_loop:
-                rrca
-                jr c, @+key_detected
-    @key_not_detected:
-                ld (hl), 17*1
-                jr @+next
-    @key_detected:
-                ld (hl), 17*3
-    @next:
-                inc hl
-                ld (hl), 0
-                inc hl
-                djnz @-inner_loop
-                ret
-ENDIF
-
-
-update_cursor_position:
-    @check_fire:
-                ; If fire is not held, then cursor moves up/down/left/right,
-                ; subject to boundaries (i.e. cannot pass through tile==2)
-                ;
-                ; If fire is held, and the cell contains a tile, then you can only
-                ; move left or right if the tile can move left or right
-                ; NB CANNOT MOVE UP OR DOWN, WITH FIRE HELD!
-                ;
-                ; If fire is held, and the cell does not contain a tile, then cursor
-                ; moves just as if fire is not held
-                
-                ld a, (controller_flags_fire)
-                bit 0, a
-                jp nz, @+check_dirs_with_fire_pressed
-                ; fire was not pressed
-                ; reset the flashing cursor counter
-    @movements_no_tile:
-                xor a
-                ld (controller_flags_flashing_ctr), a
-    @check_directions:
-                ld a, (controller_flags_dirs_acks)
-                ; if NOTHING to do, do nothing
-                and a
-                ret z
-    @check_up:
-                ; was UP pressed?
-                bit 0,a
-                jr z, @+check_down ; no, up was not pressed
-                bit 1,a
-                ret nz ; yes, up was pressed but we already handled it earlier
-                ; mark UP key as ackd (avoid repeats)
-                or 2
-                ld (controller_flags_dirs_acks), a
-                ; get new position
-                ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                dec a
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-                ; ; if old y is zero, nothing to do, we can't go up
-                ; ; ret c ; carry since if y was zero, decrementing would carry
-                ; a = new y, e = x
-                ; see if the tile in the new position is
-                ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply a by 12
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
-                ld h, tiles/256
-                ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
-                ret z
-                ; all good, we can move there
-                ld a, d
-                ld (controller_flags_y_pos), a
-                ; mark the OLD location as dirty
-                ; (old location was the row below this one)
-                inc d
-                call push_dirty_tile
-                ret
-
-    @check_down:
-                ; was DOWN pressed?
-                bit 2,a
-                jr z, @+check_left ; no, down was not pressed
-                bit 3,a
-                ret nz ; yes, down was pressed but already handled
-                ; mark DOWN key as ackd (avoid repeats)
-                or 8
-                ld (controller_flags_dirs_acks), a
-                ; get new position
-                ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-                ; ; if old y is at limit, nothing to do, we can't go down
-                ; ; cp 11
-                ; ; ret nc ; no carry since if y was 11 (or more), subtracting 11 would not carry
-                inc a
-                ; a = new y, e = x
-                ; see if the tile in the new position is
-                ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply a by 12
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
-                ld h, tiles/256
-                ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
-                ret z
-                ; all good, we can move there
-                ld a, d
-                ld (controller_flags_y_pos), a
-                ; mark the OLD location as dirty
-                ; (old location was the row above this one)
-                dec d
-                call push_dirty_tile
-                ret
-
-    @check_left:
-                ; was LEFT pressed 
-                bit 4,a
-                jr z, @+check_right ; no
-                bit 5,a
-                ret nz ; yes but handled already
-                ; mark LEFT key as ackd (avoid repeats)
-                or 32
-                ld (controller_flags_dirs_acks), a
-                ; get new position
-                ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                dec e
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-                ; ; if old x is at limit, nothing to do, we can't go left
-                ; ; ret c ; carry since if x was zero, decrementing would carry
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = new x, d = y
-                ; see if the tile in the new position is
-                ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
-                ld h, tiles/256
-                ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
-                ret z
-                ; all good, we can move there
-                ld a, e
-                ld (controller_flags_x_pos), a
-                ; mark the OLD location as dirty
-                ; (old location was the column right of this one)
-                inc e
-                call push_dirty_tile
-                ret
-
-    @check_right:
-                ; was RIGHT pressed?
-                bit 6,a
-                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
-                ret z
-                bit 7,a
-                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
-                ; mark RIGHT key as ackd (avoid repeats)
-                or 128
-                ld (controller_flags_dirs_acks), a
-                ; get new position
-                ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-                ; ; if old x is at limit, nothing to do, we can't go right
-                ; cp 9
-                ; ret nc ; no carry since if x was 9 (or more), subtracting 9 would not carry
-                ld e, a
-                inc e
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = new x, d = y
-                ; see if the tile in the new position is
-                ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
-                ld h, tiles/256
-                ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
-                ret z
-                ; all good, we can move there
-                ld a, e
-                ld (controller_flags_x_pos), a
-                ; mark the OLD location as dirty
-                ; (old location was the column left of this one)
-                dec e
-                call push_dirty_tile
-                ret
-
-    @check_dirs_with_fire_pressed:
-                ; determine if there is a (movable) tile at current position
-                ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = e = x, d = y
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
-                ld h, tiles/256
-                ld a, (hl)
-                ; is it moveable tile (i.e. >= NUM_NON_TILES)
-                cp NUM_NON_TILES
-                ; yes? ok, then just move like there's no tile
-                jp c, @movements_no_tile
-                ; ok fire was pressed AND we have a moveable tile under us
-                ; now the excitement begins!!
-                ; inc frame counter for flashing cursor
-                ld a, (controller_flags_flashing_ctr)
-                inc a
-                ld (controller_flags_flashing_ctr), a
-                ; are we also pressing left or right?
-                ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
-                ld a, (controller_flags_dirs_acks)
-                and %11110000
-                ; if not, do nothing else
-                ret z
-    @check_push_left:
-                ; was LEFT pressed 
-                bit 4,a
-                jr z, @+check_push_right ; no
-                bit 5,a
-                ret nz ; yes but handled already
-                ; mark LEFT key as ackd (avoid repeats)
-                or 32
-                ld (controller_flags_dirs_acks), a
-                ; get new position (left = dec l, right = inc l)
-                dec l
-                ld a, (hl)
-                and a ; check if it is zero.  you can only push a tile into zero
-                ret nz
-                ; all good, we can move there
-                ; copy old tile to new place
-                inc l
-                ld a, (hl)
-                dec l
-                ld (hl), a
-                inc l
-                ld (hl), 0
-                ; mark the OLD location as dirty
-                ; (de still contains the old location)
-                call push_dirty_tile
-                ; move to the new location
-                dec e
-                ; mark that as dirty also
-                call push_dirty_tile
-                ; and mark this as our new cursor position
-                ld a, e
-                ld (controller_flags_x_pos), a
-                ret
-
-    @check_push_right:
-                ; was RIGHT pressed?
-                bit 6,a
-                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
-                ret z
-                bit 7,a
-                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
-                ; mark RIGHT key as ackd (avoid repeats)
-                or 128
-                ld (controller_flags_dirs_acks), a
-                ; get new position (left = dec l, right = inc l)
-                inc l
-                ld a, (hl)
-                and a ; check if it is zero.  you can only push a tile into zero
-                ret nz
-                ; all good, we can move there
-                ; copy old tile to new place
-                dec l
-                ld a, (hl)
-                inc l
-                ld (hl), a
-                dec l
-                ld (hl), 0
-                ; mark the OLD location as dirty
-                ; (de still contains the old location)
-                call push_dirty_tile
-                ; move to the new location
-                inc e
-                ; mark that as dirty also
-                call push_dirty_tile
-                ; and mark this as our new cursor position
-                ld a, e
-                ld (controller_flags_x_pos), a
-                ret
-
-
 move_tile:
                 ; 
                 ret
@@ -585,208 +112,8 @@ render_destruct:
                 ; this will call decrement on remaining blocks upon completion
                 ret
 
-render_bonus:
-                ret
-
-update_clock:
-                ld a, (clock_tick_frame)
-                and a ; set Z if a is zero
-                ; 0 is the 'first' tick, but we need to handle specially
-                ; so that we can set it to the FPS counter
-                jr z, @just_tick
-                ; if we are > 0 then we decrement
-                dec a
-                ld (clock_tick_frame), a
-                ; .. and if we are NOW zero then a full second has elapsed
-                jr z, @+next_sec
-                ret
-    @next_sec:
-                ; decrement number of remaining seconds
-                ld a, (clock_sec_bcd)
-                dec a
-                daa
-                ; did we underflow (0 -> 99) ?
-                jr c, @+next_min
-                ; no? ok, just save back the number of seconds
-                ld (clock_sec_bcd), a
-                ret
-    @next_min:
-                ld a, (clock_min_bcd)
-                and a; set Z if a is zero
-                ret z ; clock is done, we're on last minute and seconds just decremented to 0
-                dec a
-                daa
-                ld (clock_min_bcd), a
-                ld a, %01011001 ; 59 bcd
-                ld (clock_sec_bcd), a
-                ret
-    @just_tick:
-                ld a, FPS-1
-                ld (clock_tick_frame), a
-                ret
-
-check_clock_30:
-                ret
-
-check_clock_game_over:
-                ret
-
 sort_by_y:
                 ret
-
-wait_frame:
-                ; status FRAME line signals the very start (top) of the frame
-                IF DEBUG_VSYNC
-                ld a, 0
-                out (254), a
-                ENDIF
-    @busy_wait:
-                in a,(249)
-                bit 3,a
-                jr nz, @-busy_wait
-                IF DEBUG_VSYNC
-                ld a, 6
-                out (254), a
-                ENDIF
-                ret
-
-draw_clock:
-                ; method: convert 4-bit (bcd) digit into
-                ; a lookup into font data. one 8x8 char takes 8 bytes (monochrome)
-                ld hl, 64*128
-                ld a, (clock_min_bcd)
-                ld c, a
-                ; top minute decimal
-                ; can we skip it? any puzzles with a time limit > 9:59 ?
-                and 240
-                rrca
-                rrca
-                rrca
-                rrca
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-
-                inc h
-                ld l,0
-                ; bottom minute decimal
-                ld a, c
-                and 15
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-
-                inc h
-                ld l,0
-                ld a, (clock_sec_bcd)
-                ld c, a
-                ; top minute second
-                and 240
-                rrca
-                rrca
-                rrca
-                rrca
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-                
-                inc h
-                ld l,0
-                ; bottom second decimal
-                ld a, c
-                and 15
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-
-                ret
-
-redraw_dirty:
-                ; step through list of dirty tile (x,y) coords
-                ; and erase (redraw) tile rects
-                ; NB this only handles the STATIONARY tiles
-                ; We will need a separate routine for drawing falling or sliding tiles
-                ld hl, dirty_tiles
-    @next:
-                ld a, (hl)
-                ; is it end marker?
-                bit 7, a
-                jr nz, @+end
-                inc hl
-                ld d, (hl)
-                inc hl
-                ; a = x and d = y
-                ; for screen: multiply both a and d by 8 (and add 32 in x direction)
-                ;             and put into de
-                ; for tiles: multiply y by 12 and add to x
-                ;             and put into bc
-                ; we kindof get de and bc at the same time without too much copyaround
-                ld c, a ; c = x
-                add a,a ; a = x * 2
-                add a,a; a = x * 4
-                add a,a ; a = x * 8
-                add a, 32
-                ld e, a ; e = x*8+32
-                ld a, d ; a = y
-                add a, a ; a = y * 2
-                add a, d ; a = y*3
-                add a,a ; a = y*6
-                add a,a ; a = y*12
-                add c ; a = y*12+x
-                ld c, a; c = x*12+y
-                sla d
-                sla d
-                sla d
-                ld b, tiles/256
-                ld a, (bc) ; the actual tile to draw
-
-                push hl
-                call draw_tile_at_de_tile_a
-                pop hl
-                jr @-next
-    @end:
-                ; FIXME - should just inline
-                call clear_dirty_tiles_list
-                ret
-
-;draw_tile_at_de_tile_a: equ draw_debug_tile_at_de_tile_a
-draw_tile_at_de_tile_a: equ bitmap_at_de_tile_a
 
 draw_sliders:
                 ; 
@@ -795,125 +122,47 @@ draw_sliders:
 draw_overlays:
                 ; stuff like the bonus score that floats over the tiles
                 ; also the cursor
+                call draw_falling_tiles
                 call draw_cursor
+                call render_bonus
                 ret
-
-draw_cursor:
-                ld a, (controller_flags_x_pos)
-                ; 16 pixels wide = multiply by 8
-                add a,a
-                add a,a
-                add a,a
-                add 32
-                ld l,a
-                ld a, (controller_flags_y_pos)
-                ; 16 pixels high = multiply by 8
-                ; (since 256 bytes = 2 rows
-                add a,a
-                add a,a
-                add a,a
-                ld h, a
-                ; TODO only draw the cursor if the flashing counter tells us to
-                ; i.e. redraw the title where the cursor would be,  the cursor is flashing
-                ; what does that mean? well, if fire is held then we draw the cursor
-                ; for four frames and then hide it for four frames, etc.  we have a ctr for it.
-                ;ld a, (controller_flags_flashing_ctr)
-                ;and 4
-                ;ret nz ; four frames with bit cleared => draw cursor. four frames with bit set => don't draw cursor
-                ; however we don't really want to have to draw the whole tile under the cursor, just the bit
-                ; where the cursor is.
-                ; so, cheat for now.  draw the cursor always, but in one of two colours.
-                ; red usually, but white/red if flashing.
-                ld a, (controller_flags_flashing_ctr)
-                and 4
-                jr nz, @white
-@red:
-                ld a, 17*2
-                call box_at_hl
-                ret
-@white:
-                ld a, 255
-                call box_at_hl
-                ret
-
-
-music_tick:
-                ret
-
-sfx_tick:
-                ret
-
 
 main:
                 ; clock_tick_frame counts from 49 to 0 (inclusive).
-                ; but 0 means "time to redraw the clock"
+                ; but 0 means "time to redraw the clock"                
+                ; wait loop for setting breakpoints in simice
+                IF DEBUG==1
+                    IF DEBUG_WAIT_ON_START==1
+                    call debug_wait_for_a_bit
+                    ENDIF
+                ENDIF
+
                 xor a
                 ld (clock_tick_frame), a
-                ld a, 1
-                ld (clock_min_bcd), a
-                ld a, %01011001 ; 59 bcd
-                ld (clock_sec_bcd), a
 
                 call clear_dirty_tiles_list
+                call clear_falling_tiles
 
                 call debug_memcpy_level_data
+                call memclr_tiles_flags
                 call render_puzzle_tiles
-                ld a, 5
-                ld (controller_flags_x_pos), a
-                ld (controller_flags_y_pos), a
                 jp game_loop
 
-clear_dirty_tiles_list:
-                ld hl, dirty_tiles
-                ld (hl), 255 ; end marker
-                ld (dirty_tiles_tail), hl
-                ret
 
-push_dirty_tile:
-                ; de = (x, y) tile data to push
-                ld hl, (dirty_tiles_tail)
-                ld (hl), e
-                inc hl
-                ld (hl), d
-                inc hl
-                ld (hl), 255 ; end marker
-                ld (dirty_tiles_tail), hl
-                ret
-
-debug_memcpy_level_data:
-                ld hl, PUZZLEDATA_L3_3
-                ld de, tiles
-                ld bc, 12*12 ; FIXME SHOULD BE 12 x 10
-                LDIR
-                ret
-
-render_puzzle_tiles:
-                ld hl, tiles
-                ld bc, 12*256+12
-                ld de, 32 ; this is 12*0+0+32 i.e. x=0 and y=0
-    @next_col:
-                ld a, (hl)
-                push bc ; TODO OPTIMIZE THIS AWAY
-                push hl
-                call draw_tile_at_de_tile_a
-                pop hl
-                res 7, e ; because, draw_tile_at_de_tile_a ends with DE one pixel row below above start pixel
-                inc d
-                pop bc ; TODO OPTIMIZE THIS AWAY
-                ld a, e
-                add 8
-                ld e, a
-                inc hl
-                djnz @-next_col
-                ld b, 12
-                ld e, 32 ; column zero
-                ld a, d ; next row
-                add 8   ; ...
-                ld d, a ; ...
-                dec c
-                jr nz, @-next_col
-                ret
-
-
+INCLUDE "game_state.z80"
+INCLUDE "clock.z80"
+INCLUDE "vsync_utils.z80"
+INCLUDE "cursor.z80"
+INCLUDE "music.z80"
+INCLUDE "sfx.z80"
+INCLUDE "dirty_tiles.z80"
+INCLUDE "falling.z80"
+INCLUDE "bonus.z80"
+INCLUDE "puzzle_init.z80"
 INCLUDE "puzzles.z80"
+INCLUDE "bitmaps.z80"
+INCLUDE "palette.z80"
 
+IF DEBUG==1
+INCLUDE "debug.z80"
+ENDIF

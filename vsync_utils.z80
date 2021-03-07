@@ -1,0 +1,17 @@
+wait_frame:
+                ; status FRAME line signals the very start (top) of the frame
+                IF DEBUG_VSYNC==1
+                ld a, 0
+                out (254), a
+                ENDIF
+    @busy_wait:
+                in a,(249)
+                bit 3,a
+                jr nz, @-busy_wait
+                IF DEBUG_VSYNC
+                ld a, 6
+                out (254), a
+                ENDIF
+                ret
+
+

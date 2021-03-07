@@ -1,0 +1,102 @@
+; Current state of a puzzle
+; We maintain a 12x12 grid of tile_info (each is a few bytes)
+; Actually there are multiple tables, each aligned to 256 boundaries
+;     tiles
+;     {
+;         icon:5,  ; 5 bits=13 values, plus blank, plus wall, plus navigable-wall . Game only has 8 tiles
+;     }
+;     tiles_flags:
+;     {
+;         offset (x or y) ; 4 bits
+;         falling:1, ; 1 bit
+;         on_slider:1, ; 1 bit
+;         blowing_up:1 ; 1 bit
+;         unused: 1
+;    }
+;
+; We also maintain a list of "how many tiles of each kind are remaining"
+;
+; We also maintain a list of 'dirty tiles to redraw'
+; (can improve later to include just horizontal/vertical slices)
+; (need to improve later to handler sliders)
+;   {
+;        x: 8,
+;        y: 8,
+;   }
+;
+;
+; For slider, we maintain the following:
+;    {
+;        x:4,
+;        y:4,
+;        enabled:1 ; 0 if level has no slider, 1 if level has slider
+;        dir:1 ; 0 = updown, 1=leftright
+;        curr_dir:1 ; 0 = up (or left), 1 = down (or right)
+;        subtile_pos: 3 ; 3 bits, sub_tile position in y (if updown) or x (if leftright)
+;        unused :2
+;    }
+;
+; We keep track of any 'bonus' numbers to float
+;   {
+;       frame: 8 ; 
+;       bonus_amount: 7;
+;       show_bonus: 1 ; yes/no
+;   }
+; 
+; We have "render flags" to remind us what to redraw:
+;   {
+;       redraw_remaining: 1,
+;       redraw_clock: 1,
+;       unused: 6,
+;   }
+;
+; We track the controller flags:
+;   {
+;       x: 4,  ; could optimise
+;       y: 4,  ; could optimise
+;       tile_ptr: 16, ; pointer to the cell in *tiles
+;       up_pressed: 1,
+;       up_actioned: 1,
+;       down_pressed: 1,
+;       down_actioned: 1,
+;       left_pressed: 1,
+;       left_actioned: 1,
+;       right_pressed: 1,
+;       right_actioned: 1,
+;       fire_held: 1,
+;   }
+
+
+; following are memcpy'd from definition of a given puzzle
+DS ALIGN 256
+tiles_flags: defs 12*12
+DS ALIGN 256
+puzzle_copy_start:
+tiles: defs 12*12
+slider_info: defs 2
+clock_min_bcd: defb 0
+clock_sec_bcd: defb 0
+controller_flags_x_pos: defb 0 ; starting position
+controller_flags_y_pos: defb 0 ; starting position
+puzzle_copy_end:
+puzzle_copy_len: equ puzzle_copy_end - puzzle_copy_start
+
+; following are initialized to zero at start of game loop
+; from game_state_zero_start to game_state_zero_end
+game_state_zero_start:
+clock_tick_frame: defb 0
+bonus_info: defs 2
+
+controller_flags:
+controller_flags_tile_ptr: defw 0
+controller_flags_dirs_acks: defb 0
+controller_flags_fire: defb 0
+controller_flags_flashing_ctr: defb 0 ; counts number of frames for flashing cursor
+controller_flags_tile_captured: defb 0
+
+render_flags: defb 0
+game_state_zero_end:
+
+; following is calculated just prior to start of game loop
+remaining_tiles: defs 8
+

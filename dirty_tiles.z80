@@ -1,0 +1,79 @@
+clear_dirty_tiles_list:
+                ld hl, dirty_tiles
+                ld (hl), 255 ; end marker
+                ld (dirty_tiles_tail), hl
+                ret
+
+push_dirty_tile:
+                ; de = (x, y) tile data to push
+                ld hl, (dirty_tiles_tail)
+                ld (hl), e
+                inc hl
+                ld (hl), d
+                inc hl
+                ld (hl), 255 ; end marker
+                ld (dirty_tiles_tail), hl
+                ret
+
+dirty_tiles: defs 10*8*2 ; shouldn't need anything like this much
+dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
+
+redraw_dirty:
+                ; step through list of dirty tile (x,y) coords
+                ; and erase (redraw) tile rects
+                ; NB this only handles the STATIONARY tiles
+                ; We will need a separate routine for drawing falling or sliding tiles
+                ld hl, dirty_tiles
+    @next:
+                ld a, (hl)
+                ; is it end marker?
+                bit 7, a
+                jr nz, @+end
+                inc hl
+                ld d, (hl)
+                inc hl
+                ; a = x and d = y
+                ; for screen: multiply both a and d by 8 (and add 32 in x direction)
+                ;             and put into de
+                ; for tiles: multiply y by 12 and add to x
+                ;             and put into bc
+                ; we kindof get de and bc at the same time without too much copyaround
+                ld c, a ; c = x
+                add a,a ; a = x * 2
+                add a,a; a = x * 4
+                add a,a ; a = x * 8
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, d ; a = y
+                add a, a ; a = y * 2
+                add a, d ; a = y*3
+                add a,a ; a = y*6
+                add a,a ; a = y*12
+                add c ; a = y*12+x
+                ld c, a; c = x*12+y
+                sla d
+                sla d
+                sla d
+                ; check : IS IT FALLING?  if so, do NOT render it now
+                ld b, tiles_flags / 256
+                ld a, (bc)
+                bit 4, a
+                jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
+                inc b ; point to tiles
+                ld a, (bc) ; the actual tile to draw
+
+                push hl
+                call draw_tile_at_de_tile_a
+                pop hl
+                jr @-next
+    @falling_dirty:
+                xor a
+                push hl
+                call draw_tile_at_de_tile_a
+                pop hl
+                jr @-next
+    @end:
+                ; FIXME - should just inline
+                call clear_dirty_tiles_list
+                ret
+

@@ -1,0 +1,57 @@
+render_puzzle_tiles:
+                ld hl, tiles
+                ld bc, 12*256+12
+                ld de, 32 ; this is 12*0+0+32 i.e. x=0 and y=0
+    @next_col:
+                ld a, (hl)
+                push bc ; TODO OPTIMIZE THIS AWAY
+                push hl
+                call draw_tile_at_de_tile_a
+                pop hl
+                res 7, e ; because, draw_tile_at_de_tile_a ends with DE one pixel row below above start pixel
+                inc d
+                pop bc ; TODO OPTIMIZE THIS AWAY
+                ld a, e
+                add 8
+                ld e, a
+                inc hl
+                djnz @-next_col
+                ld b, 12
+                ld e, 32 ; column zero
+                ld a, d ; next row
+                add 8   ; ...
+                ld d, a ; ...
+                dec c
+                jr nz, @-next_col
+                ret
+
+debug_memcpy_level_data:
+                ld a, 20+2 ; level 3-3 (zero-based level so 0 is level 1, etc)
+                jp memcpy_level_data
+
+memcpy_level_data:
+                ; on entry, a = which level
+                add a, a ; pointers are two bytes, so need offset*2 into the index
+                ld hl, PUZZLEDATA_INDEX
+                add a, l
+                ld l, a
+                jr nc, @ok
+                inc h ; carry
+        @ok:
+                ld b, (hl)
+                inc hl
+                ld h, (hl)
+                ld l, b
+                ld de, tiles
+                ld bc, puzzle_copy_len
+                LDIR
+                ret
+
+memclr_tiles_flags:
+                ld hl, tiles_flags
+                xor a
+                ld (hl), a
+                ld de, tiles_flags+1
+                ld bc, 12*12-1 ; FIXME SHOULD BE 12 x 10
+                LDIR
+                ret

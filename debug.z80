@@ -1,0 +1,75 @@
+print_debug_keymatrix:
+                ; render the keyboard matrix
+                ld hl, 0
+                ld (hl), 255
+                inc hl
+                ld (hl), 0
+                inc hl
+                ld (hl), 255
+                inc h
+                ld l,0
+
+                ld de, keyb_buffer
+                ld c,9
+    @outer_loop:
+                ld b,8
+                ld a,(de)
+    @inner_loop:
+                rrca
+                jr c, @key_detected
+    @key_not_detected:
+                ld (hl), 0
+                jr @next
+    @key_detected:
+                ld (hl), 255
+    @next:
+                inc hl
+                ld (hl), 0
+                inc hl
+                djnz @-inner_loop
+                inc de
+                inc h
+                ld l,0
+                dec c
+                jr nz, @-outer_loop
+
+    @keys_and_latches:
+                inc h
+                inc h
+                ld l,0
+                ld a, (controller_flags_dirs_acks)
+                ld b,8
+    @inner_loop:
+                rrca
+                jr c, @+key_detected
+    @key_not_detected:
+                ld (hl), 17*1
+                jr @+next
+    @key_detected:
+                ld (hl), 17*3
+    @next:
+                inc hl
+                ld (hl), 0
+                inc hl
+                djnz @-inner_loop
+                ret
+
+debug_wait_for_a_bit:
+                ; useful to insert a reasonably size delay, good for setting
+                ; breakpoints in simice
+                ld c, 0
+    @loop1:
+                ld b, 0
+    @loop2:
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                nop
+                djnz @-loop2
+                dec c
+                jr nz, @-loop1
+                ret

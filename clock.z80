@@ -1,0 +1,130 @@
+draw_clock:
+                ; method: convert 4-bit (bcd) digit into
+                ; a lookup into font data. one 8x8 char takes 8 bytes (monochrome)
+                ld hl, 64*128
+                ld a, (clock_min_bcd)
+                ld c, a
+                ; top minute decimal
+                ; can we skip it? any puzzles with a time limit > 9:59 ?
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                inc h
+                ld l,0
+                ; bottom minute decimal
+                ld a, c
+                and 15
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                inc h
+                ld l,0
+                ld a, (clock_sec_bcd)
+                ld c, a
+                ; top minute second
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+                
+                inc h
+                ld l,0
+                ; bottom second decimal
+                ld a, c
+                and 15
+                jr z, @+empty
+                ld b,a
+        @lp:
+                ld (hl), 2*17
+                inc hl
+                djnz @-lp
+        @empty:
+                ld b,10
+        @lp:
+                ld (hl), 0
+                inc hl
+                djnz @-lp
+
+                ret
+
+update_clock:
+                ld a, (clock_tick_frame)
+                and a ; set Z if a is zero
+                ; 0 is the 'first' tick, but we need to handle specially
+                ; so that we can set it to the FPS counter
+                jr z, @just_tick
+                ; if we are > 0 then we decrement
+                dec a
+                ld (clock_tick_frame), a
+                ; .. and if we are NOW zero then a full second has elapsed
+                jr z, @+next_sec
+                ret
+    @next_sec:
+                ; decrement number of remaining seconds
+                ld a, (clock_sec_bcd)
+                dec a
+                daa
+                ; did we underflow (0 -> 99) ?
+                jr c, @+next_min
+                ; no? ok, just save back the number of seconds
+                ld (clock_sec_bcd), a
+                ret
+    @next_min:
+                ld a, (clock_min_bcd)
+                and a; set Z if a is zero
+                ret z ; clock is done, we're on last minute and seconds just decremented to 0
+                dec a
+                daa
+                ld (clock_min_bcd), a
+                ld a, %01011001 ; 59 bcd
+                ld (clock_sec_bcd), a
+                ret
+    @just_tick:
+                ld a, FPS-1
+                ld (clock_tick_frame), a
+                ret
+
+check_clock_30:
+                ret
+
+check_clock_game_over:
+                ret
+

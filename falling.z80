@@ -1,0 +1,230 @@
+push_falling_tiles:
+                ; e and d contains tile x and y respectively
+                ld hl, (falling_tiles_tail)
+                ld (hl), e
+                inc hl
+                ld (hl), d
+                inc hl
+                ld a, 128 ; end marker
+                ld (hl), a
+                ld (falling_tiles_tail), hl
+                ret
+
+clear_falling_tiles:
+                ld hl, falling_tiles
+                ld a, 128
+                ld (hl), a
+                ld (falling_tiles_tail), hl
+                ret
+
+falling_tiles:
+                ; ; fake this for now.  pick a tile - 3,1
+                ; defb 3
+                ; defb 1
+                ; defb 128
+                defs 120 ; worst case
+
+falling_tiles_tail: defw falling_tiles
+
+check_falling_tile_hl:
+                ; is the tile pointed (in tiles array) by hl, suspended in midair
+                ; if so, update the state to say it is falling (and add it to the
+                ; list of falling tiles)
+                ; on entry, de should be the y,x of the tile
+                ld a, l
+                add 12
+                ld l, a
+                ld a, (hl)
+                and a
+                jr nz, @+not_falling ; not falling
+                ; make sure the state is correct - zero offset for now (flag as falling)
+                ld a, 16 ; bit 4 = falling
+                dec h
+                ld (hl), a
+                jp push_falling_tiles
+    @not_falling:
+                ; make sure the state is correct - zero offset (and flag as not falling)
+                xor a
+                dec h
+                ld (hl), a
+                ret
+
+draw_falling_tiles:
+                ; step through list of falling tiles (x,y) coords
+                ; and erase (redraw) tile rects
+                ld hl, falling_tiles
+    @keep_seeing_if_any_found:
+                ld a, (hl)
+                ; is it end marker?
+                bit 7, a
+                jr nz, @none_found_and_cleanup
+                bit 6, a
+                jr z, @+not_dead
+                inc hl
+                jr @-keep_seeing_if_any_found
+    @none_found_and_cleanup:
+                ; on this pass we went through the whole list of falling tiles and found none
+                ; Great , list can be truncated
+                jp clear_falling_tiles ; this RETs
+
+    @next:
+                ld a, (hl)
+                ; is it end marker?
+                bit 7, a
+                ret nz ; DONE
+                ; is it a dead entry (needs cleaning up)?
+                bit 6, a
+                jr z, @+not_dead
+                inc hl
+                jr @-next
+    @not_dead:
+                inc hl
+                ld d, (hl)
+                inc hl
+                ; a = x and d = y
+                ; for screen: multiply both a and d by 8 (and add 32 in x direction)
+                ;             and put into de
+                ; for tiles: multiply y by 12 and add to x
+                ;             and put into bc
+                ; we kindof get de and bc at the same time without too much copyaround
+                ld c, a ; c = x
+                add a,a ; a = x * 2
+                add a,a; a = x * 4
+                add a,a ; a = x * 8
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, d ; a = y
+                add a, a ; a = y * 2
+                add a, d ; a = y*3
+                add a,a ; a = y*6
+                add a,a ; a = y*12
+                add c ; a = y*12+x
+                ld c, a; c = x*12+y
+                sla d
+                sla d
+                sla d
+                ld b, tiles_flags/256
+                ld a, (bc) ; the state of the tile
+                and 15  ; bits 0-3 are the y offset
+                ; TODO use a sequence, not just 2 pixels each time
+                ; THIS IS OVERLY SIMPLIFIED FOR NOW
+                ; clear the trail - get the y offset
+                push de
+                push bc
+                srl a
+                add d
+                ld d, a
+                call fillrect_16x2_black_at_de
+                pop bc
+                pop de
+                ld b, tiles_flags/256
+                ld a, (bc)
+                and 15
+                add a, 2
+                cp 16
+                jr c, @still_falling
+                ; if we get here, it means it's at the end of this falling loop
+                ; it might still be falling however (we resume next frame)
+                ; but at this point we should kick off a few new processes:
+                ;   1. move this tile from previous xy to new xy (which is one row lower)
+                ;   2. If this tile is still falling, updating this entry to refer to the new y
+                ;      (If this tile is no longer falling, mark this entry as dead)
+                ;   3. check for matches (can restrict to matches involving this tile)
+                ;      Note that matches checks only happen when tile is on ground (or landed on slider)
+                ;   4. check for tiles above me that can now start to fall
+                ;      (QUESTION: if there's a match involving this tile, will a tile in
+                ;       a gap above me start to fall as part of the first frame of matching animation?
+                ;       or does the matching animation play out first before any tiles above me start to fall?)
+                ; ....
+                push hl
+                ; 1a. this xy now has zero offset
+                xor a
+                ld (bc), a
+                ; 1b. move the actual tile from previous xy to new xy
+                inc b ; point to tiles
+                ld a, (bc)
+                ld l, a ; backup
+                xor a ; space is now blank
+                ld (bc), a
+                ; update state
+                ; (1c we need to put tile A into the new xy)
+                ; (2a we need to check one row below the new xy to see if the tile is still falling)
+                ; is it on solid ground?  TODO test landing on a slider (horizontal or vertical)
+                ld a, c
+                add a, 24 ; check TWO ROWS DOWN
+                ld c, a
+                ; is it solid ground? TODO test landing on a slider
+                ld a, (bc)
+                and a
+                jr nz, @landed
+@not_landed:
+                ; need to write where the tile is. get the correct address in bc:
+                ld a, c
+                sub 12 ; go back up one row (i.e. where the tile actually is now)
+                ld c, a
+                ; also get the correct tile ID in a (and westill need to draw this tile...)
+                ; we're now 16 rows below where we were before
+                ; so add 256*8 to de
+                ld a, d
+                add a, 8
+                ld d, a
+                ld a, l
+                ld (bc), a
+                call draw_tile_at_de_tile_a
+                pop hl
+                ; 2b. update the y coord of the falling info to point to this new y coord
+                ; should actually mark this entry as dead (after checking if it has finish falling)
+                ; FIX ME PUT THE ACTUAL CHECKS HERE
+                ; is it on solid ground? if so mark entry (x coord, so dec hl one more time) as dead (=64)
+                dec hl
+                ld a, (hl) ; this is the y-coord
+                inc a
+                ld (hl), a
+                inc hl
+                jr @-next
+@landed:
+                ; this is duplicate of some of logic above, but the ending is different
+                ; need to write where the tile is. get the correct address in bc:
+                ld a, c
+                sub 12 ; go back up one row (i.e. where the tile actually is now)
+                ld c, a
+                ; also get the correct tile ID in a (and westill need to draw this tile...)
+                ; we're now 16 rows below where we were before
+                ; so add 256*8 to de
+                ld a, d
+                add a, 8
+                ld d, a
+                ld a, l
+                ld (bc), a
+                call draw_tile_at_de_tile_a
+                pop hl
+                ; no longer falling, mark entry as dead
+                dec hl
+                dec hl
+                ld a, 64
+                ld (hl), a
+                inc hl
+                ld (hl), a
+                inc hl
+                jr @-next
+
+@still_falling:
+                push hl
+                ld (bc), a ; write its new y offset back
+                ; add the offset to d, the screen y location
+                srl a ; a*=128
+                jr nc, @+even
+    @odd:
+                set 7, l
+    @even:
+                add a, d
+                ld d, a
+
+                ; now get the tile. the tile info is 256 bytes after the falling info (handy..)
+                inc b
+                ld a, (bc) ; the actual tile to draw
+
+                call draw_tile_at_de_tile_a
+                pop hl
+                jp @-next
+

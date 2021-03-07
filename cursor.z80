@@ -1,0 +1,370 @@
+draw_cursor:
+                ; is the cursor on a tile with fire still held?
+                ; if so, we follow the tile
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @tile_not_captured
+                ; ...
+                ; .. TODO IMPLEMENT THIS
+                ; ...
+                ; ...
+@tile_not_captured:
+                ld a, (controller_flags_x_pos)
+                ; 16 pixels wide = multiply by 8
+                add a,a
+                add a,a
+                add a,a
+                add 32
+                ld l,a
+                ld a, (controller_flags_y_pos)
+                ; 16 pixels high = multiply by 8
+                ; (since 256 bytes = 2 rows
+                add a,a
+                add a,a
+                add a,a
+                ld h, a
+                ; TODO only draw the cursor if the flashing counter tells us to
+                ; i.e. redraw the title where the cursor would be,  the cursor is flashing
+                ; what does that mean? well, if fire is held then we draw the cursor
+                ; for four frames and then hide it for four frames, etc.  we have a ctr for it.
+                ;ld a, (controller_flags_flashing_ctr)
+                ;and 4
+                ;ret nz ; four frames with bit cleared => draw cursor. four frames with bit set => don't draw cursor
+                ; however we don't really want to have to draw the whole tile under the cursor, just the bit
+                ; where the cursor is.
+                ; so, cheat for now.  draw the cursor always, but in one of two colours.
+                ; red usually, but white/red if flashing.
+                ld a, (controller_flags_flashing_ctr)
+                and 4
+                jr nz, @white
+@red:
+                ld a, 17*2
+                call box_at_hl
+                ret
+@white:
+                ld a, 255
+                call box_at_hl
+                ret
+
+
+update_cursor_position:
+    @check_fire:
+                ; If fire is not held, then cursor moves up/down/left/right,
+                ; subject to boundaries (i.e. cannot pass through tile==2)
+                ;
+                ; If fire is held, and the cell contains a tile, then you can only
+                ; move left or right if the tile can move left or right
+                ; NB CANNOT MOVE UP OR DOWN, WITH FIRE HELD!
+                ;
+                ; If fire is held, and the cell does not contain a tile, then cursor
+                ; moves just as if fire is not held
+                
+                ld a, (controller_flags_fire)
+                bit 0, a
+                jp nz, @+check_dirs_with_fire_pressed
+                ; fire was not pressed
+                ; reset the flashing cursor counter
+    @movements_no_tile:
+                xor a
+                ld (controller_flags_flashing_ctr), a
+    @check_directions:
+                ld a, (controller_flags_dirs_acks)
+                ; if NOTHING to do, do nothing
+                and a
+                ret z
+    @check_up:
+                ; was UP pressed?
+                bit 0,a
+                jr z, @+check_down ; no, up was not pressed
+                bit 1,a
+                ret nz ; yes, up was pressed but we already handled it earlier
+                ; mark UP key as ackd (avoid repeats)
+                or 2
+                ld (controller_flags_dirs_acks), a
+                ; get new position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                dec a
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+                ; ; if old y is zero, nothing to do, we can't go up
+                ; ; ret c ; carry since if y was zero, decrementing would carry
+                ; a = new y, e = x
+                ; see if the tile in the new position is
+                ; penetrable...
+                ;; TODO OPTIMIZE
+                ;; multiply a by 12
+                ld d, a
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                ret z
+                ; all good, we can move there
+                ld a, d
+                ld (controller_flags_y_pos), a
+                ; mark the OLD location as dirty
+                ; (old location was the row below this one)
+                inc d
+                call push_dirty_tile
+                ret
+
+    @check_down:
+                ; was DOWN pressed?
+                bit 2,a
+                jr z, @+check_left ; no, down was not pressed
+                bit 3,a
+                ret nz ; yes, down was pressed but already handled
+                ; mark DOWN key as ackd (avoid repeats)
+                or 8
+                ld (controller_flags_dirs_acks), a
+                ; get new position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+                ; ; if old y is at limit, nothing to do, we can't go down
+                ; ; cp 11
+                ; ; ret nc ; no carry since if y was 11 (or more), subtracting 11 would not carry
+                inc a
+                ; a = new y, e = x
+                ; see if the tile in the new position is
+                ; penetrable...
+                ;; TODO OPTIMIZE
+                ;; multiply a by 12
+                ld d, a
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                ret z
+                ; all good, we can move there
+                ld a, d
+                ld (controller_flags_y_pos), a
+                ; mark the OLD location as dirty
+                ; (old location was the row above this one)
+                dec d
+                call push_dirty_tile
+                ret
+
+    @check_left:
+                ; was LEFT pressed 
+                bit 4,a
+                jr z, @+check_right ; no
+                bit 5,a
+                ret nz ; yes but handled already
+                ; mark LEFT key as ackd (avoid repeats)
+                or 32
+                ld (controller_flags_dirs_acks), a
+                ; get new position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                dec e
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+                ; ; if old x is at limit, nothing to do, we can't go left
+                ; ; ret c ; carry since if x was zero, decrementing would carry
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ; a = new x, d = y
+                ; see if the tile in the new position is
+                ; penetrable...
+                ;; TODO OPTIMIZE
+                ;; multiply d by 12
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                ret z
+                ; all good, we can move there
+                ld a, e
+                ld (controller_flags_x_pos), a
+                ; mark the OLD location as dirty
+                ; (old location was the column right of this one)
+                inc e
+                call push_dirty_tile
+                ret
+
+    @check_right:
+                ; was RIGHT pressed?
+                bit 6,a
+                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
+                ret z
+                bit 7,a
+                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
+                ; mark RIGHT key as ackd (avoid repeats)
+                or 128
+                ld (controller_flags_dirs_acks), a
+                ; get new position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
+                ; ; if old x is at limit, nothing to do, we can't go right
+                ; cp 9
+                ; ret nc ; no carry since if x was 9 (or more), subtracting 9 would not carry
+                ld e, a
+                inc e
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ; a = new x, d = y
+                ; see if the tile in the new position is
+                ; penetrable...
+                ;; TODO OPTIMIZE
+                ;; multiply d by 12
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                ret z
+                ; all good, we can move there
+                ld a, e
+                ld (controller_flags_x_pos), a
+                ; mark the OLD location as dirty
+                ; (old location was the column left of this one)
+                dec e
+                call push_dirty_tile
+                ret
+
+    @check_dirs_with_fire_pressed:
+                ; determine if there is a (movable) tile at current position
+                ; (first get current position)
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                ; a = e = x, d = y
+                ;; TODO OPTIMIZE
+                ;; multiply d by 12
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, tiles/256
+                ld a, (hl)
+                ; is it moveable tile (i.e. >= NUM_NON_TILES)
+                cp NUM_NON_TILES
+                ; yes? ok, then just move like there's no tile
+                jp c, @movements_no_tile
+                ; ok fire was pressed AND we have a moveable tile under us
+                ; now the excitement begins!!
+                ; inc frame counter for flashing cursor
+                ld a, (controller_flags_flashing_ctr)
+                inc a
+                ld (controller_flags_flashing_ctr), a
+                ; are we also pressing left or right?
+                ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
+                ld a, (controller_flags_dirs_acks)
+                and %11110000
+                ; if not, do nothing else
+                ret z
+    @check_push_left:
+                ; was LEFT pressed 
+                bit 4,a
+                jr z, @+check_push_right ; no
+                bit 5,a
+                ret nz ; yes but handled already
+                ; mark LEFT key as ackd (avoid repeats)
+                or 32
+                ld (controller_flags_dirs_acks), a
+                ; get new position (left = dec l, right = inc l)
+                dec l
+                ld a, (hl)
+                and a ; check if it is zero.  you can only push a tile into zero
+                ret nz
+                ; all good, we can move there
+                ; copy old tile to new place
+                inc l
+                ld a, (hl)
+                dec l
+                ld (hl), a
+                inc l
+                ld (hl), 0
+                ; move to the new location
+                dec e
+                dec l
+                ; check if it's falling
+                call check_falling_tile_hl
+                ; and mark this as our new cursor position
+                ld a, e
+                ld (controller_flags_x_pos), a
+                ; and mark that the tile is captured by the cursor (because fire is held)
+                ; (we might let go later, it's all cool)
+                ld a, 1
+                ld (controller_flags_tile_captured), a
+                ; mark the OLD location as dirty
+                ; (de still contains the old location)
+                inc e
+                call push_dirty_tile
+                ; mark the new locations as dirty also
+                inc e ; TODO hm am I drawing twice, if it's also falling?
+                call push_dirty_tile
+                ret
+
+    @check_push_right:
+                ; was RIGHT pressed?
+                bit 6,a
+                ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
+                ret z
+                bit 7,a
+                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
+                ; mark RIGHT key as ackd (avoid repeats)
+                or 128
+                ld (controller_flags_dirs_acks), a
+                ; get new position (left = dec l, right = inc l)
+                inc l
+                ld a, (hl)
+                and a ; check if it is zero.  you can only push a tile into zero
+                ret nz
+                ; all good, we can move there
+                ; copy old tile to new place
+                dec l
+                ld a, (hl)
+                inc l
+                ld (hl), a
+                dec l
+                ld (hl), 0
+                ; move to the new location
+                inc e
+                inc l
+                ; check if it's falling
+                call check_falling_tile_hl
+                ; and mark this as our new cursor position
+                ld a, e
+                ld (controller_flags_x_pos), a
+                ; and mark that the tile is captured by the cursor (because fire is held)
+                ; (we might let go later, it's all cool)
+                ld a, 1
+                ld (controller_flags_tile_captured), a
+                ; mark the OLD location as dirty
+                ; (de still contains the old location)
+                dec e
+                call push_dirty_tile
+                ; mark the new locations as dirty also
+                inc e ; TODO hm am I drawing twice, if it's also falling?
+                call push_dirty_tile
+                ret
+
