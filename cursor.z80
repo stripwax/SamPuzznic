@@ -309,9 +309,20 @@ update_cursor_position:
                 ld (hl), a
                 inc l
                 ld (hl), 0
+                ; check if the one ABOVE us in the OLD location is now falling
+                dec d
+                ld a, l
+                sub 12
+                ld l, a
+                push hl
+                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                pop hl
                 ; move to the new location
+                inc d
                 dec e
-                dec l
+                ld a,l
+                add 11
+                ld l, a
                 ; check if it's falling
                 call check_falling_tile_hl
                 ; and mark this as our new cursor position
@@ -353,9 +364,20 @@ update_cursor_position:
                 ld (hl), a
                 dec l
                 ld (hl), 0
+                ; check if the one ABOVE us in the OLD location is now falling
+                dec d
+                ld a, l
+                sub 12
+                ld l, a
+                push hl
+                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                pop hl
                 ; move to the new location
+                inc d
                 inc e
-                inc l
+                ld a,l
+                add 13
+                ld l, a
                 ; check if it's falling
                 call check_falling_tile_hl
                 ; and mark this as our new cursor position

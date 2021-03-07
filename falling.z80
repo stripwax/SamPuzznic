@@ -31,7 +31,7 @@ check_falling_tile_hl:
                 add 12
                 ld l, a
                 ld a, (hl)
-                and a
+                and a ; if a is zero, it means the square (below the xy) is empty space
                 jr nz, @+not_falling ; not falling
                 ; make sure the state is correct - zero offset for now (flag as falling)
                 ld a, 16 ; bit 4 = falling
@@ -132,10 +132,31 @@ draw_falling_tiles:
                 ;       a gap above me start to fall as part of the first frame of matching animation?
                 ;       or does the matching animation play out first before any tiles above me start to fall?)
                 ; ....
+                ; 1a. this xy now has zero offset (and clear falling flag)
                 push hl
-                ; 1a. this xy now has zero offset
                 xor a
                 ld (bc), a
+                ; TODO IS THIS RIGHT? I SHOULD ALSO CHECK FOR MATCHES FIRST THOUGH RIGHT?
+                ; 4a. if there's a tile above, it is now falling
+                ld a, c
+                sub 12 ; check ONE ROW UP
+                ld c, a
+                inc b ; point to tiles
+                ld a, (bc)
+                dec b ; point back to tile flags TODO OPTIMIZE, WE INC THEN DEC THEN INC AGAIN
+                cp NUM_NON_TILES
+                jr c, @finished_checking_falling_above ; jump if tile above was a non-moveable-tile
+                ; tile above me can now fall into empty space, great!
+                ld a, 16 ; falling but zero offset for now ; TODO IS THIS RIGHT?
+                ld (bc), a
+                ; point at the x,y coord of the above tile and add to the falling list
+                dec d
+                call push_falling_tiles
+@finished_checking_falling_above:
+                ; now go back down one row
+                ld a, c
+                add 12
+                ld c, a
                 ; 1b. move the actual tile from previous xy to new xy
                 inc b ; point to tiles
                 ld a, (bc)
