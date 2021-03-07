@@ -95,8 +95,9 @@ update_clock:
                 dec a
                 ld (clock_tick_frame), a
                 ; .. and if we are NOW zero then a full second has elapsed
-                jr z, @+next_sec
-                ret
+                ; (and if we are not at zero, then we're between second ticks
+                ; and we've done all the updates we need to do)
+                ret nz
     @next_sec:
                 ; decrement number of remaining seconds
                 ld a, (clock_sec_bcd)
