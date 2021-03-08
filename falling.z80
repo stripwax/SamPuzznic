@@ -27,6 +27,7 @@ check_falling_tile_hl:
                 ; if so, update the state to say it is falling (and add it to the
                 ; list of falling tiles)
                 ; on entry, de should be the y,x of the tile
+                ; 1. look one row below
                 ld a, l
                 add 12
                 ld l, a
@@ -34,14 +35,22 @@ check_falling_tile_hl:
                 and a ; if a is zero, it means the square (below the xy) is empty space
                 jr nz, @+not_falling ; not falling
                 ; make sure the state is correct - zero offset for now (flag as falling)
+                ; (2. go back up one row)
+                ld a, l
+                sub 12
+                ld l, a
                 ld a, 16 ; bit 4 = falling
-                dec h
+                dec h ; (point to tiles_flags)
                 ld (hl), a
                 jp push_falling_tiles
     @not_falling:
                 ; make sure the state is correct - zero offset (and flag as not falling)
+                ; (2. go back up one row)
+                ld a, l
+                sub 12
+                ld l, a
                 xor a
-                dec h
+                dec h ; (point to tiles_flags)
                 ld (hl), a
                 ret
 
