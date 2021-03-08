@@ -21,7 +21,10 @@ I use VSCode with pyz80 extension: https://marketplace.visualstudio.com/items?it
 Using the default settings, you can launch SimCoupe by opening first.z80 in VSCode and pressing Ctrl+F10 
 
 # Thanks
-Simon Owen
-Stefan Drissen
-Dan Dooré
-Balor Price
+* Simon Owen
+* Stefan Drissen
+* Dan Dooré
+* Balor Price
+
+
+![screenshot](https://user-images.githubusercontent.com/4968348/110262177-bc954880-7faa-11eb-9763-006418b0b2d1.png)
