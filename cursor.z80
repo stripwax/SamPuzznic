@@ -7,47 +7,49 @@ draw_cursor:
                 ; TODO below doesn't work, needs debugging
                 ; find the x or y offset of the tile and follow it.
                 ; TODO optimise this. maybe we should just store offset (y*12+x)
-                ; ld a, (controller_flags_y_pos)
-                ; ld e, a
-                ; ld a, (controller_flags_x_pos)
-                ; ;; multiply a by 12
-                ; ld d, a
-                ; add a, a ; a = y*2
-                ; add a, d ; a = y*3
-                ; add a, a ; a = y*6
-                ; add a, a ; a = y*12
-                ; add a, e; a = y*12 + x
-                ; ld l, a ; e = y*12 + x
-                ; ld h, (tiles-1)/256
-                ; ; is tile falling
-                ; ld a, (hl)
-                ; bit 4, a
-                ; jr z, @tile_not_captured
-                ; ; get the offset for top-left into hl
-                ; and 15
-                ; ld h, a
-                ; srl h
-                ; srl l
-                ; ld a, (controller_flags_x_pos)
-                ; ; 16 pixels wide = multiply by 8
-                ; add a,a
-                ; add a,a
-                ; add a,a
-                ; add 32
-                ; add a, l ; <-- this is what's different
-                ; ld l,a
-                ; ld a, (controller_flags_y_pos)
-                ; ; 16 pixels high = multiply by 8
-                ; ; (since 256 bytes = 2 rows
-                ; add a,a
-                ; add a,a
-                ; add a,a
-                ; add a, h ; <-- this is what's different
-                ; ld h, a
-                ; jr @+draw_cursor
-                ; ; .. TODO IMPLEMENT SLIDERS
-                ; ; ...
-                ; ; ...
+                ld a, (controller_flags_x_pos)
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ;; multiply a by 12
+                ld d, a
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e; a = y*12 + x
+                ld l, a ; e = y*12 + x
+                ld h, (tiles-1)/256
+                ; is tile falling
+                ld a, (hl)
+                bit 4, a
+                jr z, @tile_not_captured ; tile isn't falling so y-offset is zero (TODO check sliders)
+                ; get the offset for top-left into hl
+    captured_cursor:
+                and 15
+                ld h, a
+                ld l, 0
+                srl h
+                rl l
+                ld a, (controller_flags_x_pos)
+                ; 16 pixels wide = multiply by 8
+                add a,a
+                add a,a
+                add a,a
+                add 32
+                add a, l ; <-- this is what's different
+                ld l,a
+                ld a, (controller_flags_y_pos)
+                ; 16 pixels high = multiply by 8
+                ; (since 256 bytes = 2 rows
+                add a,a
+                add a,a
+                add a,a
+                add a, h ; <-- this is what's different
+                ld h, a
+                jr @+draw_cursor
+                ; .. TODO IMPLEMENT SLIDERS
+                ; ...
+                ; ...
 @tile_not_captured:
                 ld a, (controller_flags_x_pos)
                 ; 16 pixels wide = multiply by 8
@@ -99,15 +101,19 @@ update_cursor_position:
                 ;
                 ; If fire is held, and the cell does not contain a tile, then cursor
                 ; moves just as if fire is not held
-                
+
                 ld a, (controller_flags_fire)
                 bit 0, a
                 jp nz, @+check_dirs_with_fire_pressed
                 ; fire was not pressed
                 ; reset the flashing cursor counter
-    @movements_no_tile:
+                ; reset the 'captured' flag
                 xor a
+                ld (controller_flags_tile_captured), a
                 ld (controller_flags_flashing_ctr), a
+    @movements_no_tile:
+                ; either fire was not pressed (as fall through from above)
+                ; or fire was pressed but we're not over a block that can move
     @check_directions:
                 ld a, (controller_flags_dirs_acks)
                 ; if NOTHING to do, do nothing
@@ -305,6 +311,20 @@ update_cursor_position:
                 ret
 
     @check_dirs_with_fire_pressed:
+                ; first some admin:
+                ; FIRE is held down - so increment frame counter for flashing
+                ; cursor if the flag for 'is captured' is already set
+                ; (implying it is "still" held down)
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @+skip
+                ld a, (controller_flags_flashing_ctr)
+                inc a
+        @skip:
+                ; (flashing_ctr is either incremented, or zero. neat.)
+                ld (controller_flags_flashing_ctr), a
+
+                ; Now for the movement (i.e. push left / push right)
                 ; There are a lot of cases to consider here
                 ; TODO optimise.  We should be able to make determination here pretty
                 ; quickly, and right know there's quite a lot of back-and-forth
@@ -336,9 +356,9 @@ update_cursor_position:
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
                 bit 4, a
-                ; if it's falling, also just move like there's no tile (i.e. ignore fact FIRE is held)
+                ; if it's falling, don't permit any movements at all
                 ; TODO check gameplay, is this correct? feels correct but that's just my guess.
-                jp nz, @movements_no_tile
+                ret nz
                 ; 3. similarly, it might not be falling yet (but the tile under
                 ; it could be mid falling, so effectively we're in 'mid air') - same rule
                 ; applies - you can't move it if it's in mid air
@@ -355,15 +375,15 @@ update_cursor_position:
                 jp nz, @movements_no_tile
                 ; ok fire was pressed AND we have a moveable tile under us
                 ; now the excitement begins!!
-                ; We mark this as 'captured' by the cursor (because fire is held)
-                ; so that the cursor can follow the tile while fire is held
-                ; (we might let go later, it's all cool)
+                ; Mark as captured (we reset this when FIRE is let go)
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr nz, @we_already_captured_earlier
                 ld a, 1
                 ld (controller_flags_tile_captured), a
-                ; increment frame counter for flashing cursor
-                ld a, (controller_flags_flashing_ctr)
-                inc a
+                ld a, 4 ; seed with 4 which is when we first change cursor colour (so that the colour change is immediate on this frame)
                 ld (controller_flags_flashing_ctr), a
+    @we_already_captured_earlier:
                 ; are we also pressing left or right?
                 ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
                 ld a, (controller_flags_dirs_acks)

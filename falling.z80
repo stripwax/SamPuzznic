@@ -118,11 +118,13 @@ draw_falling_tiles:
                 and 15
                 add a, 2
                 cp 16
-                jr c, @still_falling
+                jp c, @still_falling
                 ; if we get here, it means it's at the end of this falling loop
                 ; it might still be falling however (we resume next frame)
                 ; but at this point we should kick off a few new processes:
                 ;   1. move this tile from previous xy to new xy (which is one row lower)
+                ;      also update the cursor xy to match if the cursor had captured the tile
+                ;      (i.e. if this is the captured tile AND fire is held still)
                 ;   2. If this tile is still falling, updating this entry to refer to the new y
                 ;      (If this tile is no longer falling, mark this entry as dead)
                 ;   3. check for matches (can restrict to matches involving this tile)
@@ -132,8 +134,37 @@ draw_falling_tiles:
                 ;       a gap above me start to fall as part of the first frame of matching animation?
                 ;       or does the matching animation play out first before any tiles above me start to fall?)
                 ; ....
-                ; 1a. this xy now has zero offset (and clear falling flag)
                 push hl
+
+                ; -----------
+                ; (1d. move the cursor too, if it is captured)
+                ; (it feels like this logic is in totally the wrong place)
+                ; (it's also weird - rather than comparing each tile to the controller xy location,
+                ;  maybe we should have a tile flag that says 'I'm the captured one')
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @this_is_not_the_captured_tile_0
+                dec hl ; points to y-coord again
+                ld a, (controller_flags_y_pos)
+                cp (hl)
+                jr nz, @this_is_not_the_captured_tile_1
+                dec hl
+                ld a, (controller_flags_x_pos)
+                cp (hl)
+                jr nz, @this_is_not_the_captured_tile_2
+                ; this IS the captured tile
+                ; move the cursor to this new spot
+                ld a, (controller_flags_y_pos)
+                inc a
+                ld (controller_flags_y_pos), a
+    @this_is_not_the_captured_tile_2:
+                inc hl
+    @this_is_not_the_captured_tile_1:
+                inc hl
+    @this_is_not_the_captured_tile_0:
+                ; -----------
+
+                ; 1a. this xy now has zero offset (and clear falling flag)
                 xor a
                 ld (bc), a
                 ; TODO IS THIS RIGHT? I SHOULD ALSO CHECK FOR MATCHES FIRST THOUGH RIGHT?
