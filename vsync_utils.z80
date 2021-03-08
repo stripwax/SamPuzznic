@@ -12,6 +12,16 @@ wait_frame:
                 ld a, 6
                 out (254), a
                 ENDIF
+
+                if DEBUG_SLOWMO > 0
+                ld b, DEBUG_SLOWMO
+    @busy_wait_slowmo:
+                in a,(249)
+                bit 3,a
+                jr nz, @-busy_wait_slowmo
+                djnz @-busy_wait_slowmo
+                ENDIF
+
                 ret
 
 
