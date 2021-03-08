@@ -59,11 +59,34 @@ memcpy_level_data:
                 LDIR
                 ret
 
-memclr_tiles_flags:
+
+init_game_state:
+                ; call after doing memcpy_level_data
+                ; basically a memclear but also a few other things
+                ld hl, game_state_zero_start
+                xor a
+                ld (hl), a
+                ld de, game_state_zero_start + 1
+                ld bc, game_state_zero_end - game_state_zero_start - 2
+                LDIR
+
                 ld hl, tiles_flags
                 xor a
                 ld (hl), a
                 ld de, tiles_flags+1
                 ld bc, 12*12-1 ; FIXME SHOULD BE 12 x 10
                 LDIR
+
+                ; convert controller x, y into tiles offset
+                ld a, (controller_flags_x_pos);
+                ld e, a
+                ld a, (controller_flags_y_pos)
+                ld d, a
+                add a, a ; a = y*2
+                add a, d ; a = y*3
+                add a, a ; a = y*6
+                add a, a ; a = y*12
+                add a, e ; a = y*12 + x
+                ld (controller_flags_xypos_as_tileoffset), a
+
                 ret

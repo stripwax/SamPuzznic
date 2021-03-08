@@ -133,7 +133,7 @@ main:
                 call clear_falling_tiles
 
                 call debug_memcpy_level_data
-                call memclr_tiles_flags
+                call init_game_state
                 call render_puzzle_tiles
                 call count_remaining_tiles
                 call render_remaining_tiles

@@ -88,6 +88,7 @@ clock_tick_frame: defb 0
 bonus_info: defs 2
 
 controller_flags:
+controller_flags_xypos_as_tileoffset: defb 0
 controller_flags_tile_ptr: defw 0
 controller_flags_dirs_acks: defb 0
 controller_flags_fire: defb 0
