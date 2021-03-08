@@ -305,7 +305,12 @@ update_cursor_position:
                 ret
 
     @check_dirs_with_fire_pressed:
-                ; determine if there is a (movable) tile at current position
+                ; There are a lot of cases to consider here
+                ; TODO optimise.  We should be able to make determination here pretty
+                ; quickly, and right know there's quite a lot of back-and-forth
+                ; and repeated multiplying-by-12 steps going on.
+
+                ; 1. determine if there is a (movable) tile at current position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
                 ld e, a
@@ -324,16 +329,20 @@ update_cursor_position:
                 ld a, (hl)
                 ; is it moveable tile (i.e. >= NUM_NON_TILES)
                 cp NUM_NON_TILES
-                ; yes? ok, then just move like there's no tile
+                ; No? ok, then just move like there's no tile (i.e. ignore fact FIRE is held)
                 jp c, @movements_no_tile
-                ; is it already falling maybe? can't move a falling tile
-                dec h
+                ; Yes? Ok, it's a moveable tile, great, let's keep checking other conditions.
+                ; 2.  is it already falling maybe? can't move a falling tile
+                dec h ; (point to tiles_flags)
                 ld a, (hl)
                 bit 4, a
+                ; if it's falling, also just move like there's no tile (i.e. ignore fact FIRE is held)
+                ; TODO check gameplay, is this correct? feels correct but that's just my guess.
                 jp nz, @movements_no_tile
-                ; similarly, it might not be falling yet (but the tile under
+                ; 3. similarly, it might not be falling yet (but the tile under
                 ; it could be mid falling, so effectively we're in 'mid air') - same rule
                 ; applies - you can't move it if it's in mid air
+                ; TODO optimise, now we're pushing and popping HL, ugh.
                 push hl
                 ld a, l
                 add 12
@@ -341,11 +350,17 @@ update_cursor_position:
                 ld a, (hl)
                 pop hl
                 bit 4, a
+                ; if it's 'effectively in mid air' then again ignore the FIRE and just
+                ; move cursor as if there's no tile being controlled
                 jp nz, @movements_no_tile
-                inc h
                 ; ok fire was pressed AND we have a moveable tile under us
                 ; now the excitement begins!!
-                ; inc frame counter for flashing cursor
+                ; We mark this as 'captured' by the cursor (because fire is held)
+                ; so that the cursor can follow the tile while fire is held
+                ; (we might let go later, it's all cool)
+                ld a, 1
+                ld (controller_flags_tile_captured), a
+                ; increment frame counter for flashing cursor
                 ld a, (controller_flags_flashing_ctr)
                 inc a
                 ld (controller_flags_flashing_ctr), a
@@ -355,6 +370,7 @@ update_cursor_position:
                 and %11110000
                 ; if not, do nothing else
                 ret z
+                inc h ; (point back to tiles data)
     @check_push_left:
                 ; was LEFT pressed 
                 bit 4,a
@@ -369,9 +385,23 @@ update_cursor_position:
                 ld a, (hl)
                 and a ; check if it is zero.  you can only push a tile into zero
                 ret nz
+                ; yet another edge case - even if this space is zero now, if there's something
+                ; ABOVE it, that is falling INTO this space already, we can't move into it now.
+                ld a, l
+                sub 12
+                ld l, a
+                dec h ; (point to tiles_flags)
+                ld a, (hl)
+                ; bit 4 set -> tile at that location is falling
+                bit 4, a
+                ret nz
                 ; all good, we can move there
                 ; copy old tile to new place
-                inc l
+                inc h ; (point back to tiles)
+                ld a, l
+                add 12 + 1 ; back down one row, and move right (back to our original location)
+                           ; maybe we just keep a backup of this in a spare register
+                ld l, a
                 ld a, (hl)
                 dec l
                 ld (hl), a
@@ -401,10 +431,6 @@ update_cursor_position:
                 ; and mark this as our new cursor position
                 ld a, e
                 ld (controller_flags_x_pos), a
-                ; and mark that the tile is captured by the cursor (because fire is held)
-                ; (we might let go later, it's all cool)
-                ld a, 1
-                ld (controller_flags_tile_captured), a
                 ; mark the OLD location as dirty
                 ; (de still contains the old location)
                 inc e
@@ -428,9 +454,23 @@ update_cursor_position:
                 ld a, (hl)
                 and a ; check if it is zero.  you can only push a tile into zero
                 ret nz
+                ; yet another edge case - even if this space is zero now, if there's something
+                ; ABOVE it, that is falling INTO this space already, we can't move into it now.
+                ld a, l
+                sub 12
+                ld l, a
+                dec h ; (point to tiles_flags)
+                ld a, (hl)
+                ; bit 4 set -> tile at that location is falling
+                bit 4, a
+                ret nz
                 ; all good, we can move there
                 ; copy old tile to new place
-                dec l
+                inc h ; (point back to tiles)
+                ld a, l
+                add 12 - 1 ; back down one row, and move right (back to our original location)
+                           ; maybe we just keep a backup of this in a spare register
+                ld l, a
                 ld a, (hl)
                 inc l
                 ld (hl), a
@@ -460,10 +500,6 @@ update_cursor_position:
                 ; and mark this as our new cursor position
                 ld a, e
                 ld (controller_flags_x_pos), a
-                ; and mark that the tile is captured by the cursor (because fire is held)
-                ; (we might let go later, it's all cool)
-                ld a, 1
-                ld (controller_flags_tile_captured), a
                 ; mark the OLD location as dirty
                 ; (de still contains the old location)
                 dec e
