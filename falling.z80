@@ -104,12 +104,22 @@ draw_falling_tiles:
                 add a,a ; a = y*6
                 add a,a ; a = y*12
                 add c ; a = y*12+x
-                ld c, a; c = x*12+y
+                ld c, a; c = y*12+x
                 sla d
                 sla d
                 sla d
                 ld b, tiles_flags/256
                 ld a, (bc) ; the state of the tile
+
+                if DEBUG
+                ; assert that the 'falling' bit is actually set
+                ; because we have had bugs here
+                @fatal:
+                bit 4, a
+                nop
+                jr z, @-fatal
+                ENDIF
+
                 and 15  ; bits 0-3 are the y offset
                 ; TODO use a sequence, not just 2 pixels each time
                 ; THIS IS OVERLY SIMPLIFIED FOR NOW
