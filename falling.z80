@@ -148,6 +148,9 @@ draw_falling_tiles:
                 ;      (If this tile is no longer falling, mark this entry as dead)
                 ;   3. check for matches (can restrict to matches involving this tile)
                 ;      Note that matches checks only happen when tile is on ground (or landed on slider)
+                ;      NOTE SPECIFICALLY, THAT MATCHES CHECKS ONLY HAPPEN WHEN *ALL* FALLING TILES HAVE
+                ;      *STOPPED FALLING*.  not just maybe the one tiles that match; any other falling tiles
+                ;      will prevent the match from happening (until they've all come to rest).
                 ;   4. check for tiles above me that can now start to fall
                 ;      (QUESTION: if there's a match involving this tile, will a tile in
                 ;       a gap above me start to fall as part of the first frame of matching animation?
@@ -217,7 +220,7 @@ draw_falling_tiles:
                 ; 1b. move the actual tile from previous xy to new xy
                 inc b ; point to tiles
                 ld a, (bc)
-                ld l, a ; backup
+                ld l, a ; REMEMBER THIS FOR LATER.  L = THE OLD TILE
                 xor a ; space is now blank
                 ld (bc), a
                 ; update state
@@ -272,7 +275,7 @@ draw_falling_tiles:
                 xor a
                 ld (bc), a
                 inc b
-                ; also get the correct tile ID in a (and westill need to draw this tile...)
+                ; also get the correct tile ID in a (and we still need to draw this tile...)
                 ; we're now 16 rows below where we were before
                 ; so add 256*8 to de
                 ld a, d
