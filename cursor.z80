@@ -114,7 +114,7 @@ update_cursor_position:
                 ; moves just as if fire is not held
 
                 ld a, (controller_flags_fire)
-                bit 0, a
+                and a
                 jp nz, @+check_dirs_with_fire_pressed
                 ; fire was not pressed
                 ; reset the flashing cursor counter
@@ -156,7 +156,7 @@ update_cursor_position:
                 ld a, b
     @check_up:
                 ; was UP pressed?
-                bit 0,a
+                bit controller_flags_dirs_up_bit,a
                 jr z, @+check_down ; no, up was not pressed
                 ; get new position
                 ; (first get current position)
@@ -198,7 +198,7 @@ update_cursor_position:
 
     @check_down:
                 ; was DOWN pressed?
-                bit 1,a
+                bit controller_flags_dirs_down_bit,a
                 jr z, @+check_left ; no, down was not pressed
                 ; get new position
                 ; (first get current position)
@@ -241,7 +241,7 @@ update_cursor_position:
 
     @check_left:
                 ; was LEFT pressed 
-                bit 2,a
+                bit controller_flags_dirs_left_bit,a
                 jr z, @+check_right ; no
                 ; get new position
                 ; (first get current position)
@@ -283,7 +283,7 @@ update_cursor_position:
 
     @check_right:
                 ; was RIGHT pressed?
-                bit 3,a
+                bit controller_flags_dirs_right_bit,a
                 ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
                 ret z
                 ; get new position
@@ -433,7 +433,7 @@ update_cursor_position:
     @check_push_left:
                 inc h ; (point back to tiles data)
                 ; was LEFT pressed 
-                bit 2,a
+                bit controller_flags_dirs_left_bit, a
                 jr z, @+check_push_right ; no
                 ; get new position (left = dec l, right = inc l)
                 dec l
@@ -497,7 +497,7 @@ update_cursor_position:
 
     @check_push_right:
                 ; was RIGHT pressed?
-                bit 3,a
+                bit controller_flags_dirs_right_bit,a
                 ret z ; no, RIGHT was not pressed, and we already checked LEFT, so we're done
                 ; get new position (left = dec l, right = inc l)
                 inc l

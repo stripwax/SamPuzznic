@@ -101,3 +101,12 @@ game_state_zero_end:
 ; following is calculated just prior to start of game loop
 remaining_tiles: defs 8
 
+;constants:
+controller_flags_dirs_up: equ 1
+controller_flags_dirs_down: equ 2
+controller_flags_dirs_left: equ 4
+controller_flags_dirs_right: equ 8
+controller_flags_dirs_up_bit: equ 0
+controller_flags_dirs_down_bit: equ 1
+controller_flags_dirs_left_bit: equ 2
+controller_flags_dirs_right_bit: equ 3
