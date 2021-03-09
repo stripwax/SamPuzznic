@@ -88,5 +88,6 @@ init_game_state:
                 add a, a ; a = y*12
                 add a, e ; a = y*12 + x
                 ld (controller_flags_xypos_as_tileoffset), a
+                call init_cursor_controller
 
                 ret

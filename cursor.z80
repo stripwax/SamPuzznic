@@ -1,3 +1,14 @@
+keyrepeat_ctr: defb 0
+keyrepeat_dirs: defb 0
+key_delay: equ 8
+key_repeat: equ 6
+
+init_cursor_controller:
+                xor a
+                ld (keyrepeat_ctr), a
+                ld (keyrepeat_dirs), a
+                ret
+
 draw_cursor:
                 ; is the cursor on a tile with fire still held?
                 ; if so, we follow the tile
@@ -115,19 +126,38 @@ update_cursor_position:
                 ; either fire was not pressed (as fall through from above)
                 ; or fire was pressed but we're not over a block that can move
     @check_directions:
-                ld a, (controller_flags_dirs_acks)
+                ld a, (controller_flags_dirs)
                 ; if NOTHING to do, do nothing
                 and a
-                ret z
+                jr nz, @some_directions_are_pressed
+                xor a
+                ld (keyrepeat_dirs), a
+                ld (keyrepeat_ctr), a
+                ret
+    @some_directions_are_pressed:
+                ; if the same directions were held down from before,
+                ; do nothing (unless keyrepeat tells us to do something)
+                ld b, a ; backup
+                ld a, (keyrepeat_dirs)
+                cp b
+                jr z, @same_dirs_still_held
+                ld a, key_delay
+                ld (keyrepeat_ctr), a
+                ld a, b
+                ld (keyrepeat_dirs), a
+                jr @check_up
+    @same_dirs_still_held:
+                ld a, (keyrepeat_ctr)
+                dec a
+                ld (keyrepeat_ctr), a
+                ret nz
+                ld a, key_repeat
+                ld (keyrepeat_ctr), a
+                ld a, b
     @check_up:
                 ; was UP pressed?
                 bit 0,a
                 jr z, @+check_down ; no, up was not pressed
-                bit 1,a
-                ret nz ; yes, up was pressed but we already handled it earlier
-                ; mark UP key as ackd (avoid repeats)
-                or 2
-                ld (controller_flags_dirs_acks), a
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
@@ -168,13 +198,8 @@ update_cursor_position:
 
     @check_down:
                 ; was DOWN pressed?
-                bit 2,a
+                bit 1,a
                 jr z, @+check_left ; no, down was not pressed
-                bit 3,a
-                ret nz ; yes, down was pressed but already handled
-                ; mark DOWN key as ackd (avoid repeats)
-                or 8
-                ld (controller_flags_dirs_acks), a
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
@@ -216,13 +241,8 @@ update_cursor_position:
 
     @check_left:
                 ; was LEFT pressed 
-                bit 4,a
+                bit 2,a
                 jr z, @+check_right ; no
-                bit 5,a
-                ret nz ; yes but handled already
-                ; mark LEFT key as ackd (avoid repeats)
-                or 32
-                ld (controller_flags_dirs_acks), a
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
@@ -263,14 +283,9 @@ update_cursor_position:
 
     @check_right:
                 ; was RIGHT pressed?
-                bit 6,a
+                bit 3,a
                 ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
                 ret z
-                bit 7,a
-                ret nz ; yes but handled already ; TODO OPTIMIZE AS RET NZ
-                ; mark RIGHT key as ackd (avoid repeats)
-                or 128
-                ld (controller_flags_dirs_acks), a
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_x_pos)
@@ -386,20 +401,40 @@ update_cursor_position:
     @we_already_captured_earlier:
                 ; are we also pressing left or right?
                 ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
-                ld a, (controller_flags_dirs_acks)
-                and %11110000
+                ld a, (controller_flags_dirs)
+                and %00001111
                 ; if not, do nothing else
-                ret z
-                inc h ; (point back to tiles data)
+                jr nz, @+some_directions_are_pressed
+                xor a
+                ld (keyrepeat_dirs), a
+                ld (keyrepeat_ctr), a
+                ret
+    @some_directions_are_pressed:
+                ; if the same directions were held down from before,
+                ; do nothing (unless keyrepeat tells us to do something)
+                ld b, a ; backup
+                ld a, (keyrepeat_dirs)
+                cp b
+                jr z, @+same_dirs_still_held
+                ld a, key_delay
+                ld (keyrepeat_ctr), a
+                ld a, b
+                ld (keyrepeat_dirs), a
+                jp @check_push_left
+    @same_dirs_still_held:
+                ld a, (keyrepeat_ctr)
+                dec a
+                ld (keyrepeat_ctr), a
+                ret nz
+                ld a, key_repeat
+                ld (keyrepeat_ctr), a
+                ld a, b
+
     @check_push_left:
+                inc h ; (point back to tiles data)
                 ; was LEFT pressed 
-                bit 4,a
+                bit 2,a
                 jr z, @+check_push_right ; no
-                bit 5,a
-                ret nz ; yes but handled already
-                ; mark LEFT key as ackd (avoid repeats)
-                or 32
-                ld (controller_flags_dirs_acks), a
                 ; get new position (left = dec l, right = inc l)
                 dec l
                 ld a, (hl)
@@ -462,13 +497,8 @@ update_cursor_position:
 
     @check_push_right:
                 ; was RIGHT pressed?
-                bit 6,a
+                bit 3,a
                 ret z ; no, RIGHT was not pressed, and we already checked LEFT, so we're done
-                bit 7,a
-                ret nz ; yes, right was pressed, but handled already
-                ; mark RIGHT key as ackd (avoid repeats)
-                or 128
-                ld (controller_flags_dirs_acks), a
                 ; get new position (left = dec l, right = inc l)
                 inc l
                 ld a, (hl)
