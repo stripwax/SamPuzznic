@@ -69,15 +69,14 @@
 
 ; following are memcpy'd from definition of a given puzzle
 DS ALIGN 256
-tiles_flags: defs 12*12
+tiles_flags: defs 16*12
 DS ALIGN 256
 puzzle_copy_start:
-tiles: defs 12*12
+tiles: defs 16*12
 slider_info: defs 2
 clock_min_bcd: defb 0
 clock_sec_bcd: defb 0
-controller_flags_x_pos: defb 0 ; starting position
-controller_flags_y_pos: defb 0 ; starting position
+controller_flags_xy_pos: defb 0 ; starting position
 puzzle_copy_end:
 puzzle_copy_len: equ puzzle_copy_end - puzzle_copy_start
 
@@ -88,7 +87,6 @@ clock_tick_frame: defb 0
 bonus_info: defs 2
 
 controller_flags:
-controller_flags_xypos_as_tileoffset: defb 0
 controller_flags_tile_ptr: defw 0
 controller_flags_dirs: defb 0
 controller_flags_fire: defb 0
