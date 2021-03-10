@@ -15,20 +15,8 @@ draw_cursor:
                 ld a, (controller_flags_tile_captured)
                 and a
                 jr z, @tile_not_captured
-                ; TODO below doesn't work, needs debugging
-                ; find the x or y offset of the tile and follow it.
-                ; TODO optimise this. maybe we should just store offset (y*12+x)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                ;; multiply a by 12
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
+                ld a, (controller_flags_xy_pos)
+                ld l, a
                 ld h, (tiles-1)/256
                 ; is tile falling
                 ld a, (hl)
@@ -41,20 +29,22 @@ draw_cursor:
                 ld l, 0
                 srl h
                 rl l
-                ld a, (controller_flags_x_pos)
-                ; 16 pixels wide = multiply by 8
+                ld a, (controller_flags_xy_pos)
+                ld d, a ; backup
+                ; 16 pixels wide = multiply x by 8
+                and 15
                 add a,a
                 add a,a
                 add a,a
                 add 32
                 add a, l ; <-- this is what's different
                 ld l,a
-                ld a, (controller_flags_y_pos)
+                ld a, d
                 ; 16 pixels high = multiply by 8
-                ; (since 256 bytes = 2 rows
-                add a,a
-                add a,a
-                add a,a
+                ; (since 256 bytes = 2 rows)
+                ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
+                and 240
+                srl a
                 add a, h ; <-- this is what's different
                 ld h, a
                 jr @+draw_cursor
@@ -62,19 +52,21 @@ draw_cursor:
                 ; ...
                 ; ...
 @tile_not_captured:
-                ld a, (controller_flags_x_pos)
+                ld a, (controller_flags_xy_pos)
+                ld d, a ; backup
                 ; 16 pixels wide = multiply by 8
+                and 15
                 add a,a
                 add a,a
                 add a,a
                 add 32
                 ld l,a
-                ld a, (controller_flags_y_pos)
+                ld a, d
                 ; 16 pixels high = multiply by 8
-                ; (since 256 bytes = 2 rows
-                add a,a
-                add a,a
-                add a,a
+                ; (since 256 bytes = 2 rows)
+                ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
+                and 240
+                srl a
                 ld h, a
                 ; TODO only draw the cursor if the flashing counter tells us to
                 ; i.e. redraw the title where the cursor would be,  the cursor is flashing
@@ -160,39 +152,22 @@ update_cursor_position:
                 jr z, @+check_down ; no, up was not pressed
                 ; get new position
                 ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                dec a
+                ld a, (controller_flags_xy_pos)
+                sub 16 ; go up a row
 
-                ; ; ----------
-                ; ; if old y is zero, nothing to do, we can't go up
-                ; ret c ; carry since if y was zero, decrementing would carry
-                ; ; ----------
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-
-                ; a = new y, e = x
                 ; see if the tile in the new position is
                 ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply a by 12
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
+                ld l, a
                 ld h, tiles/256
                 ld a, (hl)
                 cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
                 ret z
                 ; all good, we can move there
-                ld a, d
-                ld (controller_flags_y_pos), a
+                ld a, l
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (old location was the row below this one)
-                inc d
+                add a, 16
                 call push_dirty_tile
                 ret
 
@@ -202,40 +177,21 @@ update_cursor_position:
                 jr z, @+check_left ; no, down was not pressed
                 ; get new position
                 ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-
-                ; ----------
-                ; ; if old y is at limit, nothing to do, we can't go down
-                ; cp 11
-                ; ret nc ; no carry since if y was 11 (or more), subtracting 11 would not carry
-                ; ----------
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-
-                inc a
-                ; a = new y, e = x
+                ld a, (controller_flags_xy_pos)
+                add a, 16
                 ; see if the tile in the new position is
                 ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply a by 12
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
+                ld l, a
                 ld h, tiles/256
                 ld a, (hl)
                 cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
                 ret z
                 ; all good, we can move there
-                ld a, d
-                ld (controller_flags_y_pos), a
+                ld a, l
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (old location was the row above this one)
-                dec d
+                sub 16
                 call push_dirty_tile
                 ret
 
@@ -245,39 +201,21 @@ update_cursor_position:
                 jr z, @+check_right ; no
                 ; get new position
                 ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                dec e
-
-                ; ----------
-                ; ; if old x is at limit, nothing to do, we can't go left
-                ; ret c ; carry since if x was zero, decrementing would carry
-                ; ----------
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = new x, d = y
+                ld a, (controller_flags_xy_pos)
+                dec a
                 ; see if the tile in the new position is
                 ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
                 ld l, a ; e = y*12 + x
                 ld h, tiles/256
                 ld a, (hl)
                 cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
                 ret z
                 ; all good, we can move there
-                ld a, e
-                ld (controller_flags_x_pos), a
+                ld a, l
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (old location was the column right of this one)
-                inc e
+                inc a
                 call push_dirty_tile
                 ret
 
@@ -288,40 +226,21 @@ update_cursor_position:
                 ret z
                 ; get new position
                 ; (first get current position)
-                ld a, (controller_flags_x_pos)
-
-                ; ----------
-                ; ; if old x is at limit, nothing to do, we can't go right
-                ; cp 9
-                ; ret nc ; no carry since if x was 9 (or more), subtracting 9 would not carry
-                ; ----------
-                ; pretty sure we don't need this since puzzles are surrounded by impenetrable blocks
-
-                ld e, a
-                inc e
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = new x, d = y
+                ld a, (controller_flags_xy_pos)
+                inc a
                 ; see if the tile in the new position is
                 ; penetrable...
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
                 ld l, a ; e = y*12 + x
                 ld h, tiles/256
                 ld a, (hl)
                 cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
                 ret z
                 ; all good, we can move there
-                ld a, e
-                ld (controller_flags_x_pos), a
+                ld a, l
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (old location was the column left of this one)
-                dec e
+                dec a
                 call push_dirty_tile
                 ret
 
@@ -347,19 +266,8 @@ update_cursor_position:
 
                 ; 1. determine if there is a (movable) tile at current position
                 ; (first get current position)
-                ld a, (controller_flags_x_pos)
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                ; a = e = x, d = y
-                ;; TODO OPTIMIZE
-                ;; multiply d by 12
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e; a = y*12 + x
-                ld l, a ; e = y*12 + x
+                ld a, (controller_flags_xy_pos)
+                ld l, a
                 ld h, tiles/256
                 ld a, (hl)
                 ; is it moveable tile (i.e. >= NUM_NON_TILES)
@@ -380,7 +288,7 @@ update_cursor_position:
                 ; TODO optimise, now we're pushing and popping HL, ugh.
                 push hl
                 ld a, l
-                add 12
+                add 16
                 ld l, a
                 ld a, (hl)
                 pop hl
@@ -443,7 +351,7 @@ update_cursor_position:
                 ; yet another edge case - even if this space is zero now, if there's something
                 ; ABOVE it, that is falling INTO this space already, we can't move into it now.
                 ld a, l
-                sub 12
+                sub 16
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
@@ -454,7 +362,7 @@ update_cursor_position:
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
                 ld a, l
-                add 12 + 1 ; back down one row, and move right (back to our original location)
+                add 16 + 1 ; back down one row, and move right (back to our original location)
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
@@ -465,33 +373,32 @@ update_cursor_position:
                 ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
                 ; check if the one ABOVE us in the OLD location is now falling
                 ld a, l
-                sub 12
+                sub 16
                 ld l, a
                 ld a, (hl)
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
-                dec d
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
-                inc d
 @above_is_not_a_tile:
                 ; move to the new location
-                dec e
                 ld a,l
-                add 12 - 1 ; down one row and left one column
+                add 16 - 1 ; down one row and left one column
                 ld l, a
                 ; check if it's falling
+                push hl ; TODO use a reg instead of push/pop
                 call check_falling_tile_hl
+                pop hl
                 ; and mark this as our new cursor position
                 ld a, e
-                ld (controller_flags_x_pos), a
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (de still contains the old location)
-                inc e
+                inc a
                 call push_dirty_tile
                 ; mark the new locations as dirty also
-                dec e ; TODO hm am I drawing twice, if it's also falling?
+                dec a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
                 ret
 
@@ -507,7 +414,7 @@ update_cursor_position:
                 ; yet another edge case - even if this space is zero now, if there's something
                 ; ABOVE it, that is falling INTO this space already, we can't move into it now.
                 ld a, l
-                sub 12
+                sub 16
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
@@ -518,7 +425,7 @@ update_cursor_position:
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
                 ld a, l
-                add 12 - 1 ; back down one row, and move right (back to our original location)
+                add 16 - 1 ; back down one row, and move right (back to our original location)
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
@@ -529,33 +436,32 @@ update_cursor_position:
                 ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
                 ; check if the one ABOVE us in the OLD location is now falling
                 ld a, l
-                sub 12
+                sub 16
                 ld l, a
                 ld a, (hl)
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
-                dec d
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 12 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
-                inc d
 @above_is_not_a_tile:
                 ; move to the new location
-                inc e
                 ld a,l
-                add 12 + 1 ; down one row and right one column
+                add 16 + 1 ; down one row and right one column
                 ld l, a
                 ; check if it's falling
+                push hl ; TODO use a reg instead of push/pop
                 call check_falling_tile_hl
+                pop hl
                 ; and mark this as our new cursor position
-                ld a, e
-                ld (controller_flags_x_pos), a
+                ld a, l
+                ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
                 ; (de still contains the old location)
-                dec e
+                dec a
                 call push_dirty_tile
                 ; mark the new locations as dirty also
-                inc e ; TODO hm am I drawing twice, if it's also falling?
+                inc a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
                 ret
 

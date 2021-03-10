@@ -1,6 +1,6 @@
 render_puzzle_tiles:
-                ld hl, tiles
-                ld bc, 12*256+12
+                ld hl, tiles ; where the tile data is
+                ld bc, 10*256+12 ; count 12 rows and 10 columns
                 ld de, 32 ; this is 12*0+0+32 i.e. x=0 and y=0
     @next_col:
                 ld a, (hl)
@@ -12,13 +12,20 @@ render_puzzle_tiles:
                 inc d
                 pop bc ; TODO OPTIMIZE THIS AWAY
                 ld a, e
-                add 8
+                add 8 ; 16 pixels to the right
                 ld e, a
                 inc hl
                 djnz @-next_col
-                ld b, 12
+                ; now, skip the next 6 bytes of hl for the next row
+                inc hl
+                inc hl
+                inc hl
+                inc hl
+                inc hl
+                inc hl
+                ld b, 10 ; reset column counters for next row
                 ld e, 32 ; column zero
-                ld a, d ; next row
+                ld a, d ; next row on screen (128*16 pixels = 256*8 bytes)
                 add 8   ; ...
                 ld d, a ; ...
                 dec c
@@ -50,13 +57,38 @@ memcpy_level_data:
                 jr nc, @ok
                 inc h ; carry
         @ok:
-                ld b, (hl)
+                ; To save space, the levels are (slightly) compressed
+                ; Our grid in game state is 16x12 but our level data is just 10x12
+                ; so just copy 10 bytes, 12 times
+                ; TODO more compression but only if necessary
+                ld a, (hl)
                 inc hl
                 ld h, (hl)
-                ld l, b
+                ld l, a
                 ld de, tiles
-                ld bc, puzzle_copy_len
-                LDIR
+                ld a, 12 ; count number of rows
+            @next:
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc de
+                inc de
+                inc de
+                inc de
+                inc de
+                inc de
+                dec a
+                jp nz, @-next
+                ; finally copy the remaining pieces
+                ld bc, puzzle_copy_len - 10*12
+                ldir
                 ret
 
 
@@ -67,27 +99,16 @@ init_game_state:
                 xor a
                 ld (hl), a
                 ld de, game_state_zero_start + 1
-                ld bc, game_state_zero_end - game_state_zero_start - 2
+                ld bc, game_state_zero_end - game_state_zero_start - 1
                 LDIR
 
                 ld hl, tiles_flags
                 xor a
                 ld (hl), a
                 ld de, tiles_flags+1
-                ld bc, 12*12-1 ; FIXME SHOULD BE 12 x 10
+                ld bc, 16*12-1
                 LDIR
 
-                ; convert controller x, y into tiles offset
-                ld a, (controller_flags_x_pos);
-                ld e, a
-                ld a, (controller_flags_y_pos)
-                ld d, a
-                add a, a ; a = y*2
-                add a, d ; a = y*3
-                add a, a ; a = y*6
-                add a, a ; a = y*12
-                add a, e ; a = y*12 + x
-                ld (controller_flags_xypos_as_tileoffset), a
                 call init_cursor_controller
 
                 ret
