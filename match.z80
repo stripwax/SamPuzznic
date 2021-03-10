@@ -51,17 +51,23 @@ check_match:
                 ldir
 
                 ; strategy: use ix to index into tiles array
-                ld ix, tiles+13
+                ; we'll also use bc to do the scanning (top to bottom
+                ; and left to right)
+                ld bc, match_tiles_copy+13
                 ld de, match_list
                 ld hl, search_list
+
+                ; ensure the match list is terminated
+                ld a, 255
+                ld (de), a
 
                 ; look for a valid tile to start the match checking
     @keep_looking:
                 ld a, (bc)
-                cp NUM_NON_TILES
-                jr nc, @found
                 cp 255 ; END MARKER
                 jp z, @DONE
+                cp NUM_NON_TILES
+                jr nc, @found
                 inc bc
                 jr @-keep_looking
 
@@ -89,6 +95,7 @@ check_match:
                 xor a
                 ld (ix), a
                 inc ix
+                inc bc
                 jp @keep_looking
 
     @match_1:
@@ -141,6 +148,8 @@ check_match:
                 ; we found all the matches here. 'terminate' the match list and
                 ; get ready to find any more matches
                 ld a, 255
+                ld (de), a
+                inc de
                 inc bc
                 jp @keep_looking
 
@@ -156,6 +165,7 @@ check_match:
                 ; nothing else in the search list starting from where we began
                 ; (which was pointed to by BC)
                 ; so resume the search from there
+                inc bc
                 jp @-keep_looking
 
     @match_2:
@@ -264,9 +274,35 @@ check_match:
     @DONE:
                 ; phew!
                 ; mark the tail of the match list, and count the number of matches
+                ld a, 255
+                ld (de), a
                 ld (match_list_tail), de
                 ; TODO count number of matches (the bonus logic needs to know)
                 ; ...
+
+                ; TODO set up the match animation
+                ; ...
+
+                ; HACK for now just  remove the matched tiles and flag for redraw
+                ld h, tiles/256
+                ld de, match_list
+    @_get_next_match:
+                ld a, (de) ; this is the tile type
+                cp 255
+                jr z, @+END_ALL_MATCHES
+        @next_this_match:
+                inc de
+                ld a, (de) ; this is the offset into tiles
+                cp 255
+                jr z, @+END_THIS_MATCH
+                ld l, a
+                ld (hl), 0
+                jp @-next_this_match
+        @END_THIS_MATCH:
+                inc de
+                jp @_get_next_match
+        @END_ALL_MATCHES:
+                ; done. we can erase the match list, or leave it, whatever
                 ret
 
 
