@@ -14,17 +14,15 @@ clear_dirty_tiles_list:
                 ret
 
 push_dirty_tile:
-                ; de = (x, y) tile data to push
+                ; a = (xy) tile data to push
                 ld hl, (dirty_tiles_tail)
-                ld (hl), e
-                inc hl
-                ld (hl), d
+                ld (hl), a
                 inc hl
                 ld (hl), 255 ; end marker
                 ld (dirty_tiles_tail), hl
                 ret
 
-dirty_tiles: defs 10*8*2 ; shouldn't need anything like this much
+dirty_tiles: defs 10*8+1 ; shouldn't need anything like this much
 dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
 
 redraw_dirty:
@@ -36,38 +34,32 @@ redraw_dirty:
     @next:
                 ld a, (hl)
                 ; is it end marker?
-                bit 7, a
-                jr nz, @+end
+                cp 255
+                jr z, @+end
                 inc hl
-                ld d, (hl)
-                inc hl
-                ; a = x and d = y
-                ; for screen: multiply both a and d by 8 (and add 32 in x direction)
+                ; a = YYYYxxxx
+                ; for screen: multiply both x and y by 8 (and add 32 in x direction)
                 ;             and put into de
-                ; for tiles: multiply y by 12 and add to x
-                ;             and put into bc
-                ; we kindof get de and bc at the same time without too much copyaround
-                ld c, a ; c = x
-                add a,a ; a = x * 2
-                add a,a; a = x * 4
-                add a,a ; a = x * 8
-                add a, 32
-                ld e, a ; e = x*8+32
-                ld a, d ; a = y
-                add a, a ; a = y * 2
-                add a, d ; a = y*3
-                add a,a ; a = y*6
-                add a,a ; a = y*12
-                add c ; a = y*12+x
-                ld c, a; c = x*12+y
-                sla d
-                sla d
-                sla d
+                ; for tiles: a is (conveniently) already the low byte offset into table
+                ;             so we can just put a into c (since bc is aligned to 256-bytes)
+                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later
                 ; check : IS IT FALLING?  if so, do NOT render it now
                 ld b, tiles_flags / 256
                 ld a, (bc)
                 bit 4, a
                 jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
+
+                ld a, c
+                and 15
+                add a, a
+                add a, a
+                add a, a
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, c ; a = y
+                and 240
+                srl a
+                ld d, a
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
 

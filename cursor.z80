@@ -205,7 +205,7 @@ update_cursor_position:
                 dec a
                 ; see if the tile in the new position is
                 ; penetrable...
-                ld l, a ; e = y*12 + x
+                ld l, a
                 ld h, tiles/256
                 ld a, (hl)
                 cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
@@ -391,10 +391,9 @@ update_cursor_position:
                 call check_falling_tile_hl
                 pop hl
                 ; and mark this as our new cursor position
-                ld a, e
+                ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
-                ; (de still contains the old location)
                 inc a
                 call push_dirty_tile
                 ; mark the new locations as dirty also
@@ -425,7 +424,7 @@ update_cursor_position:
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
                 ld a, l
-                add 16 - 1 ; back down one row, and move right (back to our original location)
+                add 16 - 1 ; back down one row, and move left (back to our original location)
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
@@ -457,7 +456,6 @@ update_cursor_position:
                 ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
-                ; (de still contains the old location)
                 dec a
                 call push_dirty_tile
                 ; mark the new locations as dirty also

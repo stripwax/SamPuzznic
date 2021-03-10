@@ -39,6 +39,7 @@ check_falling_tile_hl:
                 ld a, 16 ; bit 4 = falling
                 dec h ; (point to tiles_flags)
                 ld (hl), a
+                ld a, l
                 jp push_falling_tiles
     @not_falling:
                 ; make sure the state is correct - zero offset (and flag as not falling)
@@ -181,12 +182,10 @@ draw_falling_tiles:
                 ; tile above me can now fall into empty space, great!
                 ld a, 16 ; falling but zero offset for now ; TODO IS THIS RIGHT?
                 ld (bc), a
-                ; point at the x,y coord of the above tile and add to the falling list
+                ; point at the xy coord of the above tile and add to the falling list
                 ; hl is still valid, but we can trash it here (we pop later when we need it)
-                push de
-                ld a, (hl)
+                ld a, c
                 call push_falling_tiles
-                pop de
 @finished_checking_falling_above:
                 ; now go back down one row
                 ld a, c
@@ -225,7 +224,7 @@ draw_falling_tiles:
                 ld a, d
                 add a, 8
                 ld d, a
-                ld a, l
+                ld a, l ; the old tile (we preserved from earlier)
                 ld (bc), a
                 call draw_tile_at_de_tile_a
                 pop hl
