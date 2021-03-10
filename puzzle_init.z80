@@ -87,7 +87,7 @@ memcpy_level_data:
                 dec a
                 jp nz, @-next
                 ; finally copy the remaining pieces
-                ld bc, puzzle_copy_len - 10*12
+                ld bc, puzzle_copy_len - 16*12
                 ldir
                 ret
 
@@ -102,6 +102,7 @@ init_game_state:
                 ld bc, game_state_zero_end - game_state_zero_start - 1
                 LDIR
 
+                ; memclr tiles_flags
                 ld hl, tiles_flags
                 xor a
                 ld (hl), a
