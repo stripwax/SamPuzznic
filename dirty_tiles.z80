@@ -8,6 +8,7 @@
 ; for each one (and clears the todo-list after drawing them all)
 
 clear_dirty_tiles_list:
+                ; modifies: HL
                 ld hl, dirty_tiles
                 ld (hl), 255 ; end marker
                 ld (dirty_tiles_tail), hl
@@ -15,6 +16,7 @@ clear_dirty_tiles_list:
 
 push_dirty_tile:
                 ; a = (xy) tile data to push
+                ; modifies: HL
                 ld hl, (dirty_tiles_tail)
                 ld (hl), a
                 inc hl
@@ -26,7 +28,7 @@ dirty_tiles: defs 10*8+1 ; shouldn't need anything like this much
 dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
 
 redraw_dirty:
-                ; step through list of dirty tile (x,y) coords
+                ; step through list of dirty tile (xy) coords
                 ; and erase (redraw) tile rects
                 ; NB this only handles the STATIONARY tiles
                 ; We will need a separate routine for drawing falling or sliding tiles
@@ -68,6 +70,17 @@ redraw_dirty:
                 pop hl
                 jr @-next
     @falling_dirty:
+                ld a, c
+                and 15
+                add a, a
+                add a, a
+                add a, a
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, c ; a = y
+                and 240
+                srl a
+                ld d, a
                 xor a
                 push hl
                 call draw_tile_at_de_tile_a
