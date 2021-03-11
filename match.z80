@@ -278,44 +278,74 @@ check_match:
                 ld a, 255
                 ld (de), a
                 ld (match_list_tail), de
+
+                ; find matches
+                ld h, tiles/256
+                ld de, match_list
+                ld a, (de) ; this is the tile type
+                cp 255
+                ret z; if the start of the list is the end, there's no matches
+
+                ; woohoo we found a match
                 ; TODO count number of matches (the bonus logic needs to know)
                 ; ...
 
                 ; TODO set up the match animation
+                ; which includes locking the cursor in-place (until match animations
+                ; have completed)
+                ; note that, cursor is stil locked during the falling AFTER match
+                ; animations! (this enables a subsequent match-after-falling-after-match
+                ; to trigger another bonus)
                 ; ...
+                ; if any of the tiles being matched are actually the one the cursor
+                ; is locked to, clear the locked flag
 
-                ; HACK for now just  remove the matched tiles and flag for redraw
-                ld h, tiles/256
-                ld de, match_list
-    @_get_next_match:
-                ld a, (de) ; this is the tile type
-                cp 255
-                jr z, @+END_ALL_MATCHES
         @next_this_match:
                 inc de
                 ld a, (de) ; this is the offset into tiles
                 cp 255
                 jr z, @+END_THIS_MATCH
                 ld l, a
-                ld (hl), 0
-                dec h
-                ld (hl), 0
-                inc h
-                ; and mark as dirty (to redraw this xy as blank)
+                ld (hl), 0 ; set tile to blank
+                dec h ; point to flags
+                ld (hl), 0 ; set flags to zero
+                inc h ; point back to tiles
+
+                ; mark this xy as dirty (to redraw this xy as blank)
                 push hl
                 call push_dirty_tile
                 pop hl
+
+                ; (if any of the tiles being matched are actually the one the cursor
+                ; is locked to, clear the 'tile_captured' flag.  We don't actually
+                ; need to test the flag first, just clear it if we need to clear it.)
+                ld a, (controller_flags_xy_pos)
+                cp l
+                jr nz, @+not_captured
+                xor a
+                ld (controller_flags_tile_captured), a
+
+    @not_captured:
                 ; and make the stuff above it fall
                 push hl
                 ld a, l
                 sub 16
                 ld l, a
+                ; (but check if the stuff above is a tile... if it's
+                ;  not a tile, there's nothing to check, so don't)
+                ld a, (hl)
+                cp NUM_NON_TILES
+                jr c, @not_a_tile_above
                 call check_falling_tile_hl
+        @not_a_tile_above:
                 pop hl
                 jp @-next_this_match
         @END_THIS_MATCH:
                 inc de
-                jp @_get_next_match
+                ld a, (de) ; this is the tile type
+                cp 255
+                jr z, @+END_ALL_MATCHES
+                jp @-next_this_match
         @END_ALL_MATCHES:
                 ; done. we can erase the match list, or leave it, whatever
                 ret
