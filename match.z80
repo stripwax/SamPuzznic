@@ -28,14 +28,27 @@ check_match:
                 ;
                 ; starting top left, working left to right and top to bottom
                 ; 1. find a tile.
-                ; 2. put this tile into MATCH LIST
-                ; 3. set this tile's location's value to zero in the (copy of the) grid
-                ; 3. put the (up-to) four possible neighbours into SEARCH LIST
-                ; 4. pick (and remove) an item from SEARCH LIST.  if it's value is same as tile, then
-                ;    4a. put THIS item into MATCH LIST too
-                ;        and set its location's value to zero in the (copy of the) grid
-                ;        and put its four possible neighbours into SEARCH LIST
-                ; 5. continue into the SEARCH LIST is empty
+                ; 2. set this tile's location's value to zero in the (copy of the) grid
+                ; 3. look at the (up-to) four possible neighbours to see if they match
+                ;    this tile. If they do then:
+                ;    3a. set this neighbour locaton value to zero in the (copy of the) grid
+                ;    3b. put the original tile location xy AND this neighbour tile location
+                ;        into MATCH LIST
+                ;    3c. put this neighbour tile location xy into the SEARCH STACK
+                ;    3c. put any of the other (up to three) possible neighbours we didn't look
+                ;        at yet into the SEARCH STACK too.
+                ;    3d. (although we don't need to put the last one into the SEARCH STACK because
+                ;         of the very next step where we take it off the SEARCH STACK, so can optimise
+                ;         by just keeping this last one in hand)
+                ; 4. pick (and remove) an item from SEARCH STACK.
+                ;    4a. if it's value is same as tile, then
+                ;          put THIS item into MATCH LIST too
+                ;          and set its location's value to zero in the (copy of the) grid
+                ;          and put its four possible neighbours into SEARCH STACK
+                ;    OR,
+                ;    4b. if its value is not the same as tile then just throw this item away
+                ;        and look at the next item in SEARCH STACK (noting step 5)
+                ; 5. continue to step 4 until the SEARCH STACK is empty
                 ; 6. if the MATCH LIST has more than one thing in it, congrats, you have a match
                 ;    - get ready to create a new match list for the next tile
                 ;    or get ready to just reuse it if the match list had only one thing in it
@@ -56,7 +69,7 @@ check_match:
                 ; and left to right)
                 ld bc, match_tiles_copy+17
                 ld de, match_list
-                ld hl, search_list
+                ld hl, search_stack
 
                 ; ensure the match list is terminated
                 ld a, 255
@@ -113,19 +126,19 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix+1), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search list
+                ; now add remaining neighbours to search stack
         @add_neighbours_1:
                 add a, 15
                 ld (hl), a
-                inc hl
+                inc hl ; push onto search stack
         @add_neighbours_2:
                 sub 17
                 ld (hl), a
-                inc hl
+                inc hl ; push onto search stack
         @add_neighbours_3:
                 sub 15
-                ; don't need to actually write this to the search list
-                ; since we're going to take it off the search list
+                ; don't need to actually write this to the search stack
+                ; since we're going to take it off the search stack
                 ; and start processing this neighbour
     @search_from_here:
                 ; a is now the index into tiles we want to continue the search from
@@ -155,15 +168,15 @@ check_match:
                 jp @keep_looking
 
 
-    @next_item_from_search_list:
+    @next_item_from_search_stack:
                 ld a, (hl)
                 cp 255
                 jr z, @+done_searching ; TODO OPTIMISE just jump to keep_looking?
-                dec hl
+                dec hl ; pop off the search stack
                 jp @-search_from_here
 
     @done_searching:
-                ; nothing else in the search list starting from where we began
+                ; nothing else in the search stack starting from where we began
                 ; (which was pointed to by BC)
                 ; so resume the search from there
                 inc bc
@@ -183,7 +196,7 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix+16), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search list
+                ; now add remaining neighbours to search stack
                 jp @add_neighbours_1
      
     @match_3:
@@ -200,7 +213,7 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix-1), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search list
+                ; now add remaining neighbours to search stack
                 jp @add_neighbours_2
     
     @match_4:
@@ -217,7 +230,7 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix+16), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search list
+                ; now add remaining neighbours to search stack
                 jp @add_neighbours_3
 
     @match_more_1:
@@ -226,7 +239,7 @@ check_match:
                 inc a
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
-                ; append the neighbours of ix+1 into search list
+                ; push the neighbours of ix+1 into search stack
                 ; (we do this via a, which is set to ixl+1)
                 inc a
                 ld (hl), a
@@ -239,7 +252,7 @@ check_match:
                 add a, 16
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
-                ; append the neighbours of ix+16 into search list
+                ; push the neighbours of ix+16 into search stack
                 ; (we do this via a, which is set to ixl+16)
                 inc a
                 ld (hl), a
@@ -252,7 +265,7 @@ check_match:
                 dec a
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
-                ; append the neighbours of ix-1 into search list
+                ; push the neighbours of ix-1 into search stack
                 ; (we do this via a, which is set to ixl-1)
                 inc a
                 ld (hl), a
@@ -265,7 +278,7 @@ check_match:
                 sub 16
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
-                ; append the neighbours of ix-1 into search list
+                ; push the neighbours of ix-1 into search stack
                 ; (we do this via a, which is set to ixl-1)
                 inc a
                 ld (hl), a
@@ -360,8 +373,8 @@ matched_tile: defb 0
 
 ds ALIGN 256
 match_tiles_copy: defs 16*12
-end_marker: defb 255 ; this serves as both the end marker for the tiles (going up) AND the end marker for the search_list (going down)
-search_list: defs 80
+end_marker: defb 255 ; this serves as both the end marker for the tiles (going up) AND the end marker for the search_stack (going down)
+search_stack: defs 80 ; grows upwards
 match_list: defs 16*12/2*3 ; surely worst case
 match_list_tail: defw 0
 num_matches: defb 0
