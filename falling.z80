@@ -21,6 +21,7 @@ falling_tiles:
 falling_tiles_tail: defw falling_tiles
 
 check_falling_tile_hl:
+                ; modifies: HL, A
                 ; is the tile pointed (in tiles array) by hl, suspended in midair
                 ; if so, update the state to say it is falling (and add it to the
                 ; list of falling tiles)
@@ -273,6 +274,13 @@ draw_falling_tiles:
                 srl a ; a*=128
                 jr nc, @+even
     @odd:
+                ; I think we get here due to corruption, currently
+                if DEBUG
+                @fatal:
+                nop
+                jr @-fatal
+                endif
+
                 set 7, l
     @even:
                 add a, d
