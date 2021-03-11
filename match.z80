@@ -12,11 +12,12 @@ check_match:
     @keep_seeing_if_any_found:
                 ld a, (hl)
                 ; is it a valid xy coord?
-                cp 16
-                ret c ; i.e. if a <= 15
-                bit 7, a
-                jr nz, @nothing_in_freefall
-                inc hl
+                ; 255 means end-of-list and
+                ; 254 means a-dead-entry-you-can-skip
+                cp 255
+                jr z, @nothing_in_freefall ; end of list, nothing found, so nothing in freefall
+                cp 254
+                ret nz ; != 254, so a real xy => something in freefall
                 inc hl
                 jr @-keep_seeing_if_any_found
     @nothing_in_freefall:
@@ -44,16 +45,16 @@ check_match:
                 ; BECAUSE THE ONLY TILES WE NEED TO CHECK (in step 1) ARE THE ONES THAT HAVE MOVED...!
 
                 ; we know the border is impenetrable, start lower
-                ; +13 because we know we don't care about the first row or column
-                ld hl, tiles+13
-                ld de, match_tiles_copy+13
-                ld bc, 12*12-13-12 ; exclude edges
+                ; +17 because we know we don't care about the first row or column
+                ld hl, tiles+17
+                ld de, match_tiles_copy+17
+                ld bc, 16*12-17-16 ; exclude edges
                 ldir
 
                 ; strategy: use ix to index into tiles array
                 ; we'll also use bc to do the scanning (top to bottom
                 ; and left to right)
-                ld bc, match_tiles_copy+13
+                ld bc, match_tiles_copy+17
                 ld de, match_list
                 ld hl, search_list
 
@@ -84,11 +85,11 @@ check_match:
                 ; check neighbours east, south, west, north
                 cp (ix+1)
                 jr z, @match_1
-                cp (ix+12)
+                cp (ix+16)
                 jr z, @match_2
                 cp (ix-1)
                 jr z, @match_3
-                cp (ix-12)
+                cp (ix-16)
                 jp z, @match_4
     @nomatch:
                 ; mark tile as done (to avoid "re-finding" it on later iterations)
@@ -114,15 +115,15 @@ check_match:
                 inc de
                 ; now add remaining neighbours to search list
         @add_neighbours_1:
-                add a, 11
+                add a, 15
                 ld (hl), a
                 inc hl
         @add_neighbours_2:
-                sub 13
+                sub 17
                 ld (hl), a
                 inc hl
         @add_neighbours_3:
-                sub 11
+                sub 15
                 ; don't need to actually write this to the search list
                 ; since we're going to take it off the search list
                 ; and start processing this neighbour
@@ -135,11 +136,11 @@ check_match:
                 ld a, (matched_tile)
                 cp (ix+1)
                 jr z, @match_more_1
-                cp (ix+12)
+                cp (ix+16)
                 jr z, @match_more_2
                 cp (ix-1)
                 jp z, @match_more_3
-                cp (ix-12)
+                cp (ix-16)
                 jp z, @match_more_4
     @_end_match:
                 ; mark tile as done (to avoid "re-finding" it on later iterations)
@@ -178,9 +179,9 @@ check_match:
                 ld (de), a ; and its location
                 ld (ix), 0 ; mark tile as done
                 inc de
-                add a, 12
+                add a, 16
                 ld (de), a ; and its neighbours location
-                ld (ix+12), 0 ; mark tile as done
+                ld (ix+16), 0 ; mark tile as done
                 inc de
                 ; now add remaining neighbours to search list
                 jp @add_neighbours_1
@@ -212,9 +213,9 @@ check_match:
                 ld (de), a ; and its location
                 ld (ix), 0 ; mark tile as done
                 inc de
-                sub 12
+                sub 16
                 ld (de), a ; and its neighbours location
-                ld (ix+12), 0 ; mark tile as done
+                ld (ix+16), 0 ; mark tile as done
                 inc de
                 ; now add remaining neighbours to search list
                 jp @add_neighbours_3
@@ -233,13 +234,13 @@ check_match:
                 jp @-add_neighbours_1
 
     @match_more_2:
-                ; append to existing match list entry for ix+12
+                ; append to existing match list entry for ix+16
                 ld a, ixl
-                add a, 12
+                add a, 16
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
-                ; append the neighbours of ix+12 into search list
-                ; (we do this via a, which is set to ixl+12)
+                ; append the neighbours of ix+16 into search list
+                ; (we do this via a, which is set to ixl+16)
                 inc a
                 ld (hl), a
                 inc hl
@@ -259,9 +260,9 @@ check_match:
                 jp @-add_neighbours_1
     
     @match_more_4:
-                ; append to existing match list entry for ix-12
+                ; append to existing match list entry for ix-16
                 ld a, ixl
-                sub 12
+                sub 16
                 ld (de), a
                 ld (ix+1), 0 ; mark tile as done
                 ; append the neighbours of ix-1 into search list
@@ -314,10 +315,10 @@ check_match:
 matched_tile: defb 0
 
 ds ALIGN 256
-match_tiles_copy: defs 12*12
+match_tiles_copy: defs 16*12
 end_marker: defb 255 ; this serves as both the end marker for the tiles (going up) AND the end marker for the search_list (going down)
 search_list: defs 80
-match_list: defs 12*12/2*3 ; surely worst case
+match_list: defs 16*12/2*3 ; surely worst case
 match_list_tail: defw 0
 num_matches: defb 0
 
