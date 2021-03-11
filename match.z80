@@ -298,6 +298,20 @@ check_match:
                 jr z, @+END_THIS_MATCH
                 ld l, a
                 ld (hl), 0
+                dec h
+                ld (hl), 0
+                inc h
+                ; and mark as dirty (to redraw this xy as blank)
+                push hl
+                call push_dirty_tile
+                pop hl
+                ; and make the stuff above it fall
+                push hl
+                ld a, l
+                sub 16
+                ld l, a
+                call check_falling_tile_hl
+                pop hl
                 jp @-next_this_match
         @END_THIS_MATCH:
                 inc de
