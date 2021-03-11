@@ -13,7 +13,7 @@ I've done.
 Work-In-Progress.
 Tiles graphics imported, lots of other graphics missing.
 Most of the movement/falling logic is in place, not much else yet (in particular, no 'matching'
-logic yet, and no sliders/elevators)
+logic yet (although this is now experimentally available on a branch, but that branch is stale now), and no sliders/elevators)
 No level select, scoring, game-over, etc.
 
 # To build
