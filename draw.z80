@@ -113,6 +113,17 @@ draw_debug_tile_at_de_tile_a:
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; multiply a by 17 to get a conveniently-coloured two-nibble (two pixel) value in a
+
+                ; I think we get here due to corruption, currently
+                if DEBUG
+                bit 7, e
+                jr z, @ok
+                @fatal:
+                nop
+                jr @-fatal
+                @ok:
+                endif
+
                 ld b,a
                 sla a
                 sla a
@@ -198,7 +209,19 @@ draw_debug_tile_at_de_tile_a:
 draw_tile_at_de_tile_a:
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
-                ; w.r.t tile_bitmas
+                ; w.r.t tile_bitmaps
+
+                ; I think we get here due to corruption, currently
+                if DEBUG
+                bit 7, e
+                jr z, @ok
+                @fatal:
+                nop
+                jr @-fatal
+                @ok:
+                endif
+
+
                 ; multiply a by 128 to get offset into bitmap data
                 ld l, 0
                 sra a ; shift lowest bit of a into c
