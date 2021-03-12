@@ -1,5 +1,5 @@
 PUZZLEDATA_INDEX:
-                defw 0
+                defw PUZZLEDATA_DUMMY
                 defw 0
                 defw 0
                 defw 0
@@ -48,3 +48,20 @@ PUZZLEDATA_L3_3:
                 defb 0, 0 ; slide
                 defb 0x01, 0x30 ; 1 m 30 s
                 defb 0x54 ; y x
+
+PUZZLEDATA_DUMMY:
+                defb 1,1,1,1,1,1,1,1,1,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,0,0,0,0,1
+                defb 1,0,0,0,0,6,0,0,0,1
+                defb 1,0,0,5,0,5,0,0,0,1
+                defb 1,0,0,7,0,7,0,0,0,1
+                defb 1,0,0,6,7,6,0,0,0,1
+                defb 1,1,1,1,1,1,1,1,1,1
+                defb 0,0
+                defb 0x01, 0x30
+                defb 0x66

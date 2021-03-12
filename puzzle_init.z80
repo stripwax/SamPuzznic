@@ -45,7 +45,7 @@ render_remaining_tiles:
                 ret
 
 debug_memcpy_level_data:
-                ld a, 20+2 ; level 3-3 (zero-based level so 0 is level 1, etc)
+                ld a, DEBUG_LEVEL_NUMBER
                 jp memcpy_level_data
 
 memcpy_level_data:
