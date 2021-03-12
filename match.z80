@@ -345,7 +345,7 @@ ds ALIGN 256
 match_tiles_copy: defs 16*12
 end_marker: defb 255 ; this serves as both the end marker for the tiles (going up) AND the end marker for the search_stack (going down)
 search_stack: defs 80 ; grows upwards
-match_list: defs 16*12/2*3 ; surely worst case
+match_list: defs 8*10/2*4 ; extreme worst case. 8x10 tiles, of pairs, with 4 bytes per match (i.e. tile id, two xys, and a 255 terminator)
 match_list_tail: defw 0
 num_matches: defb 0
 
