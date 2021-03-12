@@ -1,6 +1,353 @@
-
 check_match:
+                ; look for any and all matches
+                ; NB if ANY tiles are in freefall, do NOT look for any matches
+                ; because, for gameplay reasons, we only look for matches when
+                ; all tiles are on firm ground (although this includes sliders)
+
+                xor a
+                ld (num_matches), a
+
+                ; any tiles in freefall?
+                ld hl, falling_tiles
+    @keep_seeing_if_any_found:
+                ld a, (hl)
+                ; is it a valid xy coord?
+                ; 255 means end-of-list and
+                ; 254 means a-dead-entry-you-can-skip
+                cp 255
+                jr z, @nothing_in_freefall ; end of list, nothing found, so nothing in freefall
+                cp 254
+                ret nz ; != 254, so a real xy => something in freefall
+                inc hl
+                jr @-keep_seeing_if_any_found
+    @nothing_in_freefall:
+                ; look for matches
+                ; ALGORITHM:
+                ; temporarily copy the grid into work area.
+                ; ADD the tiles from sliders IF (and only if) the sliders are at an aligned edge
+                ;
+                ; starting top left, working left to right and top to bottom
+                ; 1. find a tile.
+                ; 2. set this tile's location's value to zero in the (copy of the) grid
+                ; 3. look at the (up-to) four possible neighbours to see if they match
+                ;    this tile. If they do then:
+                ;    3a. set this neighbour locaton value to zero in the (copy of the) grid
+                ;    3b. put the original tile location xy AND this neighbour tile location
+                ;        into MATCH LIST
+                ;    3c. put this neighbour tile location xy into the SEARCH STACK
+                ;    3c. put any of the other (up to three) possible neighbours we didn't look
+                ;        at yet into the SEARCH STACK too.
+                ;    3d. (although we don't need to put the last one into the SEARCH STACK because
+                ;         of the very next step where we take it off the SEARCH STACK, so can optimise
+                ;         by just keeping this last one in hand)
+                ; 4. pick (and remove) an item from SEARCH STACK.
+                ;    4a. if it's value is same as tile, then
+                ;          put THIS item into MATCH LIST too
+                ;          and set its location's value to zero in the (copy of the) grid
+                ;          and put its four possible neighbours into SEARCH STACK
+                ;    OR,
+                ;    4b. if its value is not the same as tile then just throw this item away
+                ;        and look at the next item in SEARCH STACK (noting step 5)
+                ; 5. continue to step 4 until the SEARCH STACK is empty
+                ; 6. if the MATCH LIST has more than one thing in it, congrats, you have a match
+                ;    - get ready to create a new match list for the next tile
+                ;    or get ready to just reuse it if the match list had only one thing in it
+
+                ; TODO - COULD ALSO CREATE A SEPARATE GRID THAT JUST CONTAINS FLAG INDICATING
+                ; WHETHER THE TILE HAS MOVED SINCE LAST TIME WE CHECKED FOR MATCHES?
+                ; BECAUSE THE ONLY TILES WE NEED TO CHECK (in step 1) ARE THE ONES THAT HAVE MOVED...!
+
+                ; we know the border is impenetrable, start lower
+                ; +17 because we know we don't care about the first row or column
+                ld hl, tiles+17
+                ld de, match_tiles_copy+17
+                ld bc, 16*12-17-16 ; exclude edges
+                ldir
+
+                ; strategy: use ix to index into tiles array
+                ; we'll also use bc to do the scanning (top to bottom
+                ; and left to right)
+                ld bc, match_tiles_copy+17
+                ld de, match_list
+                ld hl, search_stack-1
+
+                ; ensure the match list is terminated
+                ld a, 255
+                ld (de), a
+
+                ; look for a valid tile to start the match checking
+    @keep_looking:
+                ld a, (bc)
+                cp 255 ; END MARKER
+                jp z, @DONE
+                cp NUM_NON_TILES
+                jr nc, @found
+                inc bc
+                jr @-keep_looking
+
+    @found:
+                ; see if ANY neighbours match
+                ; if not, we can outright ignore this as a starting point.
+                ; BC is where we're at in the left-to-right-top-to-bottom-scan
+                ; we'll hang onto that in bc for the entire duration of the algo
+                ; but we'll use IX for indexing operations (starting with what
+                ; BC is pointing to).  So, start by putting BC into IX:
+                push bc
+                pop ix
+
+                ; check neighbours east, south, west, north
+                cp (ix+1)
+                jr z, @match_1
+                cp (ix+16)
+                jp z, @match_2
+                cp (ix-1)
+                jp z, @match_3
+                cp (ix-16)
+                jp z, @match_4
+    @nomatch:
+                ; mark tile as done (to avoid "re-finding" it on later iterations)
+                xor a
+                ld (ix), a
+                inc ix
+                inc bc
+                jp @keep_looking
+
+    @match_1:
+                ; keep a record of what tile we're looking for, since we trash reg a
+                ld (matched_tile), a
+                ; make match list entry
+                ld (de), a ; headed with the number of the tile
+                inc de
+                ld a, ixl
+                ld (de), a ; and its location
+                ld (ix), 0 ; mark tile as done
+                inc de
+                inc a
+                ld (de), a ; and its neighbours location
+                ld (ix+1), 0 ; mark tile as done
+                inc de
+                inc hl
+                ld (hl), a ; and put its neighbours location into search stack
+                ; now see if we should add remaining neighbours to search stack
+                ld a, (matched_tile)
+        @add_neighbours_1:
+                cp (ix+16)
+                jr nz, @+add_neighbours_2
+                ld (ix+16), 0 ; mark as done
+                ld a, ixl
+                add a, 16
+                ld (de), a ; add to match list
+                inc de
+                inc hl ; push onto search stack
+                ld (hl), a
+                ld a, (matched_tile)
+        @add_neighbours_2:
+                cp (ix-1)
+                jr nz, @+add_neighbours_3
+                ld (ix-1), 0 ; mark as done
+                ld a, ixl
+                dec a
+                ld (de), a ; add to match list
+                inc de
+                ld (hl), a
+                inc hl ; push onto search stack
+                ld a, (matched_tile)
+        @add_neighbours_3:
+                cp (ix-15)
+                jr nz, @next_item_from_search_stack
+                ld (ix-15), 0 ; mark as done
+                ld a, ixl
+                sub 15
+                ld (de), a ; add to match list
+                inc de
+                ; ld (hl), a
+                ; inc hl ; push onto search stack
+                ; don't need to actually write this to the search stack
+                ; since we're just going to take it off the search stack
+                ; right now anyway
+    @search_from_here:
+                ; a is now the index into tiles we want to continue the search from
+                ; hl points to the top entry in the search stack (i.e. we've already popped a)
+                ; the tile at location ix+0 is already in the match list at this point
+                ld ixl, a
+                ; find any more matching neighbours
+                ld a, (matched_tile)
+                cp (ix+1)
+                jr nz, @add_neighbours_1
+                ld a, ixl
+                inc a
+                ld (de), a ; add to match list
+                inc de
+                inc hl
+                ld (hl), a
+                ld (ix+1), 0 ; mark tile as done
+                ld a, (matched_tile)
+                jp @add_neighbours_1
+
+    @next_item_from_search_stack:
+                ld a, (hl)
+                dec hl ; pop off the search stack
+                cp 255
+                jr z, @+done_searching ; TODO OPTIMISE just jump to keep_looking?
+                jp @-search_from_here
+
+    @done_searching:
+                ; nothing else in the search stack starting from where we began
+                ; (which was pointed to by BC)
+                ; so resume the search from there
+                ; we found all the matches here. 'terminate' the match list and
+                ; get ready to find any more matches
+                ld a, 255
+                ld (de), a
+                inc de
+                inc bc
+                jp @-keep_looking
+
+    @match_2:
+                ; keep a record of what tile we're looking for, since we trash reg a
+                ld (matched_tile), a
+                ; make match list entry
+                ld (de), a ; headed with the number of the tile
+                inc de
+                ld a, ixl
+                ld (de), a ; and its location
+                ld (ix), 0 ; mark tile as done
+                inc de
+                add a, 16
+                ld (de), a ; and its neighbours location
+                ld (ix+16), 0 ; mark tile as done
+                inc de
+                ; now add remaining neighbours to search stack
+                jp @add_neighbours_2
+     
+    @match_3:
+                ; keep a record of what tile we're looking for, since we trash reg a
+                ld (matched_tile), a
+                ; make match list entry
+                ld (de), a ; headed with the number of the tile
+                inc de
+                ld a, ixl
+                ld (de), a ; and its location
+                ld (ix), 0 ; mark tile as done
+                inc de
+                dec a
+                ld (de), a ; and its neighbours location
+                ld (ix-1), 0 ; mark tile as done
+                inc de
+                ; now add remaining neighbours to search stack
+                jp @add_neighbours_3
+    
+    @match_4:
+                ; keep a record of what tile we're looking for, since we trash reg a
+                ld (matched_tile), a
+                ; make match list entry
+                ld (de), a ; headed with the number of the tile
+                inc de
+                ld a, ixl
+                ld (de), a ; and its location
+                ld (ix), 0 ; mark tile as done
+                inc de
+                sub 16
+                ld (de), a ; and its neighbours location
+                ld (ix-16), 0 ; mark tile as done
+                inc de
+                ; we've already looked at all the other neighbours of ix+0
+                ; and this was the only one that matched, so carry on from here
+                jp @search_from_here
+
+    @DONE:
+                ; phew!
+                ; mark the tail of the match list, and count the number of matches
+                ld a, 255
+                ld (de), a
+                ld (match_list_tail), de
+
+                ; find matches
+                ld h, tiles/256
+                ld de, match_list
+                ld a, (de) ; this is the tile type
+                cp 255
+                ret z; if the start of the list is the end, there's no matches
+
+                ; woohoo we found a match
+                ; TODO count number of matches (the bonus logic needs to know)
+                ; ...
+
+                ; TODO set up the match animation
+                ; which includes locking the cursor in-place (until match animations
+                ; have completed)
+                ; note that, cursor is stil locked during the falling AFTER match
+                ; animations! (this enables a subsequent match-after-falling-after-match
+                ; to trigger another bonus)
+                ; ...
+                ; if any of the tiles being matched are actually the one the cursor
+                ; is locked to, clear the locked flag
+
+        @next_this_match:
+                inc de
+                ld a, (de) ; this is the offset into tiles
+                cp 255
+                jr z, @+END_THIS_MATCH
+                ld l, a
+                ld (hl), 0 ; set tile to blank
+                dec h ; point to flags
+                ld (hl), 0 ; set flags to zero
+                inc h ; point back to tiles
+
+                ; mark this xy as dirty (to redraw this xy as blank)
+                push hl
+                call push_dirty_tile
+                pop hl
+
+                ; (if any of the tiles being matched are actually the one the cursor
+                ; is locked to, clear the 'tile_captured' flag.  We don't actually
+                ; need to test the flag first, just clear it if we need to clear it.)
+                ld a, (controller_flags_xy_pos)
+                cp l
+                jr nz, @+not_captured
+                xor a
+                ld (controller_flags_tile_captured), a
+
+    @not_captured:
+                ; and make the stuff above it fall
+                push hl
+                ld a, l
+                sub 16
+                ld l, a
+                ; (but check if the stuff above is a tile... if it's
+                ;  not a tile, there's nothing to check, so don't)
+                ld a, (hl)
+                cp NUM_NON_TILES
+                jr c, @not_a_tile_above
+                call check_falling_tile_hl
+        @not_a_tile_above:
+                pop hl
+                jp @-next_this_match
+        @END_THIS_MATCH:
+                inc de
+                ld a, (de) ; this is the tile type
+                cp 255
+                jr z, @+END_ALL_MATCHES
+                jp @-next_this_match
+        @END_ALL_MATCHES:
+                ; done. we can erase the match list, or leave it, whatever
                 ret
+
+
+; how to track the state for a match that occurs only when a previous match disappears?
+; I guess this actually becomes a different control loop i.e. controller is disabled, just process
+; falling and matching, with (by definition) BONUS enabled for any matches found
+
+; match state
+matched_tile: defb 0
+
+ds ALIGN 256
+match_tiles_copy: defs 16*12
+end_marker: defb 255 ; this serves as both the end marker for the tiles (going up) AND the end marker for the search_stack (going down)
+search_stack: defs 80 ; grows upwards
+match_list: defs 8*10/2*4 ; extreme worst case. 8x10 tiles, of pairs, with 4 bytes per match (i.e. tile id, two xys, and a 255 terminator)
+match_list_tail: defw 0
+num_matches: defb 0
 
 render_destruct:
                 ; this will call decrement on remaining blocks upon completion
