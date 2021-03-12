@@ -7,11 +7,24 @@ get_input:
                 call get_input_raw
                 ; if key is pressed, set corresponding key flag
                 ; if key is not pressed, clear corresponding key flag
-                ;up=row_9_bit_1
-                ;down=row_9_bit_2
-                ;left=row_9_bit_3
-                ;right=row_9_bit_4
-                ;fire(space)=row_8_bit_0
+                ; keyboard:
+                ;   up=row_9_bit_1
+                ;   down=row_9_bit_2
+                ;   left=row_9_bit_3
+                ;   right=row_9_bit_4
+                ;   fire(space)=row_8_bit_0
+                ; joystick1:
+                ;   up=row_4_bit_3
+                ;   down=row_4_bit_2
+                ;   left=row_4_bit_0
+                ;   right=row_4_bit_1
+                ;   fire=row_4_bit_4
+                ; joystick2: 
+                ;   up=row_5_bit_1
+                ;   down=row_4_bit_2
+                ;   left=row_4_bit_4
+                ;   right=row_4_bit_3
+                ;   fire=row_4_bit_0
                 ; REMEMBER: if key is down then bit reads ZERO.  if key is not down then bit reads ONE
                 xor a
                 ld hl, keyb_buffer+7
