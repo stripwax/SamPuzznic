@@ -69,7 +69,7 @@ check_match:
                 ; and left to right)
                 ld bc, match_tiles_copy+17
                 ld de, match_list
-                ld hl, search_stack
+                ld hl, search_stack-1
 
                 ; ensure the match list is terminated
                 ld a, 255
@@ -99,9 +99,9 @@ check_match:
                 cp (ix+1)
                 jr z, @match_1
                 cp (ix+16)
-                jr z, @match_2
+                jp z, @match_2
                 cp (ix-1)
-                jr z, @match_3
+                jp z, @match_3
                 cp (ix-16)
                 jp z, @match_4
     @nomatch:
@@ -126,20 +126,45 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix+1), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search stack
+                inc hl
+                ld (hl), a ; and put its neighbours location into search stack
+                ; now see if we should add remaining neighbours to search stack
+                ld a, (matched_tile)
         @add_neighbours_1:
-                add a, 15
-                ld (hl), a
+                cp (ix+16)
+                jr nz, @+add_neighbours_2
+                ld (ix+16), 0 ; mark as done
+                ld a, ixl
+                add a, 16
+                ld (de), a ; add to match list
+                inc de
                 inc hl ; push onto search stack
+                ld (hl), a
+                ld a, (matched_tile)
         @add_neighbours_2:
-                sub 17
+                cp (ix-1)
+                jr nz, @+add_neighbours_3
+                ld (ix-1), 0 ; mark as done
+                ld a, ixl
+                dec a
+                ld (de), a ; add to match list
+                inc de
                 ld (hl), a
                 inc hl ; push onto search stack
+                ld a, (matched_tile)
         @add_neighbours_3:
+                cp (ix-15)
+                jr nz, @next_item_from_search_stack
+                ld (ix-15), 0 ; mark as done
+                ld a, ixl
                 sub 15
+                ld (de), a ; add to match list
+                inc de
+                ; ld (hl), a
+                ; inc hl ; push onto search stack
                 ; don't need to actually write this to the search stack
-                ; since we're going to take it off the search stack
-                ; and start processing this neighbour
+                ; since we're just going to take it off the search stack
+                ; right now anyway
     @search_from_here:
                 ; a is now the index into tiles we want to continue the search from
                 ; hl points to the top entry in the search stack (i.e. we've already popped a)
@@ -148,37 +173,33 @@ check_match:
                 ; find any more matching neighbours
                 ld a, (matched_tile)
                 cp (ix+1)
-                jr z, @match_more_1
-                cp (ix+16)
-                jr z, @match_more_2
-                cp (ix-1)
-                jp z, @match_more_3
-                cp (ix-16)
-                jp z, @match_more_4
-    @_end_match:
-                ; mark tile as done (to avoid "re-finding" it on later iterations)
-                xor a
-                ld (ix), a
-                ; we found all the matches here. 'terminate' the match list and
-                ; get ready to find any more matches
-                ld a, 255
-                ld (de), a
+                jr nz, @add_neighbours_1
+                ld a, ixl
+                inc a
+                ld (de), a ; add to match list
                 inc de
-                inc bc
-                jp @keep_looking
-
+                inc hl
+                ld (hl), a
+                ld (ix+1), 0 ; mark tile as done
+                ld a, (matched_tile)
+                jp @add_neighbours_1
 
     @next_item_from_search_stack:
                 ld a, (hl)
+                dec hl ; pop off the search stack
                 cp 255
                 jr z, @+done_searching ; TODO OPTIMISE just jump to keep_looking?
-                dec hl ; pop off the search stack
                 jp @-search_from_here
 
     @done_searching:
                 ; nothing else in the search stack starting from where we began
                 ; (which was pointed to by BC)
                 ; so resume the search from there
+                ; we found all the matches here. 'terminate' the match list and
+                ; get ready to find any more matches
+                ld a, 255
+                ld (de), a
+                inc de
                 inc bc
                 jp @-keep_looking
 
@@ -197,7 +218,7 @@ check_match:
                 ld (ix+16), 0 ; mark tile as done
                 inc de
                 ; now add remaining neighbours to search stack
-                jp @add_neighbours_1
+                jp @add_neighbours_2
      
     @match_3:
                 ; keep a record of what tile we're looking for, since we trash reg a
@@ -214,7 +235,7 @@ check_match:
                 ld (ix-1), 0 ; mark tile as done
                 inc de
                 ; now add remaining neighbours to search stack
-                jp @add_neighbours_2
+                jp @add_neighbours_3
     
     @match_4:
                 ; keep a record of what tile we're looking for, since we trash reg a
@@ -228,62 +249,11 @@ check_match:
                 inc de
                 sub 16
                 ld (de), a ; and its neighbours location
-                ld (ix+16), 0 ; mark tile as done
+                ld (ix-16), 0 ; mark tile as done
                 inc de
-                ; now add remaining neighbours to search stack
-                jp @add_neighbours_3
-
-    @match_more_1:
-                ; append to existing match list entry for ix+1
-                ld a, ixl
-                inc a
-                ld (de), a
-                ld (ix+1), 0 ; mark tile as done
-                ; push the neighbours of ix+1 into search stack
-                ; (we do this via a, which is set to ixl+1)
-                inc a
-                ld (hl), a
-                inc hl
-                jp @-add_neighbours_1
-
-    @match_more_2:
-                ; append to existing match list entry for ix+16
-                ld a, ixl
-                add a, 16
-                ld (de), a
-                ld (ix+1), 0 ; mark tile as done
-                ; push the neighbours of ix+16 into search stack
-                ; (we do this via a, which is set to ixl+16)
-                inc a
-                ld (hl), a
-                inc hl
-                jp @-add_neighbours_1
-     
-    @match_more_3:
-                ; append to existing match list entry for ix-1
-                ld a, ixl
-                dec a
-                ld (de), a
-                ld (ix+1), 0 ; mark tile as done
-                ; push the neighbours of ix-1 into search stack
-                ; (we do this via a, which is set to ixl-1)
-                inc a
-                ld (hl), a
-                inc hl
-                jp @-add_neighbours_1
-    
-    @match_more_4:
-                ; append to existing match list entry for ix-16
-                ld a, ixl
-                sub 16
-                ld (de), a
-                ld (ix+1), 0 ; mark tile as done
-                ; push the neighbours of ix-1 into search stack
-                ; (we do this via a, which is set to ixl-1)
-                inc a
-                ld (hl), a
-                inc hl
-                jp @-add_neighbours_1
+                ; we've already looked at all the other neighbours of ix+0
+                ; and this was the only one that matched, so carry on from here
+                jp @search_from_here
 
     @DONE:
                 ; phew!
