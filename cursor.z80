@@ -1,6 +1,4 @@
 ; TODO diagonals (should be supported)
-; TODO controller treats 'left PLUS right' as left , but distinct from left-on-its-own, which trips up the keyrepeat
-; (should probably just ignore 'left PLUS right' and 'up PLUS down' combinations)
 
 keyrepeat_ctr: defb 0
 keyrepeat_dirs: defb 0

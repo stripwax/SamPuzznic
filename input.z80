@@ -55,6 +55,23 @@ get_input:
                 jr nz, @+next
                 or controller_flags_dirs_right ; set key flag for RIGHT
     @next:
+                ; check for invalid combinations.
+                ; left + right is disallowed
+                ; up + down is disallowed
+                ld b, a
+                and controller_flags_dirs_left + controller_flags_dirs_right
+                cp controller_flags_dirs_left + controller_flags_dirs_right
+                ld a, b ; doesn't affect flags
+                jr nz, @done_checking_left_right_combo
+                and 255 - controller_flags_dirs_left - controller_flags_dirs_right
+    @done_checking_left_right_combo:
+                ld b, a
+                and controller_flags_dirs_up + controller_flags_dirs_down
+                cp controller_flags_dirs_up + controller_flags_dirs_down
+                ld a, b ; doesn't affect flags
+                jr nz, @done_checking_up_down_combo
+                and 255 - controller_flags_dirs_up - controller_flags_dirs_down
+    @done_checking_up_down_combo:
                 ld (controller_flags_dirs), a
                 ret
 
