@@ -84,6 +84,7 @@ game_loop:
                 call draw_sliders
                 call draw_overlays
                 call render_bonus
+                call render_score
                 call music_tick
                 call sfx_tick
                 jr game_loop
@@ -134,6 +135,7 @@ main:
 
                 call debug_memcpy_level_data
                 call init_game_state
+                call init_score
                 call render_puzzle_tiles
                 call count_remaining_tiles
                 call render_remaining_tiles
@@ -153,9 +155,11 @@ INCLUDE "sfx.z80"
 INCLUDE "dirty_tiles.z80"
 INCLUDE "falling.z80"
 INCLUDE "slider.z80"
+INCLUDE "score.z80"
 INCLUDE "bonus.z80"
 INCLUDE "puzzle_init.z80"
 INCLUDE "puzzles.z80"
+INCLUDE "text.z80"
 INCLUDE "bitmaps.z80"
 INCLUDE "palette.z80"
 

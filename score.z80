@@ -1,0 +1,106 @@
+; score is up to 9999990 (according to Puzznic arcade game)
+; represent as bcd, with one trailing 0 digits
+
+score_bcd_1: defb 0
+score_bcd_2: defb 0
+score_bcd_3: defb 0
+
+init_score:
+        ; start of game but not between levels!
+        xor a
+        ld (score_bcd_1), a
+        ld (score_bcd_2), a
+        ld (score_bcd_3), a
+        ret
+
+add_score:
+        ; add a bcd amount in bc to the score
+        ld a, (score_bcd_3)
+        add a, c
+        daa
+        ld (score_bcd_3), a
+        ret nc
+        ld a, (score_bcd_2)
+        adc b
+        daa
+        ld (score_bcd_2), a
+        ret nc
+        ld a, (score_bcd_1)
+        adc 0
+        daa
+        ld (score_bcd_1), a
+        ret
+
+render_score:
+        ; skip leading zeros
+        ld de, 0
+        ld a, (score_bcd_1)
+        and a
+        jr z, @+skip_zeros
+        ld b, a
+        srl a
+        srl a
+        srl a
+        srl a
+        and a
+        jr z, @+skip_one_zero
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_one_zero:
+        ld e, 4
+        ld a, b
+        and 15
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_zeros:
+        ld a, (score_bcd_2)
+        and a
+        jr z, @+skip_zeros
+        ld b, a
+        srl a
+        srl a
+        srl a
+        srl a
+        jr z, @+skip_one_zero
+        ld e, 8
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_one_zero:
+        ld e, 12
+        ld a, b
+        and 15
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_zeros:
+        ld a, (score_bcd_3)
+        and a
+        jr z, @+skip_zeros
+        ld b, a
+        srl a
+        srl a
+        srl a
+        srl a
+        jr z, @+skip_one_zero
+        ld e, 16
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_one_zero:
+        ld e, 20
+        ld a, b
+        and 15
+        push de
+        call digit_a_xy_de
+        pop de
+    @skip_zeros:
+        ; always render a final '0' character
+        ; todo, this never changes, so maybe only render
+        ; it when first drawing the screen
+        ld e, 24
+        ld a, 0
+        call digit_a_xy_de ; optimize, JP instead of call+ret?
+        ret
