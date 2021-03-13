@@ -98,6 +98,11 @@ draw_cursor:
 
 
 update_cursor_position:
+                ; controller can be periodically disabled during game logic
+                ; so check that first
+                ld a, (controller_flags_disabled)
+                and a
+                ret nz
     @check_fire:
                 ; If fire is not held, then cursor moves up/down/left/right,
                 ; subject to boundaries (i.e. cannot pass through tile==2)
@@ -467,3 +472,13 @@ update_cursor_position:
                 call push_dirty_tile
                 ret
 
+
+lock_controller:
+                ld a, 1
+                ld (controller_flags_disabled), a
+                ret
+
+unlock_controller:
+                xor a
+                ld (controller_flags_disabled), a
+                ret
