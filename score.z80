@@ -19,7 +19,6 @@ add_score:
         add a, c
         daa
         ld (score_bcd_3), a
-        ret nc
         ld a, (score_bcd_2)
         adc b
         daa
