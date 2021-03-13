@@ -28,9 +28,6 @@ check_match:
                 inc hl
                 jr @-keep_seeing_if_any_found
     @nothing_in_freefall:
-                ; (if all tiles have stopped falling, then unlock controller)
-                ; FIXME this seems like it's in the wrong place.
-                call unlock_controller
                 
                 ; look for matches
                 ; ALGORITHM:
@@ -277,12 +274,35 @@ check_match:
                 ; find matches
                 ld a, (match_list)
                 cp 255
-                ret z; if the start of the list is the end, there's no matches
+                jr nz, @+we_found_some_matches; if the start of the list is the end, there's no matches
+                ; we found no matches. we're done looking for matches.
+                ; so, unlock the controller and reinitialize the bonus tier
+                ld a, (controller_flags_disabled)
+                and a
+                ret z; already unlocked
+                ;
+                ; SOMETHING IS WRONG, SHOULD I INCLUDE THIS HERE? YES? NO? CONFUSED.
+                call init_bonus ; TODO OPTIMIZE inline
+                call unlock_controller; TODO OPTIMIZE inline,  also jp instead of call/ret?
+                ; 
+                ret
 
+    @we_found_some_matches:
                 ; woohoo we found a match
                 ld a, 1
                 ld (destruct_frame), a
-                call lock_controller
+
+                ; is controller already locked (i.e. this is a subsequent triggered match?)
+                ld a, (controller_flags_disabled)
+                and a
+                jr nz, @+already_locked ; TODO OPTIMIZE just ret nz?
+                ; controller was not locked
+                ; so: lock the controller, but also indicate that we're now
+                ; starting a bonus calculation from the lowest tier (the tier
+                ; is sticky but resets when all triggered matches have finished)
+                call lock_controller ; TODO OPTIMIZE inline
+                ; call init_bonus ; TODO OPTIMIZE inline
+            @already_locked:                
                 ret
 
 render_destruct:
@@ -301,7 +321,7 @@ render_destruct:
                 ret z
 
                 cp 32
-                jr c, @phase_1
+                jp c, @phase_1
                 cp 60
                 jp c, @phase_2
 
@@ -310,22 +330,62 @@ render_destruct:
                 ld (destruct_frame), a
                 call clear_falling_tiles ; TODO is this necessary? it should already be empty
 
-                ; TODO count number of matches (the bonus logic needs to know)
-                ; ...
-                ; for now, just add 750 points to the score (because why not)
-                ld bc, &0075 ; bcd, divided by ten since last digit is always zero
+                ; count number of matches (the bonus logic needs to know)
+                ; as well as the size of the match (the score and bonus logic both
+                ; need this))
+                ld hl, match_list
+                ld de, 0 ; some counters for matches used by the bonus calculation
+                ld a, 255 ; we're just looking for end markers
+        @next_match_found:
+                inc hl ; skip the tile type, we don't care here
+                ld c, 2 ; initialize count of tiles here. we know there's at least two
+                inc hl ; .. so skip the first two tiles
+                inc hl
+                cp (hl) ; end marker?
+                jr z, @+finished_counting_this_match
+
+        @next_this_match:
+                ; keep counting
+                inc hl
+                inc c
+                cp (hl)
+                jr nz, @-next_this_match
+                ; b now holds the number of tiles in the match
+                ; convert to score: 2-match is 100 points, 3-match is 200 points.
+                ; no idea what 4-match and above might be, so I'll just say 4-match
+                ; is 300 points, etc etc.
+                ; this implementation assumes you can't get more than a 9-match!
+        @finished_counting_this_match:
+                ; count total number of tiles matched since that drives one of the bonus
+                ; calculations
+                ; also count total number of matches since that drives another of the bonus
+                ; calculations
+                ld a, e
+                add c
+                ld e, a ; e = total number of tiles matched
+                inc d ; d = total number of simultaneous matches
+                dec c
+                sla c ; convert to tens (i.e. bcd shift left 4 bits)
+                sla c
+                sla c
+                sla c
+                ld b, 0 ; now, bc = &MNOP bcd, where P = tens, O = hundreds, N = thousands (=0), M = ten-thousands (=0)
                 call add_score
+                ld a, 255 ; get 255 back into a for next iteration
+                ; is this now the end of the match list?
+                inc hl
+                cp (hl) ; i.e. compare (hl) with 255 still
+                jr nz, @-next_match_found
 
-                ; TODO set up the match animation
-                ; which includes locking the cursor in-place (until match animations
-                ; have completed)
-                ; note that, cursor is stil locked during the falling AFTER match
-                ; animations! (this enables a subsequent match-after-falling-after-match
-                ; to trigger another bonus)
-                ; ...
-                ; if any of the tiles being matched are actually the one the cursor
-                ; is locked to, clear the locked flag
+                ; now here, we've got:
+                ; d = number of simultaneous matches
+                ; e = number of tiles matches simultaneously
+                ; bonus for e is:   4 => 400 , 5 => 1000, 6+ => ????
+                ; bonus for d is relevant only on 'subsequent' triggered matches
+                call calculate_bonus_de
 
+                ; now loop again, this time working out the falling changes etc
+                ; TODO combine these loops together
                 ld h, tiles/256
                 ld de, match_list
                 ld a, (de) ; this is the tile type
@@ -382,7 +442,9 @@ render_destruct:
                 ld a, (falling_tiles) ; head
                 inc a ; cp 255
                 ret nz ; a != 255 therefore things are still falling therefore keep controller LOCKED
+                ; TODO SOMETHING IS WRONG, SHOULD I INCLUDE THE FOLLOWING OR KEEP THE EXCLUDED?
                 call unlock_controller
+                call init_bonus ; TODO OPTIMIZE inline ; may not be necessary to call this at all here?
                 ret
 
         @phase_1:

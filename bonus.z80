@@ -9,8 +9,10 @@
 ; as a direct result of the tile move you just did).
 ; 
 ; A regular 2-match or 3-match has no bonus
-; Two simultaneous 2-matches has 400 bonus
-; A 2-match and a 3-match simultanously has 1000 bonus.
+; Two simultaneous 2-matches (i.e. 4 tiles) has 400 bonus
+; A 2-match and a 3-match (i.e. 5 tiles) simultanously has 1000 bonus.
+; Q: Two simultanous 3-matches (i.e. 6 tiles), or more, has what kind of bonus?
+; A: ?
 ;
 ; Trigger bonus:
 ; After a match has been created, and tiles disappear causing tiles to fall
@@ -52,6 +54,89 @@
 ;    1000 bonus (for the triggered 3-match) followed by 2000 bonus for all the subsequent triggered matches
 ;    https://www.youtube.com/watch?v=Wpy5U2_O55E  at 8:48
 
+init_bonus:
+                    xor a
+                    ld (bonus_tier), a
+                    ret
+ds ALIGN 256
+bonus_scores: defw &0000, &0000, &0060, &0100, &0200
+
+calculate_bonus_de:
+                    ; on entry:
+                    ; d = number of simultaneous matches
+                    ; e = number of tiles matches simultaneously
+                    ; if tier = 0, then bonus = 400 or 1000 according to e
+                    ;              and tier goes to 1
+                    ; if tier >= 1, we add d to tier,
+                    ;               and we also add 1 if e > 2
+                    ;               and bonus = value at that tier
+                    ; (tier is capped at 4)
+                    ld a, (bonus_tier)
+                    and a
+                    jr z, @initial_bonus
+        @triggered_bonus:
+                    add d ; a = tier + number of simultaneous matches (at least 1)
+                    ld b, a ; backup
+                    ld a, e
+                    cp 3
+                    ld a, b ; doesn't affect flags
+                    jr c, @+_2_tiles_matched
+        @_3_or_more_tiles_matched:
+                    inc a
+        @_2_tiles_matched:
+                    cp 5
+                    jr c, @+tier_less_than_5
+                    ld a, 4
+        @tier_less_than_5:
+                    ld (bonus_tier), a
+                    ld (bonus_icon), a
+                    ld h, bonus_scores/256
+                    add a, a ; multiply by 2 since bonus_scores table contains dwords
+                    ld l, a
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    call add_score
+                    ld a, &55
+                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+                    ld a, 1
+                    ld (bonus_icon_frame), a
+                    ret
+
+        @initial_bonus:
+                    ; next tier is 1, it seems (from gameplay), regardless
+                    ; of how many matches in initial bonuse
+                    ld a, 1
+                    ld (bonus_tier), a
+                    ld a, e
+                    cp 4
+                    jr c, @+_2_or_3_tiles_matched
+                    cp 5
+                    jr c, @+_4_tiles_matched
+        @_5_or_more_tiles_matched:
+                    ld bc, &0100
+                    call add_score
+                    ld a, 3
+                    ld (bonus_icon), a ; bonus icon[3] is 1000
+                    ld a, &55
+                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+                    ld a, 1
+                    ld (bonus_icon_frame), a
+                    ret
+        @_4_tiles_matched:
+                    ld bc, &0040
+                    call add_score
+                    ld a, 1
+                    ld (bonus_icon), a ; bonus icon[1] is 400
+                    ld a, &55
+                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+                    ld a, 1
+                    ld (bonus_icon_frame), a
+                    ret
+        @_2_or_3_tiles_matched:
+                    ; no bonus  ;-)
+                    ret
+                 
 render_bonus:
                     ;
                     ret
