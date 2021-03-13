@@ -312,6 +312,9 @@ render_destruct:
 
                 ; TODO count number of matches (the bonus logic needs to know)
                 ; ...
+                ; for now, just add 750 points to the score (because why not)
+                ld bc, &0075 ; bcd, divided by ten since last digit is always zero
+                call add_score
 
                 ; TODO set up the match animation
                 ; which includes locking the cursor in-place (until match animations
