@@ -1,7 +1,5 @@
 draw_clock:
-                ; method: convert 4-bit (bcd) digit into
-                ; a lookup into font data. one 8x8 char takes 8 bytes (monochrome)
-                ld hl, 64*128
+                ; minutes
                 ld a, (clock_min_bcd)
                 ld c, a
                 ; top minute decimal
@@ -11,78 +9,30 @@ draw_clock:
                 rrca
                 rrca
                 rrca
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-
-                inc h
-                ld l,0
+                ld de, 32*128 ; y*128+(x/2)
+                call digit_a_xy_de
                 ; bottom minute decimal
                 ld a, c
                 and 15
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
+                ld de, 32*128 + 4
+                call digit_a_xy_de
 
-                inc h
-                ld l,0
+                ; seconds
                 ld a, (clock_sec_bcd)
                 ld c, a
-                ; top minute second
+                ; top second decimal
                 and 240
                 rrca
                 rrca
                 rrca
                 rrca
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-                
-                inc h
-                ld l,0
+                ld de, 32*128 + 12 ; y*128+(x/2)
+                call digit_a_xy_de
                 ; bottom second decimal
                 ld a, c
                 and 15
-                jr z, @+empty
-                ld b,a
-        @lp:
-                ld (hl), 2*17
-                inc hl
-                djnz @-lp
-        @empty:
-                ld b,10
-        @lp:
-                ld (hl), 0
-                inc hl
-                djnz @-lp
-
+                ld de, 32*128 + 16 ; y*128+(x/2)
+                call digit_a_xy_de
                 ret
 
 update_clock:
