@@ -73,8 +73,6 @@ game_loop:
                 call fall_tile_detect
                 call slider_update
                 call check_match
-                call render_destruct ; this will call decrement on remaining blocks upon completion
-                call render_bonus
                 call update_clock
                 call check_clock_30
                 call check_clock_game_over
@@ -82,8 +80,10 @@ game_loop:
                 call wait_frame
                 call draw_clock
                 call redraw_dirty
+                call render_destruct ; this will call decrement on remaining blocks upon completion
                 call draw_sliders
                 call draw_overlays
+                call render_bonus
                 call music_tick
                 call sfx_tick
                 jr game_loop
