@@ -1,6 +1,7 @@
 ; render simple text to screen
 ; this is for debug purposes right now
 digit_a_xy_de:
+            ; modifies: hl, de, bc
             ; render bcd digit in a (0-9) to screen location at de
             ld h, digit_bitmap/256
             ; multiply a by 32 to get offset into table
