@@ -32,7 +32,7 @@ draw_clock:
                 ld a, c
                 and 15
                 ld de, 32*128 + 16 ; y*128+(x/2)
-                call digit_a_xy_de
+                call digit_a_xy_de ; TODO optimize maybe JP rather than call+ret?
                 ret
 
 update_clock:
