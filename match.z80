@@ -3,10 +3,17 @@ check_match:
                 ; NB if ANY tiles are in freefall, do NOT look for any matches
                 ; because, for gameplay reasons, we only look for matches when
                 ; all tiles are on firm ground (although this includes sliders)
+                ; NB if we're already doing a match destruction animation,
+                ; don't go checking for matches at the same time, that's pointless
+                ; (and it would reset our destruction animation frame counter and
+                ; result in an infinite loop. and that's bitter truth).
+
+                ld a, (destruct_frame)
+                and a
+                ret nz
 
                 xor a
                 ld (num_matches), a
-
                 ; any tiles in freefall?
                 ld hl, falling_tiles
     @keep_seeing_if_any_found:
@@ -21,6 +28,10 @@ check_match:
                 inc hl
                 jr @-keep_seeing_if_any_found
     @nothing_in_freefall:
+                ; (if all tiles have stopped falling, then unlock controller)
+                ; FIXME this seems like it's in the wrong place.
+                call unlock_controller
+                
                 ; look for matches
                 ; ALGORITHM:
                 ; temporarily copy the grid into work area.
@@ -185,10 +196,11 @@ check_match:
                 jp @add_neighbours_1
 
     @next_item_from_search_stack:
+                ; are we already past the end of the stack (i.e. stack is empty)?
                 ld a, (hl)
-                dec hl ; pop off the search stack
                 cp 255
                 jr z, @+done_searching ; TODO OPTIMISE just jump to keep_looking?
+                dec hl ; pop off the search stack
                 jp @-search_from_here
 
     @done_searching:
@@ -263,13 +275,41 @@ check_match:
                 ld (match_list_tail), de
 
                 ; find matches
-                ld h, tiles/256
-                ld de, match_list
-                ld a, (de) ; this is the tile type
+                ld a, (match_list)
                 cp 255
                 ret z; if the start of the list is the end, there's no matches
 
                 ; woohoo we found a match
+                ld a, 1
+                ld (destruct_frame), a
+                call lock_controller
+                ret
+
+render_destruct:
+                ; this will call decrement on remaining blocks upon completion
+                ; this is the sequence
+                ; 1. lock (i.e. disable) controller
+                ; 2. flashing tiles on off: 4 frames on, 4 frames off (total 32 frames)
+                ; 3. trigger a bonus overlay if necessary
+                ; 4. render an explosion/shattering animation (total 24 frames)
+                ; 5. remove the tiles from the game and playfield and update "remaining tiles"
+                ;    (5b. also triggers a falling process for tiles above the ones removed)
+                ; 6. re-enable controller
+                ; 7. if all tiles have been destroyed, start the 'CLEAR!' puzzle complete process
+                ld a, (destruct_frame)
+                and a
+                ret z
+
+                cp 32
+                jr c, @phase_1
+                cp 60
+                jp c, @phase_2
+
+                ; on frame 60 - final steps (5 + 6)
+                xor a
+                ld (destruct_frame), a
+                call clear_falling_tiles ; TODO is this necessary? it should already be empty
+
                 ; TODO count number of matches (the bonus logic needs to know)
                 ; ...
 
@@ -282,6 +322,10 @@ check_match:
                 ; ...
                 ; if any of the tiles being matched are actually the one the cursor
                 ; is locked to, clear the locked flag
+
+                ld h, tiles/256
+                ld de, match_list
+                ld a, (de) ; this is the tile type
 
         @next_this_match:
                 inc de
@@ -308,7 +352,7 @@ check_match:
                 xor a
                 ld (controller_flags_tile_captured), a
 
-    @not_captured:
+        @not_captured:
                 ; and make the stuff above it fall
                 push hl
                 ld a, l
@@ -330,7 +374,120 @@ check_match:
                 jr z, @+END_ALL_MATCHES
                 jp @-next_this_match
         @END_ALL_MATCHES:
-                ; done. we can erase the match list, or leave it, whatever
+                ; done with final sequence
+                ; anything falling? if so, controller is still locked!!!
+                ld a, (falling_tiles) ; head
+                inc a ; cp 255
+                ret nz ; a != 255 therefore things are still falling therefore keep controller LOCKED
+                call unlock_controller
+                ret
+
+        @phase_1:
+                ld hl, match_list
+                inc a
+                ld (destruct_frame), a
+        @next_match_in_phase_1:
+                and 4
+                ld b, a
+
+                ; set b to the tile: either the actual tile (=a) or the blank tile (=4)
+                ; based on the alternating bit in b
+                bit 2, b
+                ld b, 4 ; DOES NOT AFFECT FLAGS
+                jr nz, @skip
+                ld b, (hl) ; this is the tile type
+        @skip:
+        @next_this_match:
+                inc hl
+                ld a, (hl) ; this is the offset into tiles
+                cp 255
+                jr z, @+END_THIS_MATCH
+
+                ; convert xy into screen de
+                ld c, a
+                and 15
+                add a, a
+                add a, a
+                add a, a
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, c ; a = y
+                and 240
+                srl a
+                ld d, a
+                ld a, b ; the actual tile to draw
+
+                push hl
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop hl
+
+                jp @-next_this_match
+        @END_THIS_MATCH:
+                inc hl
+                ld a, (hl) ; this is the tile type
+                cp 255
+                jr z, @+END_ALL_MATCHES
+                ld a, (destruct_frame)
+                jp @-next_match_in_phase_1
+        @END_ALL_MATCHES:
+                ; done
+                ret
+
+        @phase_2:
+                ; TODO do this properly once we have destruction/shattering bitmaps
+                ; for now, fake it, just flash the tile really fast
+                ld hl, match_list
+                inc a
+                ld (destruct_frame), a
+        @next_match_in_phase_2:
+                and 1
+                ld b, a
+
+                ; set b to the tile: either the actual tile (=a) or the empty space (=0)
+                ; based on the alternating bit in b
+                bit 0, b
+                ld b, 0 ; DOES NOT AFFECT FLAGS
+                jr nz, @skip
+                ld b, (hl) ; this is the tile type
+        @skip:
+        @next_this_match:
+                inc hl
+                ld a, (hl) ; this is the offset into tiles
+                cp 255
+                jr z, @+END_THIS_MATCH
+
+                ; convert xy into screen de
+                ld c, a
+                and 15
+                add a, a
+                add a, a
+                add a, a
+                add a, 32
+                ld e, a ; e = x*8+32
+                ld a, c ; a = y
+                and 240
+                srl a
+                ld d, a
+                ld a, b ; the actual tile to draw
+
+                push hl
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop hl
+
+                jp @-next_this_match
+        @END_THIS_MATCH:
+                inc hl
+                ld a, (hl) ; this is the tile type
+                cp 255
+                jr z, @+END_ALL_MATCHES
+                ld a, (destruct_frame)
+                jp @-next_match_in_phase_2
+        @END_ALL_MATCHES:
+                ; done
                 ret
 
 
@@ -348,7 +505,3 @@ search_stack: defs 80 ; grows upwards
 match_list: defs 8*10/2*4 ; extreme worst case. 8x10 tiles, of pairs, with 4 bytes per match (i.e. tile id, two xys, and a 255 terminator)
 match_list_tail: defw 0
 num_matches: defb 0
-
-render_destruct:
-                ; this will call decrement on remaining blocks upon completion
-                ret
