@@ -92,8 +92,10 @@ controller_flags_dirs: defb 0
 controller_flags_fire: defb 0
 controller_flags_flashing_ctr: defb 0 ; counts number of frames for flashing cursor
 controller_flags_tile_captured: defb 0
+controller_flags_disabled: defb 0
 
 render_flags: defb 0
+destruct_frame: defb 0
 game_state_zero_end:
 
 ; following is calculated just prior to start of game loop
