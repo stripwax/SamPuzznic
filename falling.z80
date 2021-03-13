@@ -87,7 +87,7 @@ draw_falling_tiles:
                 jr @-next
     @not_dead:
                 ; a = YYYYxxxx
-                ; for screen: multiply both x and y by 8 (and add 32 in x direction)
+                ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
@@ -96,8 +96,8 @@ draw_falling_tiles:
                 add a,a ; a = x * 2
                 add a,a; a = x * 4
                 add a,a ; a = x * 8
-                add a, 32
-                ld e, a ; e = x*8+32
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c
                 and 240
                 srl a ; a = y * 8

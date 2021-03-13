@@ -412,8 +412,8 @@ render_destruct:
                 add a, a
                 add a, a
                 add a, a
-                add a, 32
-                ld e, a ; e = x*8+32
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
                 and 240
                 srl a
@@ -467,8 +467,8 @@ render_destruct:
                 add a, a
                 add a, a
                 add a, a
-                add a, 32
-                ld e, a ; e = x*8+32
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
                 and 240
                 srl a

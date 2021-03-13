@@ -1,7 +1,7 @@
 render_puzzle_tiles:
                 ld hl, tiles ; where the tile data is
                 ld bc, 10*256+12 ; count 12 rows and 10 columns
-                ld de, 32 ; this is 12*0+0+32 i.e. x=0 and y=0
+                ld de, GRID_X_OFFSET ; this is 12*0+0+32 i.e. x=0 and y=0
     @next_col:
                 ld a, (hl)
                 push bc ; TODO OPTIMIZE THIS AWAY
@@ -24,7 +24,7 @@ render_puzzle_tiles:
                 inc hl
                 inc hl
                 ld b, 10 ; reset column counters for next row
-                ld e, 32 ; column zero
+                ld e, GRID_X_OFFSET ; column zero
                 ld a, d ; next row on screen (128*16 pixels = 256*8 bytes)
                 add 8   ; ...
                 ld d, a ; ...

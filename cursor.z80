@@ -38,7 +38,7 @@ draw_cursor:
                 add a,a
                 add a,a
                 add a,a
-                add 32
+                add GRID_X_OFFSET
                 add a, l ; <-- this is what's different
                 ld l,a
                 ld a, d
@@ -61,7 +61,7 @@ draw_cursor:
                 add a,a
                 add a,a
                 add a,a
-                add 32
+                add GRID_X_OFFSET
                 ld l,a
                 ld a, d
                 ; 16 pixels high = multiply by 8

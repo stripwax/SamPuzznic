@@ -40,7 +40,7 @@ redraw_dirty:
                 jr z, @+end
                 inc hl
                 ; a = YYYYxxxx
-                ; for screen: multiply both x and y by 8 (and add 32 in x direction)
+                ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
@@ -56,8 +56,8 @@ redraw_dirty:
                 add a, a
                 add a, a
                 add a, a
-                add a, 32
-                ld e, a ; e = x*8+32
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
                 and 240
                 srl a
@@ -75,8 +75,8 @@ redraw_dirty:
                 add a, a
                 add a, a
                 add a, a
-                add a, 32
-                ld e, a ; e = x*8+32
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
                 and 240
                 srl a

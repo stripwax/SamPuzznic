@@ -3,3 +3,5 @@
 FPS: equ 50
 NUM_NON_TILES: equ 4 ; 0 = blank, 1 = wall, 2 = bricks, 3 = wall but cursor can pass . 4 = triangle is the first tile, etc
 IMPENETRABLE_TILE: equ 2
+GRID_X_OFFSET: equ 44 ; how many bytes (pixels/2) in from the left-hand-edge of the screen should the grid be drawn
+CLOCK_Y_OFFSET: equ 20 ; how many rows down from the top of the screen should the clock be shown

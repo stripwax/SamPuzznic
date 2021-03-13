@@ -8,12 +8,12 @@ draw_clock:
                 rrca
                 rrca
                 rrca
-                ld de, 32*128 ; y*128+(x/2)
+                ld de, CLOCK_Y_OFFSET*128 ; y*128+(x/2)
                 call digit_a_xy_de
                 ; bottom minute decimal
                 ld a, (clock_min_bcd)
                 and 15
-                ld de, 32*128 + 4
+                ld de, CLOCK_Y_OFFSET*128 + 4
                 call digit_a_xy_de
 
                 ; seconds
@@ -24,12 +24,12 @@ draw_clock:
                 rrca
                 rrca
                 rrca
-                ld de, 32*128 + 12 ; y*128+(x/2)
+                ld de, CLOCK_Y_OFFSET*128 + 12 ; y*128+(x/2)
                 call digit_a_xy_de
                 ; bottom second decimal
                 ld a, (clock_sec_bcd)
                 and 15
-                ld de, 32*128 + 16 ; y*128+(x/2)
+                ld de, CLOCK_Y_OFFSET*128 + 16 ; y*128+(x/2)
                 call digit_a_xy_de ; TODO optimize maybe JP rather than call+ret?
                 ret
 
