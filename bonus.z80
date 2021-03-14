@@ -1,6 +1,7 @@
 ; The bonus logic seems to be the following:
-
-; I (initial bonus): 400 or 1000
+; S (default score): 100 for a 2-match or 200 for a 2-match
+; I (initial bonus): 400 or 1000 but this is INSTEAD OF the default score
+;                    (i.e. if you get two 2-matches, you get 400, not 400 + 100 + 100 )
 ; T (trigger bonus): 600 -> 1000 -> 2000 -> 2000 -> 2000 -> ....
 ;
 ; Initial bonus:
@@ -104,13 +105,19 @@ calculate_bonus_de:
                     ret
 
         @initial_bonus:
+                    ; 2 tiles match: score 100 (not regarded as a bonus)
+                    ; 3 tiles match: score 200 (not regarded as a bonus)
+                    ; 4 tiles match: score 400 (which shows up as BONUS!)
+                    ; 5 tiles match: score 1000 (which shows as BONUS!)
                     ; next tier is 1, it seems (from gameplay), regardless
-                    ; of how many matches in initial bonuse
+                    ; of how many matches in initial bonus
                     ld a, 1
                     ld (bonus_tier), a
                     ld a, e
+                    cp 3
+                    jr c, @+_2_tiles_matched
                     cp 4
-                    jr c, @+_2_or_3_tiles_matched
+                    jr c, @+_3_tiles_matched
                     cp 5
                     jr c, @+_4_tiles_matched
         @_5_or_more_tiles_matched:
@@ -133,10 +140,31 @@ calculate_bonus_de:
                     ld a, 1
                     ld (bonus_icon_frame), a
                     ret
-        @_2_or_3_tiles_matched:
-                    ; no bonus  ;-)
+        @_2_tiles_matched:
+                    ; no bonus  ;-)  but still score
+                    ld bc, &0010
+                    call add_score
+                    ret
+        @_3_tiles_matched:
+                    ; no bonus  ;-)  but still score
+                    ld bc, &0020
+                    call add_score
                     ret
                  
 render_bonus:
+                    ; show the 'bonus' overlay, if we're supposed to
+                    ld a, (bonus_icon_frame)
+                    and a
+                    ret z ; no bonus so do nothing
                     ;
+                    inc a
+                    cp 24
+                    jr nz, @+still_going
+                    xor a
+                    ld (bonus_icon_frame), a
+                    ret
+        @still_going:
+                    ld (bonus_icon_frame), a
+                    ; ... do something here
+                    ; ...
                     ret

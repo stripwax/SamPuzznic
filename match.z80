@@ -364,13 +364,6 @@ render_destruct:
                 add c
                 ld e, a ; e = total number of tiles matched
                 inc d ; d = total number of simultaneous matches
-                dec c
-                sla c ; convert to tens (i.e. bcd shift left 4 bits)
-                sla c
-                sla c
-                sla c
-                ld b, 0 ; now, bc = &MNOP bcd, where P = tens, O = hundreds, N = thousands (=0), M = ten-thousands (=0)
-                call add_score
                 ld a, 255 ; get 255 back into a for next iteration
                 ; is this now the end of the match list?
                 inc hl
