@@ -59,8 +59,8 @@ redraw_dirty:
                 add a, GRID_X_OFFSET
                 ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
@@ -78,8 +78,8 @@ redraw_dirty:
                 add a, GRID_X_OFFSET
                 ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
                 xor a
                 push hl

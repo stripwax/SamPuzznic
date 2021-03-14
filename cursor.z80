@@ -45,8 +45,8 @@ draw_cursor:
                 ; 16 pixels high = multiply by 8
                 ; (since 256 bytes = 2 rows)
                 ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 add a, h ; <-- this is what's different
                 ld h, a
                 jr @+draw_cursor
@@ -67,8 +67,8 @@ draw_cursor:
                 ; 16 pixels high = multiply by 8
                 ; (since 256 bytes = 2 rows)
                 ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld h, a
                 ; TODO only draw the cursor if the flashing counter tells us to
                 ; i.e. redraw the title where the cursor would be,  the cursor is flashing
