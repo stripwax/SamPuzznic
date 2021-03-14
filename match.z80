@@ -14,20 +14,10 @@ check_match:
 
                 xor a
                 ld (num_matches), a
-                ; any tiles in freefall?
-                ld hl, falling_tiles
-    @keep_seeing_if_any_found:
-                ld a, (hl)
-                ; is it a valid xy coord?
-                ; 255 means end-of-list and
-                ; 254 means a-dead-entry-you-can-skip
-                cp 255
-                jr z, @nothing_in_freefall ; end of list, nothing found, so nothing in freefall
-                cp 254
-                ret nz ; != 254, so a real xy => something in freefall
-                inc hl
-                jr @-keep_seeing_if_any_found
-    @nothing_in_freefall:
+                ; any tiles in freefall? if so, we shouldn't run the
+                ; match checker (it waits until all blocks have stopped falling)
+                call any_tiles_falling ; Z = nothing falling, NZ = something falling
+                ret nz
                 
                 ; look for matches
                 ; ALGORITHM:
@@ -470,8 +460,8 @@ render_destruct:
                 add a, GRID_X_OFFSET
                 ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
                 ld a, b ; the actual tile to draw
 
@@ -525,8 +515,8 @@ render_destruct:
                 add a, GRID_X_OFFSET
                 ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c ; a = y
-                and 240
-                srl a
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
                 ld a, b ; the actual tile to draw
 

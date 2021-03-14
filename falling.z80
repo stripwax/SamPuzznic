@@ -55,6 +55,11 @@ check_falling_tile_hl:
                 ld (hl), a
                 ret
 
+; FIXME TODO : the below combines process (update) and drawing, and is
+; extra complex as a result. Should split into an update step, and a draw
+; step (where the latter could be optimised for raster to avoid tearing)
+; Separating might also make it easy(easier) to introduce a gameplay backdrop
+; rather than plan black
 draw_falling_tiles:
                 ; step through list of falling tiles (x,y) coords
                 ; and erase (redraw) tile rects
@@ -99,8 +104,8 @@ draw_falling_tiles:
                 add a, GRID_X_OFFSET
                 ld e, a ; e = x*8+GRID_X_OFFSET
                 ld a, c
-                and 240
-                srl a ; a = y * 8
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
                 ld b, tiles_flags/256
                 ld a, (bc) ; the state of the tile
@@ -114,13 +119,15 @@ draw_falling_tiles:
                 jr z, @-fatal
                 ENDIF
 
-                and 15  ; bits 0-3 are the y offset
-                ; TODO use a sequence, not just 2 pixels each time
-                ; THIS IS OVERLY SIMPLIFIED FOR NOW
-                ; clear the trail - get the y offset
+                ; Move the tile down 2 pixels.
+                ; TODO consider using a 50fps-appropriate sequence (rather than
+                ; fixed two pixels) since the gameplay is designed for 60fps.
+                ; (or could just use frameskip and keep the update logic as-is)
+                ; First, clear the trail - get the y offset, paint a small black rectangle
                 push de
                 push bc
-                srl a
+                and 15  ; bits 0-3 are the y offset .  clears carry
+                rra ; a = (y & 14) * 128 . really just srl a but rra is cheaper when carry is clear
                 add d
                 ld d, a
                 call fillrect_16x2_black_at_de
@@ -292,11 +299,12 @@ draw_falling_tiles:
                 or 16 ; keep the flag that says 'falling' set
                 ld (bc), a ; write its new y offset back
                 ; add the offset to d, the screen y location
-                and 15
-                srl a ; a*=128
+                and 15 ; clears carry
+                rra ; a*=128 . really just srl a but rra is cheaper when carry is clear
                 jr nc, @+even
     @odd:
-                ; I think we get here due to corruption, currently
+                ; I think we could only get here due to corruption
+                ; as currently our y-coordinates for falling are all even-aligned
                 if DEBUG
                 @fatal:
                 nop
@@ -325,4 +333,21 @@ draw_falling_tiles:
                 pop hl
                 inc hl ; point to next entry in falling tiles for @next loop
                 jp @-next
+
+
+any_tiles_falling:
+                ; modifies HL, A
+                ; Z = nothing falling, NZ = something falling
+                ld hl, falling_tiles
+    @keep_seeing_if_any_found:
+                ld a, (hl)
+                ; is it a valid xy coord?
+                ; 255 means end-of-list and
+                ; 254 means a-dead-entry-you-can-skip
+                cp 255
+                ret z ; end of list, nothing found, so nothing in freefall
+                cp 254
+                ret nz ; != 254, so a real xy => something in freefall
+                inc hl
+                jr @-keep_seeing_if_any_found
 
