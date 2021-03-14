@@ -31,72 +31,87 @@ add_score:
         ret
 
 render_score:
-        ; skip leading zeros
+        ; skip leading zeros until we find a non-zero
+        ; and then don't skip anything
         ld de, 0
         ld a, (score_bcd_1)
         and a
-        jr z, @+skip_zeros
-        srl a
-        srl a
-        srl a
-        srl a
-        and a
-        jr z, @+skip_one_zero
+        jr z, @+skip_bcd1
+        and 240
+        jr z, @+skip_bcd1_hi
+        rrca
+        rrca
+        rrca
+        rrca
         push de
         call digit_a_xy_de
         pop de
-    @skip_one_zero:
+    @skip_bcd1_hi:
         ld e, 4
         ld a, (score_bcd_1)
         and 15
         push de
         call digit_a_xy_de
         pop de
-    @skip_zeros:
-        ld a, (score_bcd_2)
-        and a
-        jr z, @+skip_zeros
-        srl a
-        srl a
-        srl a
-        srl a
-        jr z, @+skip_one_zero
+    @skip_bcd1_do_bcd2:
         ld e, 8
+        ld a, (score_bcd_2)
+        and 240
+        rrca
+        rrca
+        rrca
+        rrca
         push de
         call digit_a_xy_de
         pop de
-    @skip_one_zero:
-        ld a, (score_bcd_2)
+    @skip_bcd2_hi:
         ld e, 12
+        ld a, (score_bcd_2)
         and 15
         push de
         call digit_a_xy_de
         pop de
-    @skip_zeros:
-        ld a, (score_bcd_3)
-        and a
-        jr z, @+skip_zeros
-        srl a
-        srl a
-        srl a
-        srl a
-        jr z, @+skip_one_zero
+    @skip_bcd2_do_bcd3:
         ld e, 16
+        ld a, (score_bcd_3)
+        and 240
+        rrca
+        rrca
+        rrca
+        rrca
         push de
         call digit_a_xy_de
         pop de
-    @skip_one_zero:
+    @skip_bcd3_hi:
         ld e, 20
         ld a, (score_bcd_3)
         and 15
         push de
         call digit_a_xy_de
         pop de
-    @skip_zeros:
+    @final_zero:
         ; always render a final '0' character
         ; todo, this never changes, so maybe only render
         ; it when first drawing the screen
         ld e, 24
         ld a, 0
-        call digit_a_xy_de ; optimize, JP instead of call+ret?
-        ret
+        ;call digit_a_xy_de ; optimize, JP instead of call+ret?
+        ;ret
+        jp digit_a_xy_de
+
+    @skip_bcd1:
+        ; we skipped two leading zeros, we might need to skip more.
+        ld a, (score_bcd_2)
+        and a
+        jr z, @+skip_bcd2
+        and 240
+        jr z, @-skip_bcd2_hi
+        jp @-skip_bcd1_do_bcd2
+    @skip_bcd2:
+        ; we skipped four leading zeros, we might need to skip more.
+        ld a, (score_bcd_3)
+        and a
+        jr z, @-final_zero
+        and 240
+        jr z, @-skip_bcd3_hi
+        jp @-skip_bcd2_do_bcd3
