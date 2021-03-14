@@ -167,7 +167,7 @@ update_cursor_position:
                 ld l, a
                 ld h, tiles/256
                 ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                cp IMPENETRABLE_TILE
                 ret z
                 ; all good, we can move there
                 ld a, l
@@ -191,7 +191,7 @@ update_cursor_position:
                 ld l, a
                 ld h, tiles/256
                 ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                cp IMPENETRABLE_TILE
                 ret z
                 ; all good, we can move there
                 ld a, l
@@ -215,7 +215,7 @@ update_cursor_position:
                 ld l, a
                 ld h, tiles/256
                 ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                cp IMPENETRABLE_TILE
                 ret z
                 ; all good, we can move there
                 ld a, l
@@ -240,7 +240,7 @@ update_cursor_position:
                 ld l, a ; e = y*12 + x
                 ld h, tiles/256
                 ld a, (hl)
-                cp IMPENETRABLE_TILE ; 3 is the magic "wall that is impenetrable" tile
+                cp IMPENETRABLE_TILE
                 ret z
                 ; all good, we can move there
                 ld a, l
