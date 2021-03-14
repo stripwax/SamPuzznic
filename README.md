@@ -20,10 +20,35 @@ I've done.
 Work-In-Progress.
 Tiles graphics imported, lots of other graphics missing.
 Most of the movement/falling logic is in place, including the matching routine, which can find single and multiple
-matches triggered by falls.  Matched tiles currently just 'disappear immediately' without fanfare, but this correctly
-triggers another fall of any tiles above the matched ones.
+matches triggered by falls.  Matched tiles don't have the complete "disappearing" animation yet, but almost finished.
+Matching correctly triggers another fall of any tiles above the matched ones.
 No sliders/elevators yet.
-No level select, scoring, bonus-multiplier graphics, game-over, etc.
+Scoring and bonus calculation seems to be working.
+No bonus-multiplier graphics, game-over, etc.
+
+# TODO
+*  remaining tiles
+*  "clear" condition
+*  end of level scoring
+*  sliders
+*  bonus icon/animation
+*  "next level"
+*  level select between stages? initial level select at start?
+*  fonts?
+*  clock font?
+*  game over? (timeout)
+*  high score table
+*  retry? (i.e. abort, start again)
+*  music?
+*  sfx?
+*  attract screen / demo mode
+*  intro screen
+*  two player mode
+
+# TODO LATER
+*  Passwords for level skip
+*  Gravnic mode
+*  In-game backgrounds and pretty pictures?
 
 # To build
 I use VSCode with pyz80 extension: https://marketplace.visualstudio.com/items?itemName=simonowen.pyz80
