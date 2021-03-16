@@ -1,6 +1,6 @@
 DEBUG: equ 1
 DEBUG_WAIT_ON_START: equ 1
-DEBUG_VSYNC: equ 1
+DEBUG_VSYNC: equ 0
 DEBUG_KEYMATRIX: equ 0
 DEBUG_SLOWMO: equ 0
 DEBUG_LEVEL_NUMBER: equ 20+2 ; level 3-3 (zero-based level so 0 is level 1, etc)
