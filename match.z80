@@ -442,7 +442,7 @@ render_destruct:
                 ; based on the alternating bit in b
                 bit 2, b
                 ld b, 4 ; DOES NOT AFFECT FLAGS
-                jr nz, @skip
+                jr z, @skip
                 ld b, (hl) ; this is the tile type
         @skip:
         @next_this_match:
@@ -484,21 +484,35 @@ render_destruct:
                 ret
 
         @phase_2:
-                ; TODO do this properly once we have destruction/shattering bitmaps
-                ; for now, fake it, just flash the tile really fast
                 ld hl, match_list
                 inc a
                 ld (destruct_frame), a
         @next_match_in_phase_2:
-                and 1
-                ld b, a
-
-                ; set b to the tile: either the actual tile (=a) or the empty space (=0)
-                ; based on the alternating bit in b
-                bit 0, b
-                ld b, 0 ; DOES NOT AFFECT FLAGS
-                jr nz, @skip
-                ld b, (hl) ; this is the tile type
+                ; set b to the tile: either the empty space (=0)
+                ; or one of the destruction animations
+                ; based on the destruct_frame
+                ; Timings:
+                ;     33-40 : blank tile
+                ;     41-48 : frame1
+                ;     49-52 : frame2
+                ;     53-56 : frame3
+                ;     57+   : none
+                cp 41
+                ld b, 4; DOES NOT AFFECT FLAGS
+                jr c, @+skip ; >= 41
+                ; so we're in frames 33-40
+                ; the arcade just shows nothing 
+                cp 57
+                ld b, 0; DOES NOT AFFECT FLAGS
+                jr nc, @+skip ; >= 57
+                ld b, 13 ; frame1
+                cp 49
+                jr c, @+skip ; < 49
+                ld b, 14 ; frame2
+                cp 53
+                jr c, @+skip ; < 53
+                ; otherwise 53-36:
+                ld b, 15 ; frame3
         @skip:
         @next_this_match:
                 inc hl
