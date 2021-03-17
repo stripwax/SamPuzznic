@@ -1,6 +1,8 @@
 ; render simple text to screen
-; this is for debug purposes right now
-digit_a_xy_de:
+
+if DEBUG
+; this version is for debug purposes right now
+debug_digit_a_xy_de:
             ; modifies: hl, de, bc
             ; render bcd digit in a (0-9) to screen location at de
             ld h, digit_bitmap/256
@@ -28,16 +30,180 @@ digit_a_xy_de:
     @nocarry:
             djnz @-outer
             ret            
+ENDIF
+
+digit_a_xy_de:
+            ; modifies: hl, de, bc
+            ; render bcd digit in a (0-9) to screen location at de
+            ld h, digit_bitmap/256
+            ; multiply a by 32 to get offset into table
+            add a, a
+            add a, a
+            add a, a
+            add a, a
+            add a, a ; this might overflow
+            ld l, a
+            jr nc, char_hl_de
+            inc h
+            jp char_hl_de
+
+alpha_a_xy_de:
+            ; modifies: hl, de, bc
+            ; render alphabetic character (upper ascii A=65 etc)
+            ; to screen location at de
+            ; to do, support more characters (need to finish bitmaps) but maybe ok for now
+            ; Special: 48-57 (ascii "0"-"9") are handled by the digit code
+            ld hl, alpha_bitmap
+            sub 32
+            jr z, char_hl_de ; short cut for just " " (space)
+            sub 16
+            cp 10
+            jp c, digit_a_xy_de
+            
+            sub 16;
+            ; a is now=1 for "A", 2 for "B", etc
+            ; a is < 31
+            ; multiply a by 32 to get offset into table
+            ; into bc (i.e. bc = a*32)
+            ld b, 0
+            add a, a
+            add a, a
+            add a, a
+            add a, a ; this might overflow
+            rl b
+            add a, a ; this might overflow
+            rl b
+            ld c, a
+            add hl, bc
+
+char_hl_de:
+            ; modifies: hl, de, bc
+            ; render 8x8 char pointed to by hl, to screen memory pointed to by de
+            LDI
+            LDI
+            LDI
+            LDI
+            dec e
+            inc d
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            inc d
+            LDI
+            LDI
+            LDI
+            LDI
+            dec e
+            inc d
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            ld a, e
+            add 128
+            ld e, a
+            LDI
+            LDI
+            LDI
+            LDI
+            dec e
+            dec d
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec d
+            LDI
+            LDI
+            LDI
+            LDI
+            dec e
+            dec d
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            inc hl
+            dec e
+            ld a, (hl)
+            ld (de), a
+            ret
+
+print_text_hl_de:
+            ; print the message from hl, to screen location de
+            ; message must be zero-terminated
+    @next_char:
+            ld a, (hl)
+            and a
+            ret z
+            inc hl
+            push hl
+            push de
+            call alpha_a_xy_de
+            pop de
+            pop hl
+            ; go right 8 pixels
+            inc de
+            inc de
+            inc de
+            inc de
+            jp @-next_char
 
 ds ALIGN 256
 digit_bitmap:
-            defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
-            defb 0,0,240,0,   0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0, 0, 0, 0
-            defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 240,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 240,  0, 0, 0, 0
-            defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
-            defb 15,0,0,240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 255, 255, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
-            defb 15,255,255,0,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
-            defb 0,255,255,0,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
-            defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
-            defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
-            defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
+;             defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
+;             defb 0,0,240,0,   0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0,0,240,0,  0, 0, 0, 0
+;             defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 240,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 240,  0, 0, 0, 0
+;             defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
+;             defb 15,0,0,240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 255, 255, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
+;             defb 15,255,255,0,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
+;             defb 0,255,255,0,  15, 0, 0, 0,  15, 0, 0, 0,  15, 255, 255, 0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
+;             defb 0,255,255,0,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
+;             defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
+;             defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 240,  0, 0, 0, 0
+MDAT "num.b"
+
+; this doesn't need to be aligned
+alpha_bitmap:
+defb 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ; ascii space
+MDAT "alpha.b"
