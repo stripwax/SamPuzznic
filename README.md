@@ -17,26 +17,28 @@ mostly because I didn't have the requisite skills back then. This is the first '
 I've done.
 
 # Status
-Work-In-Progress.
-Tiles graphics imported, lots of other graphics missing.
-Most of the movement/falling logic is in place, including the matching routine, which can find single and multiple
-matches triggered by falls.  Matched tiles don't have the complete "disappearing" animation yet, but almost finished.
-Matching correctly triggers another fall of any tiles above the matched ones.
-No sliders/elevators yet.
-Scoring and bonus calculation seems to be working.
-No bonus-multiplier graphics, game-over, etc.
+Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you lose" implemented yet
+
+# DONE
+* Tile bitmaps
+* Cursor movement (auto-repeat, locking, impassable blocks).
+* Falling
+* Match detection
+* Destruction animation
+* Clock ticking (animation plays concurrently i.e. clock doesn't halt, unlike ZX Spectrum version)
+* Ascii/numeric font (8x8)
+* Single puzzle
+* Scoring including bonus calculation
 
 # TODO
-*  remaining tiles
-*  "clear" condition
+*  count of remaining tiles
+*  "clear" (win) condition / "time over" (lose) condition
 *  end of level scoring
 *  sliders
 *  bonus icon/animation
 *  "next level"
 *  level select between stages? initial level select at start?
-*  fonts?
 *  clock font?
-*  game over? (timeout)
 *  high score table
 *  retry? (i.e. abort, start again)
 *  music?
@@ -44,10 +46,13 @@ No bonus-multiplier graphics, game-over, etc.
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
+*  diagonal cursor movement not yet done.
+*  joystick not yet done.
 
 # TODO LATER
 *  Passwords for level skip
 *  Gravnic mode
+*  Arcade mode
 *  In-game backgrounds and pretty pictures?
 
 # To build
