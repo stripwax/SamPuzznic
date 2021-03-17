@@ -33,23 +33,27 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 # TODO
 *  count of remaining tiles
 *  "clear" (win) condition / "time over" (lose) condition
-*  end of level scoring
-*  sliders
-*  bonus icon/animation
-*  "next level"
-*  level select between stages? initial level select at start?
-*  clock font?
+*  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
+*  sliders (elevators / moving blocks)
+*  bonus icon/animation (50% done)
+*  information (which puzzle you're on, "Player 1")
+*  'background' bricks and anything else surrounding the play area
+*  "next level" after win condition
+*  level select between stages / initial level select at start
+*  clock font
+*  "panic mode" clock font (30s or less remaining, and again at 15s or less remaining)
+*  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
-*  retry? (i.e. abort, start again)
-*  music?
-*  sfx?
+*  music (20% done)
+*  sfx
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
 *  diagonal cursor movement not yet done.
-*  joystick not yet done.
+*  joystick not yet done (50% done)
 
 # TODO LATER
+*  drop shadow on font? make sure font is clear.
 *  Passwords for level skip
 *  Gravnic mode
 *  Arcade mode
