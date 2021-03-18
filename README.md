@@ -29,13 +29,14 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 * Ascii/numeric font (8x8)
 * Single puzzle
 * Scoring including bonus calculation
+* bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
 
 # TODO
 *  count of remaining tiles
 *  "clear" (win) condition / "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  sliders (elevators / moving blocks)
-*  bonus icon/animation (50% done)
+*  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
 *  "next level" after win condition
