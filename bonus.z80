@@ -98,8 +98,23 @@ calculate_bonus_de:
                     inc hl
                     ld b, (hl)
                     call add_score
-                    ld a, &55
-                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+
+                    ; where should the bonus actually showup on-screen..?? which tile, specifically?
+                    ; I'm just going to take it from the first match tile in my list. not arcade-accurate
+                    ; but it will do for not and we can always change it later
+                    ld hl, match_list
+            @find_match:
+                    ld a, (hl)
+                    cp 254 ; skip 254 (and we shouldn't find any 255 here because WE KNOW there is a valid match in here)
+                    jr c, @match_found
+                    inc hl
+                    jp -@find_match
+                    ; a = the tile type, which we can ignore. find the first xy
+            @match_found:
+                    inc hl
+                    ld a, (hl)
+                    ld (bonus_icon_xy), a
+
                     ld a, 1
                     ld (bonus_icon_frame), a
                     ret
@@ -165,6 +180,48 @@ render_bonus:
                     ret
         @still_going:
                     ld (bonus_icon_frame), a
-                    ; ... do something here
-                    ; ...
+                    ; the bonus icon placement goes up by one pixel row every two frames
+                    ; TODO implement that. for now, I fake it (two pixel rows every four frames)
+                    srl a
+                    srl a
+                    ld d, a
+                    ld a, (bonus_icon_xy)
+                    and 240 ; y
+                    rra ; a = y*128
+                    sub d ; subtract the "rising y" offset
+                    ld d, a
+
+                    ld a, (bonus_icon_xy)
+                    and 15
+                    rla
+                    rla
+                    rla
+                    add GRID_X_OFFSET
+                    ld e, a
+
+                    ld a, (bonus_icon)
+                    ; each bonus tile is 32x16 pixels * 2 (due to mask) = 16x16*2 bytes = 512
+                    dec a ; bonus_icon (0) means nothing
+                    add a, a
+                    add bonus_icon_bitmaps/256
+                    ld h,a
+                    ld l,0
+
+                    call draw_masked_32_16_hl_de
+                    ; also: these locations are going to be dirty next frame
+                    ; TODO optimise. we definitely should not need to redraw the whole tile
+                    ; and we're also drawing (bits of) these already anyway due to the destruction
+                    ; animation. so, probably want to avoid marking matched tiles as dirty?
+                    ld a, (bonus_icon_xy)
+                    call push_dirty_tile
+                    inc a ; since bonus icon is 2 tiles wide
+                    call push_dirty_tile
+                    sub 16 ; since bonus icon moves upwards overwriting the tiles vertically above this one
+                    call push_dirty_tile
+                    dec a ; since bonus icon is 2 tiles wide
+                    call push_dirty_tile
                     ret
+
+defs ALIGN 512
+bonus_icon_bitmaps:
+MDAT "bonus.b"

@@ -452,3 +452,71 @@ fillrect_2x16_black_at_de:
                 ld (de), a
                 ret
 
+
+draw_masked_32_16_hl_de:
+                ; hl points to bitmap with mask (first byte is mask, second byte is pixel data)
+                ; de points to screen
+                @pairs_down: equ FOR 4
+                    @row_l_to_r: equ FOR 16
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    inc d
+                    @row_r_to_l: equ FOR 16
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    dec de
+                    NEXT @row_r_to_l
+                    inc e
+                    inc d
+                NEXT @pairs_down
+                    dec d
+                    ld a, e
+                    add 128
+                    ld e, a
+                    ld a, d
+                    adc 0
+                    ld d, a
+                @pairs_up: equ FOR 4
+                    @row_l_to_r: equ FOR 16
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    dec d
+                    @row_r_to_l: equ FOR 16
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    dec de
+                    NEXT @row_r_to_l
+                    inc e
+                    dec d
+                NEXT @pairs_up
+                ret
