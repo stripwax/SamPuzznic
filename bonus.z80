@@ -178,8 +178,9 @@ render_bonus:
                     ret z ; no bonus so do nothing
                     ;
                     inc a
-                    cp 24
+                    cp 32
                     jr nz, @+still_going
+foofoo:
                     xor a
                     ld (bonus_icon_frame), a
                     ret
