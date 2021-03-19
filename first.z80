@@ -136,6 +136,7 @@ main:
                 call debug_memcpy_level_data
                 call init_game_state
                 call init_score
+                call render_screen_layout
                 call render_puzzle_tiles
                 call count_remaining_tiles
                 call render_remaining_tiles
