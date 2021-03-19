@@ -113,3 +113,25 @@ init_game_state:
                 call init_cursor_controller
 
                 ret
+
+
+render_screen_layout:
+                ld de, PLAYER_Y_OFFSET*128
+                ld hl, strings.PLAYER
+                call print_text_hl_de
+                ld de, TIME_LABEL_Y_OFFSET*128
+                ld hl, strings.TIME
+                call print_text_hl_de
+                ld de, CLOCK_Y_OFFSET*128
+                ld hl, strings.CLOCK
+                call print_text_hl_de
+                ret
+
+strings.PLAYER: defm "PLAYER-1"
+defb 0
+
+strings.TIME: defm "TIME"
+defb 0
+
+; render  0'00"
+strings.CLOCK: defb 32,48,39,48,48,34,0
