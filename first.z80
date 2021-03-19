@@ -83,7 +83,6 @@ game_loop:
                 call render_destruct ; this will call decrement on remaining blocks upon completion
                 call draw_sliders
                 call draw_overlays
-                call render_bonus
                 call render_score
                 call music_tick
                 call sfx_tick
