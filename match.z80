@@ -298,82 +298,48 @@ check_match:
 render_destruct:
                 ; this will call decrement on remaining blocks upon completion
                 ; this is the sequence
-                ; 1. lock (i.e. disable) controller
-                ; 2. flashing tiles on off: 4 frames on, 4 frames off (total 32 frames)
-                ; 3. trigger a bonus overlay if necessary
-                ; 4. render an explosion/shattering animation (total 24 frames)
-                ; 5. remove the tiles from the game and playfield and update "remaining tiles"
+                ; 1. calculate bonus score amount
+                ; 2. lock (i.e. disable) controller
+                ; 3. flashing tiles on off: 4 frames on, 4 frames off (total 32 frames)
+                ; 4. trigger a bonus overlay if necessary
+                ; 5. render an explosion/shattering animation (total 24 frames)
+                ; 6. remove the tiles from the game and playfield and update "remaining tiles"
                 ;    (5b. also triggers a falling process for tiles above the ones removed)
-                ; 6. re-enable controller
-                ; 7. if all tiles have been destroyed, start the 'CLEAR!' puzzle complete process
+                ; 7. re-enable controller
+                ; 8. if all tiles have been destroyed, start the 'CLEAR!' puzzle complete process
+                ;     (this will happen in the game loop though, not happen here)
+                ;
+                ; If nothing is destructed, do nothing (easy)
                 ld a, (destruct_frame)
                 and a
                 ret z
 
-                cp 32
+                ; what phase are we at?
+                inc a
+                ld (destruct_frame), a
+                cp 2
+                jp z, @calculate_bonus_score
+
+                cp 33
                 jp c, @phase_1
-                cp 60
+                cp 41
+                jp z, @trigger_bonus_overlay
+                cp 61
                 jp c, @phase_2
 
                 ; on frame 60 - final steps (5 + 6)
+                ; we add the score
+                ld bc, (bonus_score)
+                call add_score
+
+                ; disable the destruct animation
+                ; that's finished playing out now (although a bonus overlay
+                ; might still be happening, but that's a separate routine)
                 xor a
                 ld (destruct_frame), a
                 call clear_falling_tiles ; TODO is this necessary? it should already be empty
 
-                ; count number of matches (the bonus logic needs to know)
-                ; as well as the size of the match (the score and bonus logic both
-                ; need this))
-                ld hl, match_list
-                ld de, 0 ; some counters for matches used by the bonus calculation
-                ld a, 255 ; we're just looking for end markers
-        @next_match_found:
-                inc hl ; skip the tile type, we don't care here
-                ld c, 2 ; initialize count of tiles here. we know there's at least two
-                inc hl ; .. so skip the first two tiles
-                inc hl
-                cp (hl) ; end marker?
-                jr z, @+finished_counting_this_match
-
-        @next_this_match:
-                ; keep counting
-                inc hl
-                inc c
-                cp (hl)
-                jr nz, @-next_this_match
-                ; b now holds the number of tiles in the match
-                ; convert to score: 2-match is 100 points, 3-match is 200 points.
-                ; no idea what 4-match and above might be, so I'll just say 4-match
-                ; is 300 points, etc etc.
-                ; this implementation assumes you can't get more than a 9-match!
-        @finished_counting_this_match:
-                ; count total number of tiles matched since that drives one of the bonus
-                ; calculations
-                ; also count total number of matches since that drives another of the bonus
-                ; calculations
-                ld a, e
-                add c
-                ld e, a ; e = total number of tiles matched
-                inc d ; d = total number of simultaneous matches
-                ld a, 255 ; get 255 back into a for next iteration
-                ; is this now the end of the match list?
-                inc hl
-                cp (hl) ; i.e. compare (hl) with 255 still
-                jr nz, @-next_match_found
-
-                ; now here, we've got:
-                ; d = number of simultaneous matches
-                ; e = number of tiles matches simultaneously
-                ; bonus for e is:   4 => 400 , 5 => 1000, 6+ => ????
-                ; bonus for d is relevant only on 'subsequent' triggered matches
-                ; FIXME THIS IS IN THE WRONG PLACE
-                ; we need to calculate the bonus earlier, so that we can start
-                ; showing the bonus icon on frame 40  (even though destruct animation
-                ; ends on frame 60 and score changes on frame 60, and bonus
-                ; icon finishes on frame 72)
-                call calculate_bonus_de
-
-                ; now loop again, this time working out the falling changes etc
-                ; TODO combine these loops together
+                ; loop thru matches working out the falling changes etc
                 ld h, tiles/256
                 ld de, match_list
                 ld a, (de) ; this is the tile type
@@ -435,10 +401,64 @@ render_destruct:
                 call init_bonus ; TODO OPTIMIZE inline ; may not be necessary to call this at all here?
                 ret
 
-        @phase_1:
+        @calculate_bonus_score:
+                ; count number of matches (the bonus logic needs to know)
+                ; as well as the size of the match (the score and bonus logic both
+                ; need this)
                 ld hl, match_list
-                inc a
-                ld (destruct_frame), a
+                ld de, 0 ; some counters for matches used by the bonus calculation
+                ld a, 255 ; we're just looking for end markers
+        @next_match_found:
+                inc hl ; skip the tile type, we don't care here
+                ld c, 2 ; initialize count of tiles here. we know there's at least two
+                inc hl ; .. so skip the first two tiles
+                inc hl
+                cp (hl) ; end marker?
+                jr z, @+finished_counting_this_match
+
+        @next_this_match:
+                ; keep counting
+                inc hl
+                inc c
+                cp (hl)
+                jr nz, @-next_this_match
+                ; b now holds the number of tiles in the match
+                ; convert to score: 2-match is 100 points, 3-match is 200 points.
+                ; no idea what 4-match and above might be, so I'll just say 4-match
+                ; is 300 points, etc etc.
+                ; this implementation assumes you can't get more than a 9-match!
+        @finished_counting_this_match:
+                ; count total number of tiles matched since that drives one of the bonus
+                ; calculations
+                ; also count total number of matches since that drives another of the bonus
+                ; calculations
+                ld a, e
+                add c
+                ld e, a ; e = total number of tiles matched
+                inc d ; d = total number of simultaneous matches
+                ld a, 255 ; get 255 back into a for next iteration
+                ; is this now the end of the match list?
+                inc hl
+                cp (hl) ; i.e. compare (hl) with 255 still
+                jr nz, @-next_match_found
+
+                ; now here, we've got:
+                ; d = number of simultaneous matches
+                ; e = number of tiles matches simultaneously
+                ; bonus for e is:   4 => 400 , 5 => 1000, 6+ => ????
+                ; bonus for d is relevant only on 'subsequent' triggered matches
+                ; FIXME THIS IS IN THE WRONG PLACE
+                ; we need to calculate the bonus earlier, so that we can start
+                ; showing the bonus icon on frame 40  (even though destruct animation
+                ; ends on frame 60 and score changes on frame 60, and bonus
+                ; icon finishes on frame 72)
+                call calculate_bonus_de ; TODO OPTIMIZE jp instead of call+ret
+                ret
+
+        @phase_1:
+                ; in phase 1, the tiles flash (alternate between "a blank tile with
+                ; no shape on it" and "the tile with the shape on it" every 4 frames)
+                ld hl, match_list
         @next_match_in_phase_1:
                 and 4
                 ld b, a
@@ -489,9 +509,8 @@ render_destruct:
                 ret
 
         @phase_2:
+                ; in phase 2, we show a sequence of frames of a 'crashing' animation
                 ld hl, match_list
-                inc a
-                ld (destruct_frame), a
         @next_match_in_phase_2:
                 ; set b to the tile: either the empty space (=0)
                 ; or one of the destruction animations
@@ -557,10 +576,12 @@ render_destruct:
                 ; done
                 ret
 
+        @trigger_bonus_overlay:
+                ld a, 1
+                ld (bonus_icon_frame), a
+                ret
 
-; how to track the state for a match that occurs only when a previous match disappears?
-; I guess this actually becomes a different control loop i.e. controller is disabled, just process
-; falling and matching, with (by definition) BONUS enabled for any matches found
+
 
 ; match state
 matched_tile: defb 0

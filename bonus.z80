@@ -72,6 +72,13 @@ calculate_bonus_de:
                     ;               and we also add 1 if e > 2
                     ;               and bonus = value at that tier
                     ; (tier is capped at 4)
+                    ; As a piece of sanity, set the "bonus is displayed"
+                    ; flag to FALSE on entry (it gets enabled LATER, several
+                    ; frames after we did the calculation))
+                    xor a
+                    ld (bonus_icon_frame), a
+                    ld (bonus_score), a
+                    ld (bonus_score+1), a
                     ld a, (bonus_tier)
                     and a
                     jr z, @initial_bonus
@@ -97,7 +104,8 @@ calculate_bonus_de:
                     ld c, (hl)
                     inc hl
                     ld b, (hl)
-                    call add_score
+                    ld (bonus_score), bc
+                    ; WE ACTUALLY ADD THE SCORE ONLY LATER
 
                     ; where should the bonus actually showup on-screen..?? which tile, specifically?
                     ; I'm just going to take it from the first match tile in my list. not arcade-accurate
@@ -114,9 +122,6 @@ calculate_bonus_de:
                     inc hl
                     ld a, (hl)
                     ld (bonus_icon_xy), a
-
-                    ld a, 1
-                    ld (bonus_icon_frame), a
                     ret
 
         @initial_bonus:
@@ -137,33 +142,33 @@ calculate_bonus_de:
                     jr c, @+_4_tiles_matched
         @_5_or_more_tiles_matched:
                     ld bc, &0100
-                    call add_score
+                    ld (bonus_score), bc
+                    ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ld a, 3
                     ld (bonus_icon), a ; bonus icon[3] is 1000
                     ld a, &55
                     ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
-                    ld a, 1
-                    ld (bonus_icon_frame), a
                     ret
         @_4_tiles_matched:
                     ld bc, &0040
-                    call add_score
+                    ld (bonus_score), bc
+                    ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ld a, 1
                     ld (bonus_icon), a ; bonus icon[1] is 400
                     ld a, &55
                     ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
-                    ld a, 1
-                    ld (bonus_icon_frame), a
                     ret
         @_2_tiles_matched:
                     ; no bonus  ;-)  but still score
                     ld bc, &0010
-                    call add_score
+                    ld (bonus_score), bc
+                    ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ret
         @_3_tiles_matched:
                     ; no bonus  ;-)  but still score
                     ld bc, &0020
-                    call add_score
+                    ld (bonus_score), bc
+                    ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ret
                  
 render_bonus:

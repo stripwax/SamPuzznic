@@ -88,6 +88,7 @@ bonus_tier: defb 0
 bonus_icon: defb 0
 bonus_icon_xy: defb 0
 bonus_icon_frame: defb 0 ; 0 means 'bonus icon is not shown', otherwise which frame of animation is to be displayed
+bonus_score: defw 0 ; we calculate the bonus at the time of match, but then add it later, so we need to store it somewhere
 
 controller_flags:
 controller_flags_tile_ptr: defw 0
