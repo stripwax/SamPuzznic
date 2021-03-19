@@ -52,23 +52,16 @@ alpha_a_xy_de:
             ; render alphabetic character (upper ascii A=65 etc)
             ; to screen location at de
             ; to do, support more characters (need to finish bitmaps) but maybe ok for now
-            ; Special: 48-57 (ascii "0"-"9") are handled by the digit code
             ld hl, alpha_bitmap
             sub 32
-            jr z, char_hl_de ; short cut for just " " (space)
-            sub 16
-            cp 10
-            jp c, digit_a_xy_de
-            
-            sub 16;
-            ; a is now=1 for "A", 2 for "B", etc
-            ; a is < 31
+            ; a is <= 64
             ; multiply a by 32 to get offset into table
             ; into bc (i.e. bc = a*32)
             ld b, 0
             add a, a
             add a, a
-            add a, a
+            add a, a ; this might overflow
+            rl b
             add a, a ; this might overflow
             rl b
             add a, a ; this might overflow
