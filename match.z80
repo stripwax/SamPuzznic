@@ -365,6 +365,11 @@ render_destruct:
                 ; e = number of tiles matches simultaneously
                 ; bonus for e is:   4 => 400 , 5 => 1000, 6+ => ????
                 ; bonus for d is relevant only on 'subsequent' triggered matches
+                ; FIXME THIS IS IN THE WRONG PLACE
+                ; we need to calculate the bonus earlier, so that we can start
+                ; showing the bonus icon on frame 40  (even though destruct animation
+                ; ends on frame 60 and score changes on frame 60, and bonus
+                ; icon finishes on frame 72)
                 call calculate_bonus_de
 
                 ; now loop again, this time working out the falling changes etc
