@@ -33,7 +33,7 @@ add_score:
 render_score:
         ; skip leading zeros until we find a non-zero
         ; and then don't skip anything
-        ld de, 0
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2
         ld a, (score_bcd_1)
         and a
         jr z, @+skip_bcd1
@@ -43,57 +43,45 @@ render_score:
         rrca
         rrca
         rrca
-        push de
         call digit_a_xy_de
-        pop de
     @skip_bcd1_hi:
-        ld e, 4
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 4
         ld a, (score_bcd_1)
         and 15
-        push de
         call digit_a_xy_de
-        pop de
     @skip_bcd1_do_bcd2:
-        ld e, 8
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 8
         ld a, (score_bcd_2)
         and 240
         rrca
         rrca
         rrca
         rrca
-        push de
         call digit_a_xy_de
-        pop de
     @skip_bcd2_hi:
-        ld e, 12
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 12
         ld a, (score_bcd_2)
         and 15
-        push de
         call digit_a_xy_de
-        pop de
     @skip_bcd2_do_bcd3:
-        ld e, 16
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 16
         ld a, (score_bcd_3)
         and 240
         rrca
         rrca
         rrca
         rrca
-        push de
         call digit_a_xy_de
-        pop de
     @skip_bcd3_hi:
-        ld e, 20
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 20
         ld a, (score_bcd_3)
         and 15
-        push de
         call digit_a_xy_de
-        pop de
     @final_zero:
         ; always render a final '0' character
-        ; todo, this never changes, so maybe only render
+        ; TODO, this never changes, so maybe only render
         ; it when first drawing the screen
-        ld e, 24
+        ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2 + 24
         ld a, 0
         ;call digit_a_xy_de ; optimize, JP instead of call+ret?
         ;ret
