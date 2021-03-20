@@ -67,6 +67,11 @@ render_remaining_tiles:
                 ; and don't redraw every frame, just when needed
                 ; and maybe we can stagger the updates over a few frames
                 ;
+                ; TODO OPTIMIZE if we know how many tiles we drew on the previous
+                ; render, and we know how many tiles we drew on this render, then
+                ; we know how many blanks to draw.  Don't need to draw all 8 tiles
+                ; every time.  Although of course that would be worst case (somehow
+                ; destroying 7 or 8 different tile types in a single move)
                 ld a, (redraw_remaining_tiles)
                 and a
                 ret z
