@@ -58,7 +58,7 @@ render_remaining_tiles:
                 ; 2. Not reordered. Is the count the same as last time?
                 ld a, (ix+0) ; a = count of the "L"'th tile
                 cp (ix+8) ; compare with count of the "L"'th tile last time
-                jr z, @+totally_optimized_out_drawing_this_tile
+                jr z, @+same_as_last_time
                 ; 3. ok, not the same as last time.  Is it zero this time?
                 and a
                 jr nz, @+not_zero_must_just_be_different
@@ -79,6 +79,15 @@ render_remaining_tiles:
                 ld a, (ix+0)
                 call digit_a_xy_de
                 jp @+done_drawing_this_tile
+
+        @same_as_last_time:
+                ; either was a zero this time (and last time)
+                ; or was the same tile with the same remaining quantity this time and last time
+                ; Figure out which and continue the loop, missing out the redrawing
+                ; in the latter case since that's the whole point of this logic :-)
+                and a
+                jr z, @+skip_zero
+                jp @+totally_optimized_out_drawing_this_tile
 
         @reordered:
                 ; the order of this tile (or a previous one) has changed
