@@ -102,7 +102,13 @@ render_flags: defb 0
 destruct_frame: defb 0
 game_state_zero_end:
 
+; array of remaining tiles
+; element 0: how many of tile A is remaining
+; element 1: how many of tile B is remaining, etc
 ; following is calculated just prior to start of game loop
+; align 8 so that we can look at the bottom 3 bits of
+; address to determine which tile this is
+defs ALIGN 8
 remaining_tiles: defs 8
 
 ;constants:

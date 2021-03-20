@@ -339,6 +339,38 @@ render_destruct:
                 ld (destruct_frame), a
                 call clear_falling_tiles ; TODO is this necessary? it should already be empty
 
+                ; loop thru matches decrementing remaining tiles
+        count_tiles:
+                ld de, match_list
+                ld h, remaining_tiles/256 ; div
+                ld a, (de) ; this is the tile type
+                sub NUM_NON_TILES+1 ; a  is now 0-indexed
+        @start_new_match:
+                add remaining_tiles\256 ; mod
+                ld l, a ; hl now points to the correct element in the remaining_tiles array
+        @next_this_match:
+                inc de
+                ld a, (de) ; this is the offset into tiles
+                cp 255
+                jr z, @+END_THIS_MATCH
+                ; definitely a real tile.  we don't care about it's coordinates
+                ; we just care that it exists in the list of tiles to be blown up.
+                ; So we can decrement our count of remaining tiles.
+                dec (hl)
+                jp @-next_this_match
+        @END_THIS_MATCH:
+                inc de
+                ld a, (de) ; this is the tile type
+                cp 255
+                jr z, @+finished_counting_remaining_tiles
+                sub NUM_NON_TILES+1 ; a  is now 0-indexed
+                jp @-start_new_match
+
+        @finished_counting_remaining_tiles:
+                ; we can update the display of remaining tiles
+                ld a, 1
+                ld (redraw_remaining_tiles), a
+
                 ; loop thru matches working out the falling changes etc
                 ld h, tiles/256
                 ld de, match_list

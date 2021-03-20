@@ -80,10 +80,11 @@ game_loop:
                 call wait_frame
                 call draw_clock
                 call redraw_dirty
-                call render_destruct ; this will call decrement on remaining blocks upon completion
                 call draw_sliders
+                call render_destruct ; this will call decrement on remaining blocks upon completion
                 call draw_overlays
-                call render_score
+                call render_score ; TODO OPTIMIZE conditional call i.e. if score has changed this frame
+                call render_remaining_tiles ; does nothing if nothing to redraw ; TODO OPTIMIZE conditional call
                 call music_tick
                 call sfx_tick
                 jr game_loop
@@ -136,9 +137,7 @@ main:
                 call init_game_state
                 call init_score
                 call render_screen_layout
-                call render_puzzle_tiles
-                call count_remaining_tiles
-                call render_remaining_tiles
+                call render_puzzle_tiles ; also counts (and renders) remaining tiles
                 jp game_loop
 
 

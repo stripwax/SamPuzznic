@@ -1,9 +1,36 @@
+redraw_remaining_tiles: defb 0
+
 render_puzzle_tiles:
+                ld a, 1
+                ld (redraw_remaining_tiles), a
+                ; memset remaining tiles to zero (we count
+                ; them shortly))
+                ld bc, 0
+                ld (remaining_tiles), bc                
+                ld (remaining_tiles+2), bc
+                ld (remaining_tiles+4), bc
+                ld (remaining_tiles+6), bc
+
+                ; now draw the play area (AND count the 'remaining
+                ; tiles' at the same time)
                 ld hl, tiles ; where the tile data is
                 ld bc, 10*256+12 ; count 12 rows and 10 columns
                 ld de, GRID_X_OFFSET ; this is 12*0+0+32 i.e. x=0 and y=0
     @next_col:
                 ld a, (hl)
+                ; increment count of tiles..
+                cp NUM_NON_TILES
+                jr c, @+done_update_count
+                push hl
+                ld hl, remaining_tiles
+                sub NUM_NON_TILES+1
+                add l
+                ld l, a
+                inc (hl)
+                pop hl
+                ld a, (hl)
+        @done_update_count:
+
                 push bc ; TODO OPTIMIZE THIS AWAY
                 push hl
                 call draw_tile_at_de_tile_a
@@ -30,19 +57,154 @@ render_puzzle_tiles:
                 ld d, a ; ...
                 dec c
                 jr nz, @-next_col
-                ret
-
-count_remaining_tiles:
-                ; TODO inline with render_puzzle_tiles, since it's one-off at start of puzzle
+                jp render_remaining_tiles
                 ret
 
 render_remaining_tiles:
                 ; this draws the bitmaps AND the counts.
                 ; but ideally it only draws what it needs to (don't draw bitmaps if counts
                 ; still > 0)
+                ; and don't redraw every frame, just when needed
                 ; and maybe we can stagger the updates over a few frames
-                ; 
+                ;
+                ld a, (redraw_remaining_tiles)
+                and a
+                ret z
+
+                xor a
+                ld (redraw_remaining_tiles), a
+                ld hl, remaining_tiles
+                ld de, REMAINING_TILES_Y_OFFSET*128+(REMAINING_TILES_X_OFFSET_LEFT/2)
+                ld b, 8
+                ld c, 4 ; how many remaining in this column (we show two columns of four)
+        @next_tile:
+                ld a, (hl)
+                and a
+                jr z, @+skip_zero
+                ld a, l
+                and 7
+                add NUM_NON_TILES + 1
+                push bc
+                push de
+                push hl
+                push de
+                call draw_tile_at_de_tile_a
+                pop de
+                ld a, d
+                add REMAINING_TILES_TEXT_Y_OFFSET/2
+                ld d, a
+                ld a, e
+                add REMAINING_TILES_TEXT_X_OFFSET/2
+                ld e, a
+                ld a, 42 ; *
+                push de
+                call alpha_a_xy_de
+                pop de
+                ld a, e
+                add 4
+                ld e, a
+                pop hl
+                push hl
+                ld a, (hl)
+                call digit_a_xy_de
+                pop hl
+                pop de
+                pop bc
+                dec c
+                jr z, @next_column
+                ld a, d
+                add 8+(REMAINING_TILES_Y_SPACING/2)
+                ld d, a
+        @skip_zero:
+                inc hl
+                djnz @-next_tile
+        @remaining_blanks:
+                ; if c==0 then left column complete and right column empty
+                ; so blank right column
+                ld a, c
+                and a
+        check_remaining_blanks:
+                jr z, @_blank_right_column
+                ; else, if c > 0 (ie. 1, 2, 3, 4) then we didn't fill the
+                ; left coumn, so there's maybe SOME blanking to do
+                bit 7, c
+                jr z, @_blank_left_column
+                ; else, blank the right column
+        @_blank_right_column: ; so we need to blank the right columns
+                ld a, 4
+                add c
+                ret z ; no remaining blanks
+                ld c, a
+        @_blank_next_remaining_tile_right_column:
+                push bc
+                push de
+                push de
+                call fillrect_16x16_black_at_de
+                pop de
+                ld a, d
+                add REMAINING_TILES_TEXT_Y_OFFSET/2
+                ld d, a
+                ld a, e
+                add REMAINING_TILES_TEXT_X_OFFSET/2
+                ld e, a
+                ld a, 32 ; space ; TODO OPTIMIZE just draw black 8x8 without font
+                push de
+                call alpha_a_xy_de
+                pop de
+                ld a, e
+                add 4 ; 8 pixels to next char
+                ld e, a
+                ld a, 32 ; space ; TODO OPTIMIZE just draw black 8x8 without font
+                call alpha_a_xy_de
+                pop de
+                pop bc
+                ld a, d
+                add 8+(REMAINING_TILES_Y_SPACING/2)
+                ld d, a
+                dec c
+                jr nz, @-_blank_next_remaining_tile_right_column
                 ret
+        @_blank_left_column:
+                push bc
+                push de
+                push de
+                call fillrect_16x16_black_at_de
+                pop de
+                ld a, d
+                add REMAINING_TILES_TEXT_Y_OFFSET/2
+                ld d, a
+                ld a, e
+                add REMAINING_TILES_TEXT_X_OFFSET/2
+                ld e, a
+                ld a, 32 ; space ; TODO OPTIMIZE just draw black 8x8 without font
+                push de
+                call alpha_a_xy_de
+                pop de
+                ld a, e
+                add 4 ; 8 pixels to next char
+                ld e, a
+                ld a, 32 ; space ; TODO OPTIMIZE just draw black 8x8 without font
+                call alpha_a_xy_de
+                pop de
+                pop bc
+                ld a, d
+                add 8+(REMAINING_TILES_Y_SPACING/2)
+                ld d, a
+                dec c
+                jr nz, @-_blank_left_column
+                ld c, 0
+                ld de, REMAINING_TILES_Y_OFFSET*128+(REMAINING_TILES_X_OFFSET_RIGHT/2)
+                jp @_blank_right_column
+
+        @next_column:
+                ; c = 0 i.e. we've drawn four tiles in this column so advance to next column
+                ld de, REMAINING_TILES_Y_OFFSET*128+(REMAINING_TILES_X_OFFSET_RIGHT/2)
+                ; neat trick, do NOT reset c.  c is now zero.  On next iteration, c will wrap to 255
+                ; b is the real counter. c just tells us how many are left in this column
+                inc hl
+                dec b
+                jp nz, @-next_tile
+                jp @-remaining_blanks
 
 debug_memcpy_level_data:
                 ld a, DEBUG_LEVEL_NUMBER
