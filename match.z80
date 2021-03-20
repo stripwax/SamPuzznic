@@ -323,7 +323,7 @@ render_destruct:
                 cp 33
                 jp c, @phase_1
                 cp 41
-                jp z, @trigger_bonus_overlay
+                jp z, trigger_bonus_overlay
                 cp 61
                 jp c, @phase_2
 
@@ -608,12 +608,6 @@ render_destruct:
         @END_ALL_MATCHES:
                 ; done
                 ret
-
-        @trigger_bonus_overlay:
-                ld a, 1
-                ld (bonus_icon_frame), a
-                ret
-
 
 
 ; match state

@@ -122,6 +122,8 @@ calculate_bonus_de:
                     inc hl
                     ld a, (hl)
                     ld (bonus_icon_xy), a
+                    ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
+                    ld (bonus_icon_frame), a
                     ret
 
         @initial_bonus:
@@ -148,6 +150,8 @@ calculate_bonus_de:
                     ld (bonus_icon), a ; bonus icon[3] is 1000
                     ld a, &55
                     ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+                    ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
+                    ld (bonus_icon_frame), a
                     ret
         @_4_tiles_matched:
                     ld bc, &0040
@@ -157,30 +161,36 @@ calculate_bonus_de:
                     ld (bonus_icon), a ; bonus icon[1] is 400
                     ld a, &55
                     ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
+                    ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
+                    ld (bonus_icon_frame), a
                     ret
         @_2_tiles_matched:
                     ; no bonus  ;-)  but still score
                     ld bc, &0010
                     ld (bonus_score), bc
+                    xor a ; no bonus overlay
+                    ld (bonus_icon_frame), a
                     ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ret
         @_3_tiles_matched:
                     ; no bonus  ;-)  but still score
                     ld bc, &0020
                     ld (bonus_score), bc
+                    xor a ; no bonus overlay
+                    ld (bonus_icon_frame), a
                     ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ret
                  
 render_bonus:
                     ; show the 'bonus' overlay, if we're supposed to
                     ld a, (bonus_icon_frame)
-                    and a
+                    and 127 ; top bit is magic, means "there is a bonus, it's ready to show"
                     ret z ; no bonus so do nothing
                     ;
                     inc a
                     cp 32
                     jr nz, @+still_going
-foofoo:
+
                     xor a
                     ld (bonus_icon_frame), a
                     ret
@@ -220,6 +230,7 @@ foofoo:
                     ; animation. so, probably want to avoid marking matched tiles as dirty?
                     ld a, (bonus_icon_xy)
                     call push_dirty_tile
+
                     inc a ; since bonus icon is 2 tiles wide
                     call push_dirty_tile
                     sub 16 ; since bonus icon moves upwards overwriting the tiles vertically above this one
@@ -227,6 +238,20 @@ foofoo:
                     dec a ; since bonus icon is 2 tiles wide
                     call push_dirty_tile
                     ret
+
+trigger_bonus_overlay:
+                    ; External code in the game loop will call this when
+                    ; it's ready to show the bonus overlay
+                    ; This doesn't actually mean there IS a bonus.
+                    ; if there isn't a bonus, we should do nothing still.
+                    ld a, (bonus_icon_frame)
+                    and 128
+                    ret z ; there is "no bonus" ergo nothing to do here
+                    ld a, 1 ; set flag to say 'yep starting drawing the bonus overlay now please'
+                    ; (this flag is simply the frame counter for the animation)
+                    ld (bonus_icon_frame), a
+                    ret
+
 
 defs ALIGN 512
 bonus_icon_bitmaps:
