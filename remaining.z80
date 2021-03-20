@@ -228,7 +228,7 @@ render_remaining_tiles:
                 ld de, REMAINING_TILES_Y_OFFSET*128+(REMAINING_TILES_X_OFFSET_RIGHT/2)
                 ; neat trick, do NOT reset c.  c is now zero.  On next iteration, c will wrap to 255
                 ; b is the real counter. c just tells us how many are left in this column
-                inc hl
+                inc ix
                 dec b
                 jp nz, @-next_tile
                 jp @-remaining_blanks
