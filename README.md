@@ -30,9 +30,9 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 * Single puzzle
 * Scoring including bonus calculation
 * bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
+* count of remaining tiles
 
 # TODO
-*  count of remaining tiles
 *  "clear" (win) condition / "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  sliders (elevators / moving blocks)
