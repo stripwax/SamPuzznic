@@ -110,6 +110,7 @@ game_state_zero_end:
 ; address to determine which tile this is
 defs ALIGN 8
 remaining_tiles: defs 8
+remaining_tiles_last_time: defs 8
 
 ;constants:
 controller_flags_dirs_up: equ 1

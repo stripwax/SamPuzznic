@@ -367,9 +367,10 @@ render_destruct:
                 jp @-start_new_match
 
         @finished_counting_remaining_tiles:
-                ; we can update the display of remaining tiles
-                ld a, 1
-                ld (redraw_remaining_tiles), a
+                ; trigger a redraw of remaining tiles
+                ld a, (redraw_remaining_tiles_flags)
+                or REMAINING_REDRAW_TRIGGER
+                ld (redraw_remaining_tiles_flags), a
 
                 ; loop thru matches working out the falling changes etc
                 ld h, tiles/256
