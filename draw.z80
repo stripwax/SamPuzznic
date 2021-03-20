@@ -520,3 +520,80 @@ draw_masked_32_16_hl_de:
                     dec d
                 NEXT @pairs_up
                 ret
+
+fillrect_16x8_black_at_de:
+                ; get a black (double) pixel
+                xor a
+                ld b, 2
+    @evens:
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc d
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                inc d
+                djnz @-evens
+                dec d
+                set 7, e ; move down one row of pixels
+                ld b, 2
+    @odds:
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                dec d
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec d
+                djnz @-odds
+                ret
