@@ -79,6 +79,24 @@ calculate_bonus_de:
                     ld (bonus_icon_frame), a
                     ld (bonus_score), a
                     ld (bonus_score+1), a
+
+                    ; where should the bonus actually showup on-screen..?? which tile, specifically?
+                    ; I'm just going to take it from the first match tile in my list. not arcade-accurate
+                    ; but it will do for not and we can always change it later
+                    ld hl, match_list
+            @find_match:
+                    ld a, (hl)
+                    cp 254 ; skip 254 (and we shouldn't find any 255 here because WE KNOW there is a valid match in here)
+                    jr c, @match_found
+                    inc hl
+                    jp -@find_match
+                    ; a = the tile type, which we can ignore. find the first xy
+            @match_found:
+                    inc hl
+                    ld a, (hl)
+                    ld (bonus_icon_xy), a
+
+                    ; now start working out the bonus amount according to the rules
                     ld a, (bonus_tier)
                     and a
                     jr z, @initial_bonus
@@ -106,22 +124,6 @@ calculate_bonus_de:
                     ld b, (hl)
                     ld (bonus_score), bc
                     ; WE ACTUALLY ADD THE SCORE ONLY LATER
-
-                    ; where should the bonus actually showup on-screen..?? which tile, specifically?
-                    ; I'm just going to take it from the first match tile in my list. not arcade-accurate
-                    ; but it will do for not and we can always change it later
-                    ld hl, match_list
-            @find_match:
-                    ld a, (hl)
-                    cp 254 ; skip 254 (and we shouldn't find any 255 here because WE KNOW there is a valid match in here)
-                    jr c, @match_found
-                    inc hl
-                    jp -@find_match
-                    ; a = the tile type, which we can ignore. find the first xy
-            @match_found:
-                    inc hl
-                    ld a, (hl)
-                    ld (bonus_icon_xy), a
                     ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
                     ld (bonus_icon_frame), a
                     ret
@@ -148,8 +150,6 @@ calculate_bonus_de:
                     ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ld a, 3
                     ld (bonus_icon), a ; bonus icon[3] is 1000
-                    ld a, &55
-                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
                     ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
                     ld (bonus_icon_frame), a
                     ret
@@ -159,8 +159,6 @@ calculate_bonus_de:
                     ; WE ACTUALLY ADD THE SCORE ONLY LATER
                     ld a, 1
                     ld (bonus_icon), a ; bonus icon[1] is 400
-                    ld a, &55
-                    ld (bonus_icon_xy), a ; where does the bonus actually showup on-screen..?? which tile, specifically?
                     ld a, 128 ; record the fact we want to pop up the bonus overlay (later)
                     ld (bonus_icon_frame), a
                     ret
