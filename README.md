@@ -72,5 +72,5 @@ Using the default settings, you can launch SimCoupe by opening first.z80 in VSCo
 * Balor Price
 
 
-![image](https://user-images.githubusercontent.com/4968348/111889957-046d9400-89dd-11eb-9832-1b20eb7a1590.png)
+![image](https://user-images.githubusercontent.com/4968348/111890000-75ad4700-89dd-11eb-8756-2f983a51744f.png)
 
