@@ -33,7 +33,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 * count of remaining tiles
 
 # TODO
-*  "clear" (win) condition / "time over" (lose) condition
+*  "clear" (win) condition (20% done)
+*  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  sliders (elevators / moving blocks)
 *  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
