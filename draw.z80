@@ -229,143 +229,199 @@ draw_tile_at_de_tile_a:
                 add a, tiles_bitmaps/256
                 ld h,a
                 ;ld hl, tiles_bitmaps
-                ; left to right and right to left even rows
-                ld b, 4
     @evens:
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 inc d
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 inc d
-                inc hl
-                djnz @-evens
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                inc d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                ld a,e
+                add 120 ; move down one row of pixels
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 dec d
-                set 7, e ; move down one row of pixels
-                ld b, 4
-    @odds:
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 dec d
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 dec d
-                inc hl
-                djnz @-odds
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                dec d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                dec d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                dec d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                dec d
+                ld a,e
+                sub 8
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                ;;;;
+                ; LDI ; can replace the last LDI with a couple fewer tstates:
+                ld a, (hl)
+                ld (de), a
+                ;
+                ;;;;
                 ret
 
 fillrect_16x2_black_at_de:

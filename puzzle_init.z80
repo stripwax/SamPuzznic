@@ -39,8 +39,9 @@ render_puzzle_tiles:
                 push hl
                 call draw_tile_at_de_tile_a
                 pop hl
-                res 7, e ; because, draw_tile_at_de_tile_a ends with DE one pixel row below above start pixel
-                inc d
+                ld a, e ; adjust de. because, draw_tile_at_de_tile_a ends with DE one pixel row below (and 7 bytes to the right of) the start pixel
+                sub 135
+                ld e, a
                 pop bc ; TODO OPTIMIZE THIS AWAY
                 ld a, e
                 add 8 ; 16 pixels to the right
