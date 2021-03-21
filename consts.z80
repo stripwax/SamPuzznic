@@ -15,3 +15,5 @@ REMAINING_TILES_X_OFFSET_RIGHT: equ 40
 REMAINING_TILES_Y_SPACING: equ 8
 REMAINING_TILES_TEXT_Y_OFFSET: equ 8
 REMAINING_TILES_TEXT_X_OFFSET: equ 16
+
+CLEAR_Y_OFFSET: equ 64 ; how many rows down from the top should the "CLEAR !!" message appear (and stuff that follows below it)

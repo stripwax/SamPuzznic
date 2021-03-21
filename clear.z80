@@ -1,0 +1,39 @@
+wait_b:
+                call wait_frame
+                djnz wait_b
+                ret
+
+check_clear:
+                ld a, (tiles_drawn_last_time)
+                and a
+                ret nz
+
+                ; woohoo you did it
+                ld hl, message.CLEAR
+                ld de, 128*CLEAR_Y_OFFSET + GRID_X_OFFSET + 6*4
+                call print_text_hl_de
+
+                ld b, FPS
+                call wait_b
+
+                ld hl, message.BONUS
+                ld de, 128*CLEAR_Y_OFFSET + 16*128 + GRID_X_OFFSET + 7*4
+                call print_text_hl_de
+
+                ld b, FPS/2
+                call wait_b
+
+                ld hl, message.FAKE_BONUS_POINTS
+                ld de, 128*CLEAR_Y_OFFSET + 32*128 + GRID_X_OFFSET + 5*4
+                call print_text_hl_de
+
+                ld b, FPS/2
+                call wait_b
+                ret
+
+message.CLEAR: defm "CLEAR !!"
+defb 0
+message.BONUS: defm "BONUS"
+defb 0
+message.FAKE_BONUS_POINTS: defm "50000 PTS"
+defb 0

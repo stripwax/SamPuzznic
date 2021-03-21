@@ -181,6 +181,12 @@ game_loop:
                 call render_remaining_tiles ; does nothing if nothing to redraw ; TODO OPTIMIZE conditional call
 
                 IF DEBUG_VSYNC
+                    ld a, 1
+                    out (254), a
+                ENDIF
+                call check_clear
+
+                IF DEBUG_VSYNC
                     ld a, 0
                     out (254), a
                 ENDIF
