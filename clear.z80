@@ -9,6 +9,9 @@ check_clear:
                 ret nz
 
                 ; woohoo you did it
+                ; kill sfx
+                call sfx_kill
+
                 ld hl, message.CLEAR
                 ld de, 128*CLEAR_Y_OFFSET + GRID_X_OFFSET + 6*4
                 call print_text_hl_de

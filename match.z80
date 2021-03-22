@@ -434,6 +434,7 @@ render_destruct:
                 call init_bonus ; TODO OPTIMIZE inline ; may not be necessary to call this at all here?
                 ret
 
+        ; phase 0
         @calculate_bonus_score:
                 ; count number of matches (the bonus logic needs to know)
                 ; as well as the size of the match (the score and bonus logic both
@@ -465,6 +466,7 @@ render_destruct:
                 ; calculations
                 ; also count total number of matches since that drives another of the bonus
                 ; calculations
+                ; TODO honestly I don't think I need d for anything, it seem e is sufficient
                 ld a, e
                 add c
                 ld e, a ; e = total number of tiles matched
@@ -478,14 +480,26 @@ render_destruct:
                 ; now here, we've got:
                 ; d = number of simultaneous matches
                 ; e = number of tiles matches simultaneously
-                ; bonus for e is:   4 => 400 , 5 => 1000, 6+ => ????
-                ; bonus for d is relevant only on 'subsequent' triggered matches
-                ; FIXME THIS IS IN THE WRONG PLACE
-                ; we need to calculate the bonus earlier, so that we can start
-                ; showing the bonus icon on frame 40  (even though destruct animation
-                ; ends on frame 60 and score changes on frame 60, and bonus
-                ; icon finishes on frame 72)
-                call calculate_bonus_de ; TODO OPTIMIZE jp instead of call+ret
+                ; choose the appropriate sound effect based on how many tiles matched
+                ld a, e
+                cp 3
+                jr c, @regular_match_sfx
+                jr z, @match_3_sfx
+                ; 4 or more tiles, nice work
+                call trigger_sfx_destruction_4
+                jp @done_choosing_sfx
+        @match_3_sfx:
+                call trigger_sfx_destruction_3
+                jp @done_choosing_sfx
+        @regular_match_sfx:
+                call trigger_sfx_destruction ; TODO OPTIMIZE jp instead of call+ret
+                ; fallthrough
+
+        @done_choosing_sfx:
+
+                ; and calculate the bonus amount (so we can display the bonus overlay,
+                ; as necessary)
+                call calculate_bonus_de
                 ret
 
         @phase_1:

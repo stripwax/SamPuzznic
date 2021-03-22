@@ -1,3 +1,441 @@
-sfx_tick:
+sfx_triggers: defb 0
+sfx_mask: defb 0
+
+sfx_frame: defw 0
+
+SFX_CURSOR_BIT: equ 0
+SFX_SHOVE_BIT: equ 1
+SFX_DESTRUCTION_BIT: equ 2
+SFX_DESTRUCTION_3_BIT: equ 3
+SFX_DESTRUCTION_4_BIT: equ 4
+
+SFX_CURSOR_MASK: equ 1
+SFX_SHOVE_MASK: equ 2
+SFX_DESTRUCTION_MASK: equ 4
+SFX_DESTRUCTION_3_MASK: equ 8
+SFX_DESTRUCTION_4_MASK: equ 16
+
+sfx_init:
+                xor a
+                ld (sfx_triggers), a
+                dec a ; a = 255
+                ld (sfx_mask), a
+                ld hl, 0
+                ld (sfx_frame), hl
+                ld bc, 511
+                ld a, 28
+                out (c), a
+                ld a, 2
+                dec b
+                out (c), a
+                ld d, 31
+                inc b
+        @reset:
+                out (c), d
+                xor a
+                dec b
+                out (c), a
+                inc b
+                dec d
+                jp nz, @-reset
+                ld a, 28
+                out (c), a
+                ld a, 1
+                dec b
+                out (c), a
+                inc b
+                ld a, 20
+                out (c), a
+                ld a, 48  ; channels 5+6
+                dec b
+                out (c), a
+                inc b
+                ld a, 8
+                out (c), a
+                xor a
+                dec b
+                out (c), a
+                inc b
                 ret
 
+sfx_tick:
+                ; for now, implement a simple state machine with two channels used for sfx
+                ; See if any new sounds have been triggered and set up their frame
+                ; ignoring any lower-priority sounds
+                ld hl, sfx_triggers
+                ld a, (sfx_mask)
+                and (hl)
+                jr z, @tick ; just tick, no new triggers
+
+                ; process new triggers
+
+                ld (hl), 0 ; clear triggers
+                ; use the follow priorities:
+                ; 1. destruction with 4 or more tiles (the 'louder' one)
+                ; 2. destruction with 3 tiles (sounds same as destruction with 2 tiles but slightly different ending)
+                ; 3. normal destruction (cannot occur simultaneously with 1. or 2. anyway)
+                ; 4. shove ('crystal' sounds)
+                ; 5. cursor (annoying plink plink .. sound)
+                bit SFX_DESTRUCTION_4_BIT, a
+                jr nz, sfx_destruction_4
+
+                bit SFX_DESTRUCTION_3_BIT, a
+                jr nz, sfx_destruction_3
+
+                bit SFX_DESTRUCTION_BIT, a
+                jr nz, sfx_destruction
+
+                bit SFX_SHOVE_BIT, a
+                jr nz, sfx_shove
+
+                bit SFX_CURSOR_BIT, a
+                jr nz, sfx_cursor
+
+                ret
+
+        sfx_cursor:
+                ld hl, sfx_cursor_tab
+                ld (sfx_frame), hl
+                ld a, 255
+                ld (sfx_mask), a
+                jp @tick
+
+        sfx_shove:
+                ld hl, sfx_shove_tab
+                ld (sfx_frame), hl
+                ld a, 255 - SFX_CURSOR_MASK
+                ld (sfx_mask), a
+                jp @tick
+
+        sfx_destruction:
+                ld hl, sfx_destruction_tab
+                ld (sfx_frame), hl
+                ld a, 255 - SFX_CURSOR_MASK-SFX_SHOVE_MASK
+                ld (sfx_mask), a
+                jp @tick
+
+        sfx_destruction_3:
+                ld hl, sfx_destruction_3_tab
+                ld (sfx_frame), hl
+                ld a, 255 - SFX_CURSOR_MASK-SFX_SHOVE_MASK-SFX_DESTRUCTION_MASK
+                ld (sfx_mask), a
+                jp @tick ; TODO OPTIMIZE can omit (unless we add more sfx)
+
+        sfx_destruction_4:
+                ld hl, sfx_destruction_4_tab
+                ld (sfx_frame), hl
+                ld a, 255 - SFX_CURSOR_MASK-SFX_SHOVE_MASK-SFX_DESTRUCTION_MASK-SFX_DESTRUCTION_3_MASK
+                ld (sfx_mask), a
+                jp @tick ; TODO OPTIMIZE can omit (unless we add more sfx)
+
+        @tick:
+                ld hl, (sfx_frame)
+                xor a
+                cp h ; if h is 0 then sfx is disabled
+                ret z
+                ld bc, 511
+        @send_next:
+                ld a, (hl)
+                cp 254
+                jr nc, @done_this_tick ; 254 or 255.  255 means 'very end'
+                out (c), A
+                inc hl
+                ld a, (hl)
+                dec b
+                out (c), A
+                inc hl
+                inc b
+                jp @send_next
+        @done_this_tick:
+                cp 255
+                jr z, @fx_end
+                inc hl
+                ld a, (hl)
+                cp 255
+                jr z, @fx_end
+                ld (sfx_frame), hl
+                ret
+        @fx_end:
+                ld hl, 0
+                ld (sfx_frame), hl
+                ld a, 255
+                ld (sfx_mask), a
+                ret
+
+    sfx_cursor_tab:
+                defb 20, 16, 21, 0, 12, 100, 18, 5, 4, 255, 5, 0, 254
+                defb 18,6,254
+                defb 18,7,254
+                defb 4,0,254
+                defb 255
+
+    sfx_shove_tab:
+                defb 20, 16, 21, 0, 18, 6, 12, 0, 4, &ff, 5, 0, 254
+                defb 12, 64, 254
+                defb 12, 128, 245
+                defb 4, &cc, 12, 192, 254
+                defb 18,7, 12, 0,254
+                defb 12, 64, 254
+                defb 12, 128, 254
+                defb 4, &aa, 12, 192, 254
+                defb 12, 255, 254
+                defb 12, 192, 254
+                defb 12, 128, 254
+                defb 4, &88, 12, 64, 254
+                defb 12, 0, 254
+                defb 12, 64, 254
+                defb 12, 128, 254
+                defb 4, &66, 12, 192, 254
+                defb 12, 255, 254
+                defb 12, 192, 254
+                defb 4, &44, 12, 128, 254
+                defb 12, 64, 254
+                defb 12, 0, 254
+                defb 12, 64, 254
+                defb 4, &22, 12, 128, 254
+                defb 12, 192, 254
+                defb 4, &11, 12, 255, 254
+                defb 4, 0, 254
+                defb 255
+
+    sfx_destruction_tab:
+                defb 20, 16, 21, 0, 18, 5, 12, 100, 4, &aa, 5, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 21, 16+32, 20, 16, 22, &20, 18, 1, 12, 30, 4, 255, 5, 255, 254
+                defb 12, 60, 4, &cc, 5, &cc, 254
+                defb 18, 2, 12, 0, 4, &88, 5, &88, 254
+                defb 12, 128, 4, &44, 5, &44, 254
+                defb 22, &20, 18, 1, 12, 20, 4, 255, 5, 255, 254
+                defb 12, 40, 4, &dd, 5, &dd, 254
+                defb 12, 90, 4, &cc, 5, &cc, 254
+                defb 18, 1, 12, 40, 4, &aa, 5, &aa, 254
+                defb 12, 70, 4, &88, 5, &88, 254
+                defb 12, 100, 4, &44, 5, &44, 254
+                defb 12, 130, 4, &22, 5, &22, 254
+                defb 21, 0, 4, 0, 5, 0, 254
+                defb 255
+
+    sfx_destruction_3_tab:
+                defb 20, 16, 21, 0, 18, 5, 12, 100, 4, &aa, 5, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, 0, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &aa, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 21, 16+32, 20, 48, 22, &20, 18, &31, 12, 30, 4, 255, 5, 255, 254
+                defb 18, &41, 12, 60, 4, &cc, 5, &cc, 254
+                defb 18, &52, 12, 0, 4, &88, 5, &88, 254
+                defb 18, &62, 12, 128, 4, &44, 5, &44, 254
+                defb 22, &20, 18, &71, 12, 20, 4, 255, 5, 255, 254
+                defb 18, &61, 12, 40, 4, &dd, 5, &dd, 254
+                defb 18, &51, 12, 90, 4, &cc, 5, &cc, 254
+                defb 18, &41, 12, 40, 4, &aa, 5, &aa, 254
+                defb 18, &51, 12, 70, 4, &88, 5, &88, 254
+                defb 18, &61, 12, 100, 4, &44, 5, &44, 254
+                defb 18, &71, 12, 130, 4, &22, 5, &22, 254
+                defb 21, 0, 4, 0, 5, 0, 254
+                defb 255
+
+    sfx_destruction_4_tab:
+                ; two channels, octave apart, slightly detuned
+                defb 20, 48, 21, 0, 18, &65, 12, 99, 13, 101, 4, &fe, 5, &ef, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &fd, 5, &df, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &fd, 5, &df, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &fd, 5, &df, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &fd, 5, &df, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &fd, 5, &df, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 4, &21, 5, &12, 254
+                defb 254
+                defb 254
+                defb 254
+                defb 21, 16+32, 20, 48, 22, &20, 18, &31, 12, 30, 4, 255, 5, 255, 254
+                defb 18, &41, 12, 60, 4, &cc, 5, &cc, 254
+                defb 18, &52, 12, 0, 4, &88, 5, &88, 254
+                defb 18, &62, 12, 128, 4, &44, 5, &44, 254
+                defb 22, &20, 18, &71, 12, 20, 4, 255, 5, 255, 254
+                defb 18, &61, 12, 40, 4, &dd, 5, &dd, 254
+                defb 18, &51, 12, 90, 4, &cc, 5, &cc, 254
+                defb 18, &41, 12, 40, 4, &aa, 5, &aa, 254
+                defb 18, &51, 12, 70, 4, &88, 5, &88, 254
+                defb 18, &61, 12, 100, 4, &44, 5, &44, 254
+                defb 18, &71, 12, 130, 4, &22, 5, &22, 254
+                defb 21, 0, 4, 0, 5, 0, 254
+                defb 255
+
+
+trigger_sfx_cursor:
+                ; modifies A only
+                ; TODO OPTIMIZE inline?
+                ld a, (sfx_triggers)
+                or SFX_CURSOR_MASK
+                ld (sfx_triggers), a
+                ret
+
+trigger_sfx_shove:
+                ; modifies A only
+                ; TODO OPTIMIZE inline?
+                ld a, (sfx_triggers)
+                or SFX_SHOVE_MASK
+                ld (sfx_triggers), a
+                ret
+
+trigger_sfx_destruction:
+                ; modifies A only
+                ; TODO OPTIMIZE inline?
+                ld a, (sfx_triggers)
+                or SFX_DESTRUCTION_MASK
+                ld (sfx_triggers), a
+                ret
+
+trigger_sfx_destruction_3:
+                ; modifies A only
+                ; TODO OPTIMIZE inline?
+                ld a, (sfx_triggers)
+                or SFX_DESTRUCTION_3_MASK
+                ld (sfx_triggers), a
+                ret
+
+trigger_sfx_destruction_4:
+                ; modifies A only
+                ; TODO OPTIMIZE inline?
+                ld a, (sfx_triggers)
+                or SFX_DESTRUCTION_4_MASK
+                ld (sfx_triggers), a
+                ret
+
+sfx_kill:
+                xor a
+                ld (sfx_triggers), a
+                ld hl, 0
+                ld (sfx_frame), hl
+                ld bc, 511
+                ld a, 4
+                out (c), a
+                xor a
+                dec b
+                out (c), a
+                inc b
+                ld a, 5
+                out (c), a
+                xor a
+                dec b
+                out (c), a
+                ret

@@ -157,6 +157,12 @@ update_cursor_position:
                 ; was UP pressed?
                 bit controller_flags_dirs_up_bit,a
                 jr z, @+check_down ; no, up was not pressed
+
+                ; yes, up was pressed
+                call trigger_sfx_cursor
+
+                ; todo: also check left/right for diagonal movement
+
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -182,6 +188,12 @@ update_cursor_position:
                 ; was DOWN pressed?
                 bit controller_flags_dirs_down_bit,a
                 jr z, @+check_left ; no, down was not pressed
+
+                ; yes, down was pressed
+                call trigger_sfx_cursor
+
+                ; todo: also check left/right for diagonal movement
+
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -206,6 +218,10 @@ update_cursor_position:
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit,a
                 jr z, @+check_right ; no
+
+                ; yes, left was pressed
+                call trigger_sfx_cursor
+
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -231,6 +247,10 @@ update_cursor_position:
                 bit controller_flags_dirs_right_bit,a
                 ; ; jr z, @+done ; no ; TODO OPTIMIZE AS RET Z
                 ret z
+
+                ; yes, right was pressed
+                call trigger_sfx_cursor
+
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -350,6 +370,12 @@ update_cursor_position:
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit, a
                 jr z, @+check_push_right ; no
+
+                ; yes, left was pressed (with fire)
+                push hl ; todo optimize this away
+                call trigger_sfx_shove
+                pop hl
+
                 ; get new position (left = dec l, right = inc l)
                 dec l
                 ld a, (hl)
@@ -412,6 +438,12 @@ update_cursor_position:
                 ; was RIGHT pressed?
                 bit controller_flags_dirs_right_bit,a
                 ret z ; no, RIGHT was not pressed, and we already checked LEFT, so we're done
+
+                ; yes, right was pressed (with fire)
+                push hl ; todo optimize this away
+                call trigger_sfx_shove
+                pop hl
+
                 ; get new position (left = dec l, right = inc l)
                 inc l
                 ld a, (hl)
