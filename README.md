@@ -31,6 +31,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 * Scoring including bonus calculation
 * bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
 * count of remaining tiles
+* sfx
+
 
 # TODO
 *  "clear" (win) condition (20% done)
@@ -47,7 +49,6 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
 *  music (20% done)
-*  sfx
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
