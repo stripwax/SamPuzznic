@@ -159,8 +159,6 @@ update_cursor_position:
                 jr z, @+check_down ; no, up was not pressed
 
                 ; yes, up was pressed
-                call trigger_sfx_cursor
-
                 ; todo: also check left/right for diagonal movement
 
                 ; get new position
@@ -175,7 +173,10 @@ update_cursor_position:
                 ld a, (hl)
                 cp IMPENETRABLE_TILE
                 ret z
+
                 ; all good, we can move there
+                call trigger_sfx_cursor
+
                 ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
@@ -190,8 +191,6 @@ update_cursor_position:
                 jr z, @+check_left ; no, down was not pressed
 
                 ; yes, down was pressed
-                call trigger_sfx_cursor
-
                 ; todo: also check left/right for diagonal movement
 
                 ; get new position
@@ -205,7 +204,10 @@ update_cursor_position:
                 ld a, (hl)
                 cp IMPENETRABLE_TILE
                 ret z
+                
                 ; all good, we can move there
+                call trigger_sfx_cursor
+
                 ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
@@ -220,8 +222,6 @@ update_cursor_position:
                 jr z, @+check_right ; no
 
                 ; yes, left was pressed
-                call trigger_sfx_cursor
-
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -233,7 +233,10 @@ update_cursor_position:
                 ld a, (hl)
                 cp IMPENETRABLE_TILE
                 ret z
+
                 ; all good, we can move there
+                call trigger_sfx_cursor
+
                 ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
@@ -249,8 +252,6 @@ update_cursor_position:
                 ret z
 
                 ; yes, right was pressed
-                call trigger_sfx_cursor
-
                 ; get new position
                 ; (first get current position)
                 ld a, (controller_flags_xy_pos)
@@ -262,7 +263,10 @@ update_cursor_position:
                 ld a, (hl)
                 cp IMPENETRABLE_TILE
                 ret z
+
                 ; all good, we can move there
+                call trigger_sfx_cursor
+
                 ld a, l
                 ld (controller_flags_xy_pos), a
                 ; mark the OLD location as dirty
