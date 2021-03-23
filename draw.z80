@@ -51,7 +51,14 @@
                 ld (hl), a
                 dec h
                 ; draw odd left side (downwards)
-                set 7, l
+                ld a, l
+                add 128
+                ld l, a
+                ld a, h
+                adc 0
+                ld h, a
+
+                ld a, b
                 ld (hl), a
                 inc h
                 ld (hl), a
@@ -114,16 +121,6 @@ draw_debug_tile_at_de_tile_a:
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; multiply a by 17 to get a conveniently-coloured two-nibble (two pixel) value in a
 
-                ; I think we get here due to corruption, currently
-                if DEBUG
-                bit 7, e
-                jr z, @ok
-                @fatal:
-                nop
-                jr @-fatal
-                @ok:
-                endif
-
                 ld b,a
                 sla a
                 sla a
@@ -168,7 +165,14 @@ draw_debug_tile_at_de_tile_a:
                 inc d
                 djnz @-evens
                 dec d
-                set 7, e ; move down one row of pixels
+
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+
                 ld b, 4
     @odds:
                 ld (de), a
@@ -210,17 +214,6 @@ draw_tile_at_de_tile_a:
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; w.r.t tile_bitmaps
-
-                ; I think we get here due to corruption, currently
-                if DEBUG
-                bit 7, e
-                jr z, @ok
-                @fatal:
-                nop
-                jr @-fatal
-                @ok:
-                endif
-
 
                 ; multiply a by 128 to get offset into bitmap data
                 ld l, 0
@@ -298,7 +291,15 @@ draw_tile_at_de_tile_a:
                 inc hl
                 djnz @-evens
                 dec d
-                set 7, e ; move down one row of pixels
+
+                ; move down one row of pixels
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+
                 ld b, 4
     @odds:
                 ld a, (hl)
@@ -386,12 +387,14 @@ fillrect_16x2_black_at_de:
                 ld (de), a
                 inc e
                 ld (de), a
+
                 ld a, e
                 add 128
                 ld e, a
                 ld a, d
                 adc 0
                 ld d, a
+
                 xor a
                 ld (de), a
                 dec e
@@ -428,12 +431,14 @@ fillrect_2x16_black_at_de:
                 ld (de), a
                 inc d
                 ld (de), a
+
                 ld a, e
                 add 128
                 ld e, a
                 ld a, d
                 adc 0
                 ld d, a
+
                 xor a
                 ld (de), a
                 dec d
@@ -560,7 +565,14 @@ fillrect_16x8_black_at_de:
                 inc d
                 djnz @-evens
                 dec d
-                set 7, e ; move down one row of pixels
+
+                ld a, e ; move down one row of pixels
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+
                 ld b, 2
     @odds:
                 ld (de), a
