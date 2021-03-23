@@ -1,3 +1,8 @@
+IS_FALLING_BIT: equ 4
+IS_FALLING_MASK: equ 16
+IS_SLIDER_MASK: equ 32 ; for the slider itself
+IS_ON_SLIDER_MASK: equ 64 ; for any block stacked on the slider
+
 push_falling_tiles:
                 ; modifies: HL, A
                 ; a contains tile x and y (YYYYxxxx)
@@ -39,7 +44,7 @@ check_falling_tile_hl:
                 ld a, l
                 sub 16
                 ld l, a
-                ld a, 16 ; bit 4 = falling
+                ld a, IS_FALLING_MASK ; bit 4 = falling
                 dec h ; (point to tiles_flags)
                 ld (hl), a
                 ld a, l
@@ -190,7 +195,7 @@ draw_falling_tiles:
                 cp NUM_NON_TILES
                 jr c, @finished_checking_falling_above ; jump if tile above was a non-moveable-tile
                 ; tile above me can now fall into empty space, great!
-                ld a, 16 ; falling but zero offset for now ; TODO IS THIS RIGHT?
+                ld a, IS_FALLING_MASK ; falling but zero offset for now ; TODO IS THIS RIGHT?
                 ld (bc), a
                 ; point at the xy coord of the above tile and add to the falling list
                 ; hl is still valid, but we can trash it here (we pop later when we need it)
@@ -225,7 +230,7 @@ draw_falling_tiles:
                 ld c, a
                 ; mark as zero offset and falling
                 dec b
-                ld a, 16
+                ld a, IS_FALLING_MASK
                 ld (bc), a
                 inc b
                 ; also get the correct tile ID in a (and we still need to draw this tile...)
@@ -296,7 +301,7 @@ draw_falling_tiles:
 
 @still_falling:
                 push hl
-                or 16 ; keep the flag that says 'falling' set
+                or IS_FALLING_MASK ; keep the flag that says 'falling' set
                 ld (bc), a ; write its new y offset back
                 ; add the offset to d, the screen y location
                 and 15 ; clears carry

@@ -73,7 +73,10 @@ tiles_flags: defs 16*12
 DS ALIGN 256
 puzzle_copy_start:
 tiles: defs 16*12
-slider_info: defs 2
+slider_info: defb 0
+slider_xy: defb 0
+slider_wait_1: defb 0 ; how many ticks to wait at the 'low' end of travel
+slider_wait_2: defb 0 ; how many ticks to wait at the 'high' end of travel
 clock_min_bcd: defb 0
 clock_sec_bcd: defb 0
 controller_flags_xy_pos: defb 0 ; starting position

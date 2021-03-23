@@ -1,12 +1,206 @@
 ; This is all about the sliders, which is what I call
 ; those up-and-down elevators or left-to-right travelling blocks
 
+; Data structures:
+; The slider has a regular entry in the tiles and tiles_flags grids.
+; In the tiles_flags grid, the slider tile has the IS_SLIDER_MASK bit set,
+; as well as the lower 4 bits being x (or y) coordinate
+; if slider_info@SLIDER_AXIS_BIT is 0, slider is vertical, so the lower 4 bits are y
+; if slider_info@SLIDER_AXIS_BIT is 1, slider is horizontal, so the lower 4 bits are x
+; In both cases, the y (or x) coordinate is added onto the coarser grid y (or x) coordinate
+; This is important, for the falling logic, because it needs to know if a horizontal slider
+; is near with a non-zero x coordinate, because this will impede any block immediately
+; above from falling down the cell.
+; Example:  if tile is at 7:3 and slider is at 7:4 (one row down), regardless of y
+;           coordinate (0-15), then the tile at 7:3 is blocked from falling down
+; Example2: if tile is at 7:3 and slider is at 6:4 (one row down and diagonally left), then
+;           the tile at 7:3 is NOT blocked from falling down IF THE SLIDER X COORDINATE is ZERO
+;           but the tile at 7:3 IS blocked from falling down IF THE SLIDER X COORDINATE is NONZERO
+
 slider_tile_detect:
                 ret
 
 draw_sliders:
                 ; 
-                ret
-slider_update:
+                ld a, (slider_info)
+                and a
+                ret z 
+                ;
+
                 ret
 
+slider_stack: defs 10 ; just a list of y-coordinates really. 255 ends.
+slider_stack_tail: defw 0
+slider_stack_height: defb 0 ; maybe redundant, but convenient.
+
+; these are the bitmask definitions for slider_info
+SLIDER_ENABLED_BIT: equ 0
+SLIDER_AXIS_BIT: equ 1
+SLIDER_DIRECTION_BIT: equ 2
+
+SLIDER_ENABLED_MASK: equ 1
+SLIDER_AXIS_MASK: equ 2
+SLIDER_DIRECTION_MASK: equ 4
+
+; how many frames to wait before changing direction
+; TODO - is it always the same for every level?
+slider_wait_frame: defb 0 
+
+; what frame is the slider on;  TODO combine with slider_flags?
+slider_motion_frame: defb 0
+
+slider_update:
+                ; update position of the slider
+                ; and any tiles on the slider
+                ; (including tiles pushed sideways off the slider
+                ; if the slider goes into a narrow gap)
+                ; and trigger falling for tiles that fall off the slider
+
+                ; state of a tile:
+                ; 1. it could be stationary on solid ground, or on top of a tile
+                ; 2. it could be 'hovering' due to a tile below it falling (there's
+                ;    a latency, the current tile might not be falling YET but it will
+                ;    fall when the falling tile below it has fallen sufficiently far)
+                ; 3. it could be actually falling itself already
+                ; 4. it could be standing directly on the slider (vertical or horizontal)
+                ; 5. it could be perched atop a block (or a stack of blocks) that in turn is on the slider
+                ;    (note that a tile below it might be blocked from moving, in the case of
+                ;     horizontal sliders; and the tiles ABOVE it inherit the same 'blocked' status
+                ;     of the tile/stack immediately below it)
+
+                ; This routine needs to handle the movement of the slider,
+                ; including when the slider itself is blocked (by blocks)
+                ; the movement of blocks standing onto the slider (and correcting the x/y
+                ; coordinates accordingly for blocks that have 'just landed on the slider'),
+                ; as well as sending the correct data to the falling
+                ; routine (as to the whereabouts of the slider) so that falling blocks
+                ; know when to fall/land/hover for vertical sliders;
+                ; as well handle cases 4 and 5 - in particular for horizontal sliders
+                ; where blocks can fall off (i.e. this routine also initiates falling
+                ; in those cases)
+
+                ; It should be noted that (it seems) the slider can only be obstructed
+                ; at grid boundaries.  There does not appear to be a way (or a need) for
+                ; the slider to be blocked by something else in motion at non-grid boundaries
+                ; This simplifies our tests.
+
+                ; For vertical sliders:
+                ; The whole stack moves up and down in unison.
+                ; Just like falling tiles, we update the real grid position when the tiles
+                ; align with the real grid position.  (note that sliding tiles are NOT involved
+                ; in matches UNLESS they are at real grid positions)
+
+                ; if it's currently "waiting" at one end
+                ; decrease the wait count
+                ld a, (slider_wait_frame)
+                and a
+                jp z, @no_wait
+            @still_waiting:
+                dec a
+                ld (slider_wait_frame), a
+                ret
+
+        @no_wait:
+                ld a, (slider_info)
+                and a
+                ret z ; no slider info, nothing to update
+
+                ; get current type
+                bit SLIDER_AXIS_BIT, a
+                jr nz, @slider_horizontal
+                
+        @slider_vertical:
+                ld b, a ; backup slider_info
+                ; get x/y of slider and point to tiles grid
+                ld a, (slider_xy)
+                ld l, a
+                ld h, tiles/256
+
+                ; which direction are we going?
+                ; (=0: y is decreasing, =1: y is increasing) 
+                bit SLIDER_DIRECTION_BIT, b
+                jr nz, @y_increasing
+            @y_decreasing:
+                ; is slider currently in-motion between grid points?
+                ld a, (slider_motion_frame)
+                and a
+                jr z, @+finished_moving_between_cells
+                dec a
+                ld (slider_motion_frame), a
+                dec h ; point to flags
+                ; update the y-coordinate in the tile flags
+                ld a, (hl)
+                and 16
+                dec a
+                or IS_SLIDER_MASK
+                ld (hl), a
+                inc h ; point back to tiles
+
+            @finished_moving_between_cells:
+                ; can the slider move one more place in this direction?
+                ; check N rows up (up = decreasing y value)
+                ; where N is the size of the stack on the slider
+                ld a, (hl)
+                ld b, a ; b = the slider's tile icon
+                ld a, (slider_stack_height)
+                and a ; multiply by 16
+                rla
+                rla
+                rla
+                rla 
+                sla a
+                ld c, a ; c = the slider stack height * 16
+
+                ld a, l
+                sub c ; this many rows up
+                ld l, a
+
+                ld a, (hl)
+                and a
+                jr nz, @+blocked
+
+                ; keep going.
+                ; we move our tile up to the next cell
+                ld a, l
+                add c
+                ld l, a
+                ; this is where we were before. set this tile to blank
+                xor a
+                ld (hl), a
+                dec h ; point back to flags
+                ld (hl), a ; a still zero
+
+                ; now go one row up, which is where the slider will be next
+                ld a, l
+                sub 16
+                ld l, a
+                ; and set the y coordinate and the 'I am slider' flag
+                ; h is still pointing to flags
+                ld a, 15 + IS_SLIDER_MASK
+                ld (hl), a
+                inc h ; point back to tiles
+                ld (hl), b ; put the slider's tile icon here
+
+                ; and start counting another 16 frames
+                ld a, 16
+                ld (slider_motion_frame), a
+                
+                ret
+
+        @blocked:
+                ; y decreasing, change direction
+                ret
+
+        @y_increasing:
+                ret
+        @blocked:
+                ; y increasing, change direction
+                ret
+        @slider_horizontal:
+                ret
+        @blocked:
+                ; x decreasing, change direction
+                ret
+        @blocked:
+                ; x increasing, change direction
+                ret
