@@ -61,7 +61,8 @@ render_puzzle_tiles:
                 ld d, a ; ...
                 dec c
                 jr nz, @-next_col
-                jp render_remaining_tiles
+                call render_remaining_tiles
+                call init_slider_stack
                 ret
 
 

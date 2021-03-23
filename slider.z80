@@ -49,6 +49,15 @@ slider_wait_frame: defb 0
 ; what frame is the slider on;  TODO combine with slider_flags?
 slider_motion_frame: defb 0
 
+init_slider_stack:
+                ; called as part of the puzzle init
+                ; at the start of the level, the slider might already
+                ; have some tiles on top of it
+                ; so, initialize those now
+                ld a, 1
+                ld (slider_stack_height), a
+                ret
+
 slider_update:
                 ; update position of the slider
                 ; and any tiles on the slider
@@ -122,6 +131,7 @@ slider_update:
                 jr nz, @y_increasing
             @y_decreasing:
                 ; is slider currently in-motion between grid points?
+                ; if so, just keep doing that
                 ld a, (slider_motion_frame)
                 and a
                 jr z, @+finished_moving_between_cells
@@ -129,12 +139,21 @@ slider_update:
                 ld (slider_motion_frame), a
                 dec h ; point to flags
                 ; update the y-coordinate in the tile flags
-                ld a, (hl)
-                and 16
-                dec a
+                ; (this is just the slider_motion_frame itself)
                 or IS_SLIDER_MASK
+                ld b, a ; backup
                 ld (hl), a
-                inc h ; point back to tiles
+
+                ; and for the items in the stack above
+                ; HACK FOR NOW JUST ONE ITEM
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, b
+                ld (hl), a
+                ld a, l
+
+                ret
 
             @finished_moving_between_cells:
                 ; can the slider move one more place in this direction?
@@ -143,13 +162,12 @@ slider_update:
                 ld a, (hl)
                 ld b, a ; b = the slider's tile icon
                 ld a, (slider_stack_height)
-                and a ; multiply by 16
+                inc a ; we need to look one row BEYOND the stack height
                 rla
                 rla
                 rla
                 rla 
-                sla a
-                ld c, a ; c = the slider stack height * 16
+                ld c, a ; c = (slider stack height+1) * 16
 
                 ld a, l
                 sub c ; this many rows up
@@ -160,7 +178,9 @@ slider_update:
                 jr nz, @+blocked
 
                 ; keep going.
-                ; we move our tile up to the next cell
+                ; we move our tile AND everything in the stack, up to the next cell
+                ; TODO move the stack up (start at the end furthest from the slider)
+                ; ....
                 ld a, l
                 add c
                 ld l, a
@@ -180,6 +200,11 @@ slider_update:
                 ld (hl), a
                 inc h ; point back to tiles
                 ld (hl), b ; put the slider's tile icon here
+
+                ; slider's xy has officially changed
+                ld a, (slider_xy)
+                sub 16
+                ld (slider_xy), a
 
                 ; and start counting another 16 frames
                 ld a, 16
