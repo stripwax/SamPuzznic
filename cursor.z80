@@ -1,7 +1,8 @@
 ; TODO diagonals (should be supported)
 
-keyrepeat_ctr: defb 0
-keyrepeat_dirs: defb 0
+keyrepeat_ctr: defb 0 ; counts how long a key was held down for (before repeating)
+keyrepeat_dirs: defb 0 ; what keys were held down since last time
+fire_pressed: defb 0 ; whether fire was held down since last time
 key_delay: equ 8
 key_repeat: equ 6
 
@@ -9,6 +10,7 @@ init_cursor_controller:
                 xor a
                 ld (keyrepeat_ctr), a
                 ld (keyrepeat_dirs), a
+                ld (fire_pressed), a
                 ret
 
 draw_cursor:
@@ -118,9 +120,12 @@ update_cursor_position:
                 ; fire was not pressed
                 ; reset the flashing cursor counter
                 ; reset the 'captured' flag
+                ; reset the 'fire was held down' flag
                 xor a
                 ld (controller_flags_tile_captured), a
                 ld (controller_flags_flashing_ctr), a
+                ld (fire_pressed), a
+
     @movements_no_tile:
                 ; either fire was not pressed (as fall through from above)
                 ; or fire was pressed but we're not over a block that can move
@@ -282,13 +287,21 @@ update_cursor_position:
                 ; (implying it is "still" held down)
                 ld a, (controller_flags_tile_captured)
                 and a
-                jr z, @+skip
+                jr z, @+skip_capture
                 ld a, (controller_flags_flashing_ctr)
                 inc a
-        @skip:
+        @skip_capture:
                 ; (flashing_ctr is either incremented, or zero. neat.)
                 ld (controller_flags_flashing_ctr), a
+                ; also, trigger a sound effect just for pressing fire
+                ld a, (fire_pressed)
+                and a
+                jr nz, @+skip_sfx
+                inc a
+                ld (fire_pressed), a
+                call trigger_sfx_shove
 
+        @skip_sfx:
                 ; Now for the movement (i.e. push left / push right)
                 ; There are a lot of cases to consider here
                 ; TODO optimise.  We should be able to make determination here pretty
@@ -377,7 +390,7 @@ update_cursor_position:
 
                 ; yes, left was pressed (with fire)
                 push hl ; todo optimize this away
-                call trigger_sfx_shove
+                call trigger_sfx_cursor
                 pop hl
 
                 ; get new position (left = dec l, right = inc l)
@@ -445,7 +458,7 @@ update_cursor_position:
 
                 ; yes, right was pressed (with fire)
                 push hl ; todo optimize this away
-                call trigger_sfx_shove
+                call trigger_sfx_cursor
                 pop hl
 
                 ; get new position (left = dec l, right = inc l)
