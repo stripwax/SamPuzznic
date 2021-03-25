@@ -38,7 +38,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 *  "clear" (win) condition (20% done)
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
-*  sliders (elevators / moving blocks)
+*  sliders (elevators / moving blocks) (20% done)
 *  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
