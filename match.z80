@@ -62,6 +62,40 @@ check_match:
                 ld bc, 16*12-17-16 ; exclude edges
                 ldir
 
+                ; if sliders are mid-moving (not aligned to grid) then disregard those
+                ; coordinates for match
+                ; todo - surely we can make this more efficient than copying data and then removing it again later!
+                ld a, (slider_info)
+                and a
+                jr z, @done_sliders
+                ld a, (slider_xy)
+                add a, a
+                add a, a
+                add a, a
+                add a, a
+                ld l, a
+                ld h, tiles_flags/256
+                ld a, (hl)
+                and 15
+                ; if this is non-zero then the slider is mid-move
+                ; only if this is zero should we include the slider and stack
+                ; TODO OPTIMIZE surely we can look this up in a single test
+                jr z, @done_sliders
+                ; ok now we gotta zero out the slider and everything on top of it
+                ; from the match check algo
+                ; FAKE FOR NOW
+                ld a, (slider_stack_height)
+                ld b, a
+                ld h, match_tiles_copy/256
+        @more_on_stack:
+                xor a
+                ld (hl), a
+                ld a, l
+                sub 16
+                ld l, a
+                djnz @-more_on_stack
+
+        @done_sliders:
                 ; strategy: use ix to index into tiles array
                 ; we'll also use bc to do the scanning (top to bottom
                 ; and left to right)

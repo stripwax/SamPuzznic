@@ -20,17 +20,121 @@
 slider_tile_detect:
                 ret
 
+@temp: defb 0
+
 draw_sliders:
                 ; 
                 ld a, (slider_info)
                 and a
                 ret z 
                 ;
+                ld a, (slider_xy)
+
+                ; copy and pasted from dirty_tiles:
+                ; draw this tile
+                ; a = YYYYxxxx
+                ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
+                ;             and put into de
+                ; for tiles: a is (conveniently) already the low byte offset into table
+                ;             so we can just put a into c (since bc is aligned to 256-bytes)
+                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later
+                ; check : IS IT FALLING?  if so, do NOT render it now
+                ld b, tiles_flags / 256
+                ld a, (bc)
+                ; skip this next check
+                ;bit 4, a
+                ;jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
+                and 15 ; y-offset (in this case it's y... for horiz slider it would be x though...)
+                
+                ; now, get h= (y_offset/2) and l = 128*(y_offset % 2)
+                ; put the lsb of y into l IN THE TOP BIT
+                ; and the rest of the bits (i.e. y/2) into h
+                ld l, 0
+                rra
+                ld h, a
+                rr l
+
+                ld a, c
+                and 15
+                add a, a
+                add a, a
+                add a, a
+                add a, GRID_X_OFFSET
+                add a, l
+                ld e, a ; e = x*8+GRID_X_OFFSET + 128*(y_offset % 2)
+
+                ld a, c ; a = y
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
+                add h ; a = y * 8 + (y_offset/2)
+                ld d, a
+
+                inc b ; point to tiles
+                ld a, (bc) ; the actual tile to draw
+
+                push de ; <-- important for safekeeping
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ; loop for the rest of the tiles on the stack
+                ld a, (slider_stack_height)
+                and a
+                jr z, @done_drawing_stack
+                ld (@temp), a
+        @more_on_the_stack:
+                ; navigate up one tile row in tiles, and 16 pixel rows on-screen
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, d
+                sub 8
+                ld d, a
+                ld a, (bc)
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ld hl, @temp
+                dec (hl)
+                jr nz, @more_on_the_stack
+
+        @done_drawing_stack:
+                ; if slider is going up, we need to blank a 1-pixel-high row at the bottom below the slider
+                ; if slider is going down, we need to blank a 1-pixel-high row at the top (of the stack)
+                ld a, (slider_info)
+                and SLIDER_DIRECTION_MASK
+                jr z, @going_up
+        @going_down:
+                ; find the place 1 pixel row above the top of the slider stack and blank it
+                pop hl ; YES! we pushed it from de, we're now junking it.
+                ld a, e
+                sub 128
+                ld e, a
+                ld a, d
+                sbc 0
+                ld d, a
+
+                call fillrect_16x1_black_at_de
 
                 ret
 
-slider_stack: defs 10 ; just a list of y-coordinates really. 255 ends.
-slider_stack_tail: defw 0
+        @going_up:
+                ; find the place 16 pixel rows below the slider tile and blank it
+                pop de ; YES! we pushed it from de, we're now recovering the old value. this is where the slider is.
+                ld a, d
+                add 8
+                ld d, a
+                call fillrect_16x1_black_at_de
+
+                ret
+
 slider_stack_height: defb 0 ; maybe redundant, but convenient.
 
 ; these are the bitmask definitions for slider_info
@@ -54,6 +158,8 @@ init_slider_stack:
                 ; at the start of the level, the slider might already
                 ; have some tiles on top of it
                 ; so, initialize those now
+                ; JUST TO BE CLEAR: the height of 1 is fake for now.
+                ; Normally you would init to zero.
                 ld a, 1
                 ld (slider_stack_height), a
                 ret
@@ -179,27 +285,34 @@ slider_update:
 
                 ; keep going.
                 ; we move our tile AND everything in the stack, up to the next cell
-                ; TODO move the stack up (start at the end furthest from the slider)
-                ; ....
+                ; (start at the end furthest from the slider)
+                ld a, (slider_stack_height)
+                inc a ; need to move the slider block itself too
+                ld b, a
                 ld a, l
-                add c
+                add 16 ; point to the thing moving FROM
                 ld l, a
-                ; this is where we were before. set this tile to blank
-                xor a
-                ld (hl), a
-                dec h ; point back to flags
-                ld (hl), a ; a still zero
-
-                ; now go one row up, which is where the slider will be next
+        @move_next_thing_in_stack:
+                ld c, (hl)
                 ld a, l
                 sub 16
-                ld l, a
+                ld l, a ; point to where it is moving TO
+                ld (hl), c
                 ; and set the y coordinate and the 'I am slider' flag
-                ; h is still pointing to flags
+                dec h ; point to flags
                 ld a, 15 + IS_SLIDER_MASK
                 ld (hl), a
                 inc h ; point back to tiles
-                ld (hl), b ; put the slider's tile icon here
+
+                ld a, l
+                add 32 ; point to the NEXT THING moving from
+                ld l, a
+                djnz @-move_next_thing_in_stack
+
+                xor a
+                ld (hl), a
+                dec h ; point back to flags
+                ld (hl), a ; a still zero                
 
                 ; slider's xy has officially changed
                 ld a, (slider_xy)

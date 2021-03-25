@@ -223,6 +223,7 @@ draw_overlays:
                 ; also the cursor
                 ; should probably make some of this macro and inline into game loop 
                 call draw_falling_tiles
+                call draw_sliders
                 call draw_cursor
                 call render_bonus
                 ret

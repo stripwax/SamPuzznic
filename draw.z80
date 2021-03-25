@@ -211,6 +211,7 @@ draw_debug_tile_at_de_tile_a:
                 ret
 
 draw_tile_at_de_tile_a:
+                ; modifies de, hl, bc
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; w.r.t tile_bitmaps
@@ -410,6 +411,26 @@ fillrect_16x2_black_at_de:
                 dec e
                 ld (de), a
                 dec e
+                ld (de), a
+                ret
+
+fillrect_16x1_black_at_de:
+                ; get a black (double) pixel
+                xor a
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
                 ld (de), a
                 ret
 
