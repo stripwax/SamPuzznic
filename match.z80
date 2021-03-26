@@ -69,10 +69,6 @@ check_match:
                 and a
                 jr z, @done_sliders
                 ld a, (slider_xy)
-                add a, a
-                add a, a
-                add a, a
-                add a, a
                 ld l, a
                 ld h, tiles_flags/256
                 ld a, (hl)
@@ -85,6 +81,7 @@ check_match:
                 ; from the match check algo
                 ; FAKE FOR NOW
                 ld a, (slider_stack_height)
+                inc a ; include the slider tile itself ; TODO optimize could just unroll a bit
                 ld b, a
                 ld h, match_tiles_copy/256
         @more_on_stack:
