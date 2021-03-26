@@ -238,7 +238,7 @@ slider_update:
 
                 ; get current type
                 bit SLIDER_AXIS_BIT, a
-                jr nz, @slider_horizontal
+                jp nz, @slider_horizontal
                 
         @slider_vertical:
                 ld b, a ; backup slider_info
@@ -261,19 +261,19 @@ slider_update:
                 ld (slider_motion_frame), a
                 dec h ; point to flags
                 ; update the y-coordinate in the tile flags
-                ; (this is just the slider_motion_frame itself)
+                ; (this is also the same value as the slider_motion_frame
+                ; but with the 'I am sliding' flag set too)
+                ; We update the slider block and the blocks in the stack
                 or IS_SLIDER_MASK
-                ld b, a ; backup
-                ld (hl), a
-
-                ; and for the items in the stack above
-                ; HACK FOR NOW JUST ONE ITEM
+                ld c, a ; backup
+                ld a, (slider_stack_height)
+                ld b, a
                 ld a, l
+            @more_on_stack:
+                ld (hl), c
                 sub 16
                 ld l, a
-                ld a, b
-                ld (hl), a
-                ld a, l
+                djnz @-more_on_stack
 
                 ret
 
@@ -308,19 +308,17 @@ slider_update:
                 ld a, l
                 add 16 ; point to the thing moving FROM
                 ld l, a
+                ld d, 15 + IS_SLIDER_MASK
         @move_next_thing_in_stack:
                 ld c, (hl)
-                ld a, l
                 sub 16
                 ld l, a ; point to where it is moving TO
                 ld (hl), c
                 ; and set the y coordinate and the 'I am slider' flag
                 dec h ; point to flags
-                ld a, 15 + IS_SLIDER_MASK
-                ld (hl), a
+                ld (hl), d
                 inc h ; point back to tiles
 
-                ld a, l
                 add 32 ; point to the NEXT THING moving from
                 ld l, a
                 djnz @-move_next_thing_in_stack
@@ -343,13 +341,106 @@ slider_update:
 
         @blocked:
                 ; y decreasing, change direction
+                ld a, (slider_wait_1)
+                ld (slider_wait_frame), a
+                ld a, (slider_info)
+                xor SLIDER_DIRECTION_MASK ; flip direction
+                ld (slider_info), a
+                ld a, 16
+                ld (slider_motion_frame), a
                 ret
 
         @y_increasing:
+                ; is slider currently in-motion between grid points?
+                ; if so, just keep doing that
+                ld a, (slider_motion_frame)
+                and a
+                jr z, @+finished_moving_between_cells
+                dec a
+                ld (slider_motion_frame), a
+                dec h ; point to flags
+                ; update the y-coordinate in the tile flags
+                ; (this is 16-the slider_motion_frame
+                ; but with the 'I am sliding' flag set too)
+                ; We update the slider block and the blocks in the stack
+                neg
+                add 16 ; a = (-frame)+16 = 16-frame
+                or IS_SLIDER_MASK
+                ld c, a ; backup
+                ld a, (slider_stack_height)
+                ld b, a
+                ld a, l
+            @more_on_stack:
+                ld (hl), c
+                and 16
+                ld l, a
+                djnz @-more_on_stack
+
                 ret
+
+            @finished_moving_between_cells:
+                ; can the slider move one more place in this direction?
+                ; check 1 row down (down = increasing y value)
+                ld a, (hl)
+                ld b, a ; b = the slider's tile icon
+                ld a, l
+                add 16 ; one row down
+                ld l, a
+                ld a, (hl)
+                and a
+                jr nz, @+blocked
+
+                ; keep going.
+                ; we move our slider tile down AND everything in the stack
+                ; (start at the slider itself and work thru the stack)
+                ld a, (slider_stack_height)
+                inc a ; need to move the slider block itself too
+                ld b, a
+                ld a, l
+                sub 16 ; point to the thing moving FROM
+                ld l, a
+                ld d, 0 + IS_SLIDER_MASK
+        @move_next_thing_in_stack:
+                ld c, (hl)
+                add 16
+                ld l, a ; point to where it is moving TO
+                ld (hl), c
+                ; and set the y coordinate and the 'I am slider' flag
+                dec h ; point to flags
+                ld (hl), d
+                inc h ; point back to tiles
+
+                sub 32 ; point to the NEXT THING moving from
+                ld l, a
+                djnz @-move_next_thing_in_stack
+
+                xor a
+                ld (hl), a
+                dec h ; point back to flags
+                ld (hl), a ; a still zero                
+
+                ; slider's xy has officially changed
+                ld a, (slider_xy)
+                add 16
+                ld (slider_xy), a
+
+                ; and start counting another 16 frames
+                ld a, 16
+                ld (slider_motion_frame), a
+                
+                ret
+
         @blocked:
                 ; y increasing, change direction
+                ld a, (slider_wait_2)
+                ld (slider_wait_frame), a
+                ld a, (slider_info)
+                xor SLIDER_DIRECTION_MASK ; flip direction
+                ld (slider_info), a
+                ld a, 16
+                ld (slider_motion_frame), a
                 ret
+
         @slider_horizontal:
                 ret
         @blocked:
