@@ -68,8 +68,6 @@ check_match:
                 ld a, (slider_info)
                 and a
                 jr z, @done_sliders
-                ld a, (slider_xy)
-                ld l, a
                 ld h, tiles_flags/256
                 ld a, (hl)
                 and 15
@@ -79,15 +77,15 @@ check_match:
                 jr z, @done_sliders
                 ; ok now we gotta zero out the slider and everything on top of it
                 ; from the match check algo
-                ; FAKE FOR NOW
                 ld a, (slider_stack_height)
                 inc a ; include the slider tile itself ; TODO optimize could just unroll a bit
                 ld b, a
                 ld h, match_tiles_copy/256
+                ld a, (slider_xy)
+                ld l, a
+                ld d, 0
         @more_on_stack:
-                xor a
-                ld (hl), a
-                ld a, l
+                ld (hl), d
                 sub 16
                 ld l, a
                 djnz @-more_on_stack
@@ -313,6 +311,18 @@ check_match:
                 ld a, 1
                 ld (destruct_frame), a
 
+                ; TODO SPECIAL TREATMENT FOR MATCHES THAT INVOLVED TILES ON SLIDERS!
+                ; If any tiles on the slider are involved in match, you need to
+                ;  1. mark that tile as no longer on the slider
+                ;  2. mark all other tiles ABOVE THAT TILE as also no longer on the slider
+                ;  3. leave all other tiles below that tile alone BUT set the slider_stack_height
+                ;     to correspond to how many tiles are now remaining on the slider still
+                ; this should all be fairly easy since we easily know the slider xy and the stack
+                ; height and all the xy of tiles in the match, so can just compare match_x=slider_x and
+                ; match_y between (slider_y-1) and (slider_y-stack_height)
+                ; ....
+
+                
                 ; is controller already locked (i.e. this is a subsequent triggered match?)
                 ld a, (controller_flags_disabled)
                 and a
@@ -322,7 +332,7 @@ check_match:
                 ; starting a bonus calculation from the lowest tier (the tier
                 ; is sticky but resets when all triggered matches have finished)
                 call lock_controller ; TODO OPTIMIZE inline
-                ; call init_bonus ; TODO OPTIMIZE inline
+                
             @already_locked:                
                 ret
 
