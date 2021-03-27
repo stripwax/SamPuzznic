@@ -21,6 +21,7 @@ slider_tile_detect:
                 ret
 
 @temp: defb 0
+prev_slider_info: defb 0
 
 draw_sliders:
                 ; 
@@ -119,7 +120,9 @@ draw_sliders:
         @done_drawing_stack:
                 ; if slider is going up, we need to blank a 1-pixel-high row at the bottom below the slider
                 ; if slider is going down, we need to blank a 1-pixel-high row at the top (of the stack)
-                ld a, (slider_info)
+                ; This relies on know which direction the slider was going ONE FRAME EARLIER (because it
+                ; might have already changed direction i.e. stationary now)
+                ld a, (prev_slider_info)
                 and SLIDER_DIRECTION_MASK
                 jr z, @going_up
         @going_down:
@@ -236,6 +239,8 @@ slider_update:
                 and a
                 ret z ; no slider info, nothing to update
 
+                ld (prev_slider_info), a ; the 'erase' code needs to know where the slider was before
+
                 ; get current type
                 bit SLIDER_AXIS_BIT, a
                 jp nz, @slider_horizontal
@@ -252,6 +257,7 @@ slider_update:
                 bit SLIDER_DIRECTION_BIT, b
                 jr nz, @y_increasing
             @y_decreasing:
+            y_decreasing:
                 ; is slider currently in-motion between grid points?
                 ; if so, just keep doing that
                 ld a, (slider_motion_frame)
@@ -323,6 +329,9 @@ slider_update:
                 ld l, a
                 djnz @-move_next_thing_in_stack
 
+                ; zero the place where the bottom piece (the slider) was before
+                sub 16
+                ld l, a
                 xor a
                 ld (hl), a
                 dec h ; point back to flags
@@ -344,13 +353,15 @@ slider_update:
                 ld a, (slider_wait_1)
                 ld (slider_wait_frame), a
                 ld a, (slider_info)
-                xor SLIDER_DIRECTION_MASK ; flip direction
+                or SLIDER_DIRECTION_MASK ; flip direction
                 ld (slider_info), a
                 ld a, 16
                 ld (slider_motion_frame), a
                 ret
 
         @y_increasing:
+        y_increasing:
+
                 ; is slider currently in-motion between grid points?
                 ; if so, just keep doing that
                 ld a, (slider_motion_frame)
@@ -358,18 +369,21 @@ slider_update:
                 jr z, @+finished_moving_between_cells
                 dec a
                 ld (slider_motion_frame), a
-                dec h ; point to flags
                 ; update the y-coordinate in the tile flags
                 ; (this is 16-the slider_motion_frame
                 ; but with the 'I am sliding' flag set too)
                 ; We update the slider block and the blocks in the stack
+                ; When going down, there is an additional special case:
+                ; on frame 16, we're now grid aligned ONE ROW BELOW
+                jr z, @frame_16_going_down
                 neg
-                add 16 ; a = (-frame)+16 = 16-frame
+                add 15 ; a = (-frame)+15 = 15-frame
                 or IS_SLIDER_MASK
                 ld c, a ; backup
                 ld a, (slider_stack_height)
                 ld b, a
                 ld a, l
+                dec h ; point to flags
             @more_on_stack:
                 ld (hl), c
                 and 16
@@ -377,20 +391,7 @@ slider_update:
                 djnz @-more_on_stack
 
                 ret
-
-            @finished_moving_between_cells:
-                ; can the slider move one more place in this direction?
-                ; check 1 row down (down = increasing y value)
-                ld a, (hl)
-                ld b, a ; b = the slider's tile icon
-                ld a, l
-                add 16 ; one row down
-                ld l, a
-                ld a, (hl)
-                and a
-                jr nz, @+blocked
-
-                ; keep going.
+            @frame_16_going_down:
                 ; we move our slider tile down AND everything in the stack
                 ; (start at the slider itself and work thru the stack)
                 ld a, (slider_stack_height)
@@ -414,6 +415,9 @@ slider_update:
                 ld l, a
                 djnz @-move_next_thing_in_stack
 
+                ; zero the grid entry that used to be where the top of the stack was
+                add 16
+                ld l, a
                 xor a
                 ld (hl), a
                 dec h ; point back to flags
@@ -424,10 +428,24 @@ slider_update:
                 add 16
                 ld (slider_xy), a
 
+                ret
+
+            @finished_moving_between_cells:
+                ; can the slider move one more place in this direction?
+                ; check 1 row down (down = increasing y value)
+                ld a, (hl)
+                ld b, a ; b = the slider's tile icon
+                ld a, l
+                add 16 ; one row down
+                ld l, a
+                ld a, (hl)
+                and a
+                jr nz, @+blocked
+
+                ; keep going.
                 ; and start counting another 16 frames
                 ld a, 16
                 ld (slider_motion_frame), a
-                
                 ret
 
         @blocked:
@@ -435,7 +453,7 @@ slider_update:
                 ld a, (slider_wait_2)
                 ld (slider_wait_frame), a
                 ld a, (slider_info)
-                xor SLIDER_DIRECTION_MASK ; flip direction
+                and 255-SLIDER_DIRECTION_MASK ; flip direction
                 ld (slider_info), a
                 ld a, 16
                 ld (slider_motion_frame), a
