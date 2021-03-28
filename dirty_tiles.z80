@@ -45,10 +45,10 @@ redraw_dirty:
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
                 ld c, a ; used for bc address AND ALSO used as a backup of a that we need later
-                ; check : IS IT FALLING?  if so, do NOT render it now
+                ; check : IS IT FALLING?  or on a slider? if so, do NOT render it now
                 ld b, tiles_flags / 256
                 ld a, (bc)
-                bit 4, a
+                and IS_FALLING_MASK + IS_SLIDER_MASK
                 jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
 
                 ld a, c
