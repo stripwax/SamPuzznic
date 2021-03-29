@@ -22,6 +22,14 @@ slider_tile_detect:
 
 @temp: defb 0
 slider_moved_this_frame: defb 0
+SLIDER_MOVED_YESNO_BIT: equ 0
+SLIDER_MOVED_YESNO_MASK: equ 1
+SLIDER_MOVED_NO_VALUE: equ 0
+SLIDER_MOVED_YES_VALUE: equ 1
+SLIDER_MOVED_UPDOWN_BIT: equ 1
+SLIDER_MOVED_UPDOWN_MASK: equ 2
+SLIDER_MOVED_UP_VALUE: equ 0
+SLIDER_MOVED_DOWN_VALUE: equ 2
 
 draw_sliders:
                 ; 
@@ -118,20 +126,14 @@ draw_sliders:
                 jr nz, @more_on_the_stack
 
         @done_drawing_stack:
-                ; if slider is going up, we need to blank a 1-pixel-high row at the bottom below the slider
-                ; if slider is going down, we need to blank a 1-pixel-high row at the top (of the stack)
-                ; This relies on know which direction the slider was going ONE FRAME EARLIER (because it
-                ; might have already changed direction i.e. stationary now)
-                ; Also relies on know whether the slider actually moved last frame or not
-                ; In other words, if it was stationary last frame, and moved down one pixel this frame,
-                ; then do NOT clear a pixel row above.
-                ; I sneakily encode these two facts into two bits in slider_moved_this_frame
-                ; Bit 0 is the "up/down" and bit 1 is the "did I move or not".
-                ; That means, NEXT FRAME, those two bits moved to bit 2 and 3.
+                ; if slider went up, we need to blank a 1-pixel-high row at the bottom below the slider
+                ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
+                ; If slider didn't move this frame, we should not blank anything
+                ; I encode these facts into two bits in slider_moved_this_frame
                 ld a, (slider_moved_this_frame)
-                bit 3, a
+                bit SLIDER_MOVED_YESNO_BIT, a
                 jr z, @neither_up_nor_down
-                and 4 ; bit 2
+                and SLIDER_MOVED_UPDOWN_MASK
                 jr z, @going_up
         @going_down:
                 ; find the place 1 pixel row above the top of the slider stack and blank it
@@ -246,11 +248,7 @@ slider_update:
                 ld (slider_wait_frame), a
 
                 ; say that the slider didn't move this frame
-                ld a, (slider_moved_this_frame)
-                and a ; ccf
-                rla
-                and a ; ccf
-                rla
+                ld a, SLIDER_MOVED_NO_VALUE
                 ld (slider_moved_this_frame), a
 
                 ret
@@ -294,11 +292,7 @@ slider_update:
                 ld c, a ; backup
 
                 ; say that the slider did move this frame (and in which direction)
-                ld a, (slider_moved_this_frame)
-                scf
-                rla
-                and a ; bit clear => y_decreasing
-                rla
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
                 ld (slider_moved_this_frame), a
 
                 ld a, (slider_stack_height)
@@ -336,11 +330,7 @@ slider_update:
 
                 ; keep going.
                 ; say that the slider did move this frame (and in which direction)
-                ld a, (slider_moved_this_frame)
-                scf
-                rla
-                and a ; bit clear => y_decreasing
-                rla
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
                 ld (slider_moved_this_frame), a
 
                 ; we move our tile AND everything in the stack, up to the next cell
@@ -379,8 +369,8 @@ slider_update:
                 sub 16
                 ld (slider_xy), a
 
-                ; and start counting another 16 frames
-                ld a, 16
+                ; and start counting another 15 frames after this one
+                ld a, 15
                 ld (slider_motion_frame), a
                 
                 ret
@@ -414,17 +404,14 @@ slider_update:
                 ; When going down, there is an additional special case:
                 ; on frame 16, we're now grid aligned ONE ROW BELOW
                 jr z, @frame_16_going_down
+        @going_down_one_pixel_row:
                 neg
                 add 16 ; a = (-frame)+16 = 16-frame
                 or IS_SLIDER_MASK
                 ld c, a ; backup
 
                 ; say that the slider did move this frame (and in which direction)
-                ld a, (slider_moved_this_frame)
-                scf
-                rla
-                scf ; bit set  => y_increasing
-                rla 
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_DOWN_VALUE
                 ld (slider_moved_this_frame), a
 
                 ld a, (slider_stack_height)
@@ -440,11 +427,7 @@ slider_update:
                 ret
             @frame_16_going_down:
                 ; say that the slider did move this frame (and in which direction)
-                ld a, (slider_moved_this_frame)
-                scf
-                rla
-                scf ; bit set  => y_increasing
-                rla 
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_DOWN_VALUE
                 ld (slider_moved_this_frame), a
 
                 ; we move our slider tile down AND everything in the stack
@@ -488,28 +471,23 @@ slider_update:
             @finished_moving_between_cells:
                 ; can the slider move one more place in this direction?
                 ; check 1 row down (down = increasing y value)
-                ld a, (hl)
-                ld b, a ; b = the slider's tile icon
                 ld a, l
+                ld b, a ; backup
                 add 16 ; one row down
                 ld l, a
                 ld a, (hl)
                 and a
                 jr nz, @+blocked
 
-                ; keep going.
-                ; say that the slider did move this frame (and in which direction)
-                ld a, (slider_moved_this_frame)
-                scf
-                rla
-                scf ; bit set  => y_increasing
-                rla 
-                ld (slider_moved_this_frame), a
+                ; not blocked, put hl back where it was
+                ld l, b
 
-                ; and start counting another 16 frames
-                ld a, 16
+                ; and start counting another 15 frames after this one
+                ld a, 15
                 ld (slider_motion_frame), a
-                ret
+                
+                ; and jump back to the part where we move everything down by one pixel
+                jp @-going_down_one_pixel_row
 
         @blocked:
                 ; y increasing, change direction
