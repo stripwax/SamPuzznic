@@ -17,7 +17,7 @@ mostly because I didn't have the requisite skills back then. This is the first '
 I've done.
 
 # Status
-Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you lose" implemented yet
+Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win" detection but no "you lose" implemented yet
 
 # DONE
 * Tile bitmaps
@@ -32,23 +32,24 @@ Work-In-Progress.  Essentially playable on a single-puzzle, no "you win" or "you
 * bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
 * count of remaining tiles
 * sfx
+* Vertical sliders (80% complete)
+* "Clear" (you win) condition when all tiles have been matched
 
 
 # TODO
-*  "clear" (win) condition (20% done)
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
-*  sliders (elevators / moving blocks)
+*  Horizontal sliders
 *  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
 *  "next level" after win condition
 *  level select between stages / initial level select at start
 *  clock font
-*  "panic mode" clock font (30s or less remaining, and again at 15s or less remaining)
+*  "panic mode" clock font (clock flashing at 30s or less remaining, and again at 10s or less remaining)
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
-*  music (20% done)
+*  music (50% done)
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
