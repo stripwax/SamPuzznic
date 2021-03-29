@@ -130,6 +130,7 @@ draw_debug_tile_at_de_tile_a:
                 ; left to right and right to left even rows
     _draw_debug_tile_at_de_colorbyte_a:
                 ld b, 4
+                ld c, a ; backup
     @evens:
                 ld (de), a
                 inc e
@@ -173,6 +174,7 @@ draw_debug_tile_at_de_tile_a:
                 adc 0
                 ld d, a
 
+                ld a, c ; restore
                 ld b, 4
     @odds:
                 ld (de), a
@@ -594,6 +596,7 @@ fillrect_16x8_black_at_de:
                 adc 0
                 ld d, a
 
+                xor a
                 ld b, 2
     @odds:
                 ld (de), a
