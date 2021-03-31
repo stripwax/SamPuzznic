@@ -400,14 +400,12 @@ update_cursor_position:
                 ; get new position (left = dec l, right = inc l)
                 ; TODO more edge cases here.  what happens when the tile being shoved is part
                 ; of the stack on top of a vertical slider?  it seems to do the following:
-                ;   1. if the slider is going down then 'round down' the y-coordinate for where
-                ;      this block will go (and check that).  By round down I mean vertically down
-                ;      (which is higher y coordinate so actually I guess mean roundn up the y coord)
-                ;   2. if the slider is going up then 'round up' the y-coordinate for where this
-                ;      block will go (and check that).  I think you just get this behaviour for free
-                ;      in my data model since the ycoord is already rounded up. By round up I mean
-                ;      vertically up so I really mean round down the y coordinate since lower y
-                ;      is towards the top of the screen.
+                ;  if the slider is grid-aligned then this just works (look left or right and
+                ;  see a space), but if the slider is part-way then the tile will move to the
+                ;  nearest grid-aligned y-coordinate after being shoved.  So in some cases that
+                ;  means the tile y-coordinate will be 'rounded up' and jump up, or 'rounded down'
+                ;  and jump down.  In either case, the tile might find itself immediately on
+                ;  solid ground, or it might start to fall, etc.
                 ; ....
                 dec l
                 ld a, (hl)
@@ -420,9 +418,19 @@ update_cursor_position:
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                ; bit 4 set -> tile at that location is falling
-                bit 4, a
+                ; is it falling or slider? if so, we can't move into that space
+                bit IS_FALLING_BIT, a
                 ret nz
+                bit IS_SLIDER_BIT, a
+                jr z, @+done_checking_slider
+                ; urgh, we also have to check the slider y offset.  if it's zero, then we're actually
+                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
+                ; there's enough space to sneak in under it.
+                and 15 ; get the y-coordinate-offset of the slider
+                ret nz ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
+                       ; where we want to move our tile))
+                
+        @done_checking_slider:
                 ; all good, we can move there
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
@@ -431,7 +439,7 @@ update_cursor_position:
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
-                dec l
+                dec l ; go left
                 ld (hl), a
                 inc l
                 ld (hl), 0
