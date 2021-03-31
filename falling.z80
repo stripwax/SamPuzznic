@@ -1,8 +1,3 @@
-IS_FALLING_BIT: equ 4
-IS_FALLING_MASK: equ 16
-IS_SLIDER_BIT: equ 5 ; for the slider itself, and any block stacked on the slider
-IS_SLIDER_MASK: equ 32 ; for the slider itself, and any block stacked on the slider
-
 END_OF_LIST: equ 255
 DEAD_ENTRY: equ 254
 
@@ -74,47 +69,54 @@ check_falling_tile_hl:
                 bit IS_SLIDER_BIT, a
                 jr z, @on_solid_ground
 
-                ; we have a tricky choice now.  if the slider is moving UP towards us,
-                ; then, right now, we should actually hover in-place until the slider
-                ; meets us.  Yeah, weird right? Puzznic is not a physics simulation.
-                ld a, (slider_info)
-                bit SLIDER_DIRECTION_BIT, a
-                jr z, @slider_is_moving_up
-
-                ; hey, whee, we landed on a slider that is going down
-                ; so we now copy the offset of the found tile, to our tile
-                ; (which teleports us instantly onto the top of the slider stack)
-                ld h, (hl) ; gotta put it somewhere..
+                ; HM IS THIS THE RIGHT FIX?
+                ; basically, if the slider is (immediately) below is (although maybe not
+                ; exactly aligned to pixel boundary) then we treat the falling tile as
+                ; falling, and let the falling logic get it to land on the slider
                 ld a, l
-                sub 16
-                ld l, a
-                ld a, h
-                ld h, tiles_flags/256
-                ld (hl), a
-                ld a, (slider_stack_height)
-                inc a
-                ld (slider_stack_height), a
-                ret
+                jp push_falling_tiles
 
-    @slider_is_moving_up:
-                ; yeah so now we kindof just sit still for a bit and
-                ; wait for the slider to catch up with us.
-                ; So, if the slider is precisely below us right now, then we hop onto it
-                ld a, (hl)
-                and 15
-                ret nz ; because slider is not at exactly the tile boundary
-                ; if we're here, the slider is at exactly the tile boundary, and immediately
-                ; below us, so we hop on board
-                ld a, l
-                sub 16
-                ld l, a
-                ld a, IS_SLIDER_BIT + 0 ; 0 y offset
-                ld h, tiles_flags/256
-                ld (hl), a
-                ld a, (slider_stack_height)
-                inc a
-                ld (slider_stack_height), a
-                ret
+    ;             ; we have a tricky choice now.  if the slider is moving UP towards us,
+    ;             ; then, right now, we should actually hover in-place until the slider
+    ;             ; meets us.  Yeah, weird right? Puzznic is not a physics simulation.
+    ;             ld a, (slider_info)
+    ;             bit SLIDER_DIRECTION_BIT, a
+    ;             jr z, @slider_is_moving_up
+
+    ;             ; hey, whee, we landed on a slider that is going down
+    ;             ; so we now copy the offset of the found tile, to our tile
+    ;             ; (which teleports us instantly onto the top of the slider stack)
+    ;             ld h, (hl) ; gotta put it somewhere..
+    ;             ld a, l
+    ;             sub 16
+    ;             ld l, a
+    ;             ld a, h
+    ;             ld h, tiles_flags/256
+    ;             ld (hl), a
+    ;             ld a, (slider_stack_height)
+    ;             inc a
+    ;             ld (slider_stack_height), a
+    ;             ret
+
+    ; @slider_is_moving_up:
+    ;             ; yeah so now we kindof just sit still for a bit and
+    ;             ; wait for the slider to catch up with us.
+    ;             ; So, if the slider is precisely below us right now, then we hop onto it
+    ;             ld a, (hl)
+    ;             and 15
+    ;             ret nz ; because slider is not at exactly the tile boundary
+    ;             ; if we're here, the slider is at exactly the tile boundary, and immediately
+    ;             ; below us, so we hop on board
+    ;             ld a, l
+    ;             sub 16
+    ;             ld l, a
+    ;             ld a, IS_SLIDER_BIT + 0 ; 0 y offset
+    ;             ld h, tiles_flags/256
+    ;             ld (hl), a
+    ;             ld a, (slider_stack_height)
+    ;             inc a
+    ;             ld (slider_stack_height), a
+    ;             ret
 
     @on_solid_ground:
                 ; make sure the state is correct - zero offset (and flag as not falling)
