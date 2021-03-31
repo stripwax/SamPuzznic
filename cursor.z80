@@ -330,6 +330,8 @@ update_cursor_position:
                 ; it could be mid falling, so effectively we're in 'mid air') - same rule
                 ; applies - you can't move it if it's in mid air
                 ; TODO optimise, now we're pushing and popping HL, ugh.
+                ; TODO does this condition apply for something that has landed 'onto' where
+                ; the slider is (or will be)?
                 push hl
                 ld a, l
                 add 16
@@ -383,6 +385,8 @@ update_cursor_position:
                 ld a, b
 
     @check_push_left:
+                ; This implements the shove_left action.
+
                 inc h ; (point back to tiles data)
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit, a
@@ -394,6 +398,17 @@ update_cursor_position:
                 pop hl
 
                 ; get new position (left = dec l, right = inc l)
+                ; TODO more edge cases here.  what happens when the tile being shoved is part
+                ; of the stack on top of a vertical slider?  it seems to do the following:
+                ;   1. if the slider is going down then 'round down' the y-coordinate for where
+                ;      this block will go (and check that).  By round down I mean vertically down
+                ;      (which is higher y coordinate so actually I guess mean roundn up the y coord)
+                ;   2. if the slider is going up then 'round up' the y-coordinate for where this
+                ;      block will go (and check that).  I think you just get this behaviour for free
+                ;      in my data model since the ycoord is already rounded up. By round up I mean
+                ;      vertically up so I really mean round down the y coordinate since lower y
+                ;      is towards the top of the screen.
+                ; ....
                 dec l
                 ld a, (hl)
                 and a ; check if it is zero.  you can only push a tile into zero
