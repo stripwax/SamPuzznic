@@ -296,6 +296,7 @@ slider_update:
                 ld (slider_moved_this_frame), a
 
                 ld a, (slider_stack_height)
+                inc a ; including slider itself
                 ld b, a
                 ld a, l
             @more_on_stack:
@@ -415,12 +416,13 @@ slider_update:
                 ld (slider_moved_this_frame), a
 
                 ld a, (slider_stack_height)
+                inc a ; including slider itself
                 ld b, a
                 ld a, l
                 dec h ; point to flags
             @more_on_stack:
                 ld (hl), c
-                and 16
+                sub 16
                 ld l, a
                 djnz @-more_on_stack
 
