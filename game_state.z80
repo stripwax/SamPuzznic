@@ -66,6 +66,10 @@
 ;       fire_held: 1,
 ;   }
 
+IS_FALLING_BIT: equ 4
+IS_FALLING_MASK: equ 16
+IS_SLIDER_BIT: equ 5 ; for the slider itself, and any block stacked on the slider
+IS_SLIDER_MASK: equ 32 ; for the slider itself, and any block stacked on the slider
 
 ; following are memcpy'd from definition of a given puzzle
 DS ALIGN 256
