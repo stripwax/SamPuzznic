@@ -46,6 +46,10 @@ queue_check_falling_tile_l:
 
 
 check_falling_tile_hl:
+                ; check a tile. adds it to the list of 'falling' tiles if it is falling
+                ; Call this whenever a tile has been moved, including for tiles above
+                ; the tile-that-was-moved.
+                ; Handles checks for tiles that end up on-a-slider. 
                 ; modifies: HL, A
                 ; is the tile pointed (in tiles array) by hl, suspended in midair
                 ; if so, update the state to say it is falling (and add it to the
@@ -126,7 +130,6 @@ check_falling_tile_hl:
                 sub 16
                 ld l, a
                 xor a
-                dec h ; (point to tiles_flags)
                 ld (hl), a
                 ret
 
@@ -144,11 +147,8 @@ check_falling_tiles_queue:
         @DONE:
                 jp clear_queue_tiles_to_check
 
-; FIXME TODO : the below combines process (update) and drawing, and is
-; extra complex as a result. Should split into an update step, and a draw
-; step (where the latter could be optimised for raster to avoid tearing)
-; Separating might also make it easy(easier) to introduce a gameplay backdrop
-; rather than plan black
+update_falling_tiles:
+
 draw_falling_tiles:
                 ; step through list of falling tiles (x,y) coords
                 ; and erase (redraw) tile rects
@@ -235,23 +235,31 @@ draw_falling_tiles:
                 ld a, b
                 ld b, tiles_flags/256
                 ld (bc), a
+
+                ; blank the old location of the tile
+                ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; landed on a y coordinate within that range
+                ; FIXME or we could use the dirty_tiles mechanism (by splitting
+                ; falling_tiles into separate update and draw steps)
+                push bc
+                ld a, c
+                and 15
+                add a,a ; a = x * 2
+                add a,a; a = x * 4
+                add a,a ; a = x * 8
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
+                ld a, c
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
+                ld d, a
+                call fillrect_16x16_black_at_de
+                pop bc
+
                 ; and update the stack
                 ld a, (slider_stack_height)
                 inc a
                 ld (slider_stack_height), a
-
-                ; ; blank the old location of the tile
-                ; ; FIXME we shouldn't need to blank the whole 32x32 because the tile
-                ; ; landed on a y coordinate within that range
-                ; ; FIXME or we could use the dirty_tiles mechanism (by splitting
-                ; ; falling_tiles into separate update and draw steps)
-                ; push de
-                ; push bc
-                ; push af
-                ; call fillrect_16x16_black_at_de
-                ; pop af
-                ; pop bc
-                ; pop de
 
                 ; the block landed on a slider so it is no longer handled by the falling logic
                 ; so remove this entry
@@ -465,10 +473,6 @@ draw_falling_tiles:
                 ld a, b
                 ld b, tiles_flags/256
                 ld (bc), a
-                ; and update the stack
-                ld a, (slider_stack_height)
-                inc a
-                ld (slider_stack_height), a
 
                 ; blank the old location of the tile
                 ; FIXME we shouldn't need to blank the whole 32x32 because the tile
