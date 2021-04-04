@@ -130,6 +130,8 @@ draw_sliders:
                 ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
                 ; If slider didn't move this frame, we should not blank anything
                 ; I encode these facts into two bits in slider_moved_this_frame
+                ; FIXME this doesn't take into account the size of the stack changing between
+                ; frames. ugh.
                 ld a, (slider_moved_this_frame)
                 bit SLIDER_MOVED_YESNO_BIT, a
                 jr z, @neither_up_nor_down
