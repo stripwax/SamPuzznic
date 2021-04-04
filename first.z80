@@ -197,6 +197,9 @@ game_loop:
                     out (254), a
                 ENDIF
                 call sfx_tick
+
+                call check_falling_tiles_queue
+
                 jp game_loop
 
 ; These are anticipatory, maybe we don't need them (or maybe we cannot disentangle
@@ -243,6 +246,7 @@ main:
 
                 call clear_dirty_tiles_list
                 call clear_falling_tiles
+                call clear_queue_tiles_to_check
 
                 call debug_memcpy_level_data
                 call init_game_state

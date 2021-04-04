@@ -443,6 +443,50 @@ update_cursor_position:
                 ld (hl), a
                 inc l
                 ld (hl), 0
+                ; SLIDER - if this tile WAS in the slider stack, then we also need to
+                ; clear the 'is_slider' bit from the old position, and reduce the height of
+                ; the slider stack (to equal the remaining height of all tiles STRICTLY BELOW
+                ; this one), and clear the 'is_slider bit from all the tiles strictly above us
+                ; in the slider stack.
+                dec h ; point to flags
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                jr z, @+done_checking_slider
+        chicken:
+
+                ; clear the slider flag (in fact clear all flags, that old position is now empty)
+                ; clear the flags above us too, and call 'check falling tile' on those
+                push hl ; let's remember where we started
+        @next:
+                xor a
+                ld (hl), a
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                jr z, @finished_clearing_flags_for_slider_stack
+                jp @-next
+        @finished_clearing_flags_for_slider_stack:
+                ; now work out new height of the slider stack
+                ; get y-coord of slider and subtract y-coord of this tile
+                pop hl
+                ld a, l
+                srl a
+                srl a
+                srl a
+                srl a ; get y-coord only into a
+                ld b, a
+                ld a, (slider_xy)
+                srl a
+                srl a
+                srl a
+                srl a ; get y-coord only into a
+                sub b
+                dec a ; subtract one because we have removed a tile from the stack
+                ld (slider_stack_height), a
+        @done_checking_slider:
+                inc h ; point back to tiles
                 ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
                 ; check if the one ABOVE us in the OLD location is now falling
                 ld a, l
@@ -452,7 +496,7 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
 @above_is_not_a_tile:
                 ; move to the new location
@@ -461,7 +505,7 @@ update_cursor_position:
                 ld l, a
                 ; check if it's falling
                 push hl ; TODO use a reg instead of push/pop
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
                 pop hl
                 ; and mark this as our new cursor position
                 ld a, l
@@ -520,7 +564,7 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
 @above_is_not_a_tile:
                 ; move to the new location
@@ -529,7 +573,7 @@ update_cursor_position:
                 ld l, a
                 ; check if it's falling
                 push hl ; TODO use a reg instead of push/pop
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
                 pop hl
                 ; and mark this as our new cursor position
                 ld a, l
