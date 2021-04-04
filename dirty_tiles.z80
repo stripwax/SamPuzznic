@@ -81,6 +81,14 @@ redraw_dirty:
                 and 240 ; clears carry
                 rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 ld d, a
+                ld a, (bc)
+                and 15
+                srl a
+                jr nc, @+nocarry
+                set 7, e
+            @nocarry:
+                add d
+                ld d, a
                 xor a
                 push hl
                 call draw_tile_at_de_tile_a
