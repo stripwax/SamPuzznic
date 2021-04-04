@@ -454,7 +454,7 @@ render_destruct:
                 ld a, (hl)
                 cp NUM_NON_TILES
                 jr c, @not_a_tile_above
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
         @not_a_tile_above:
                 pop hl
                 jp @-next_this_match
