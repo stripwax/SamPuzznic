@@ -322,7 +322,7 @@ update_cursor_position:
                 ; 2.  is it already falling maybe? can't move a falling tile
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                bit 4, a
+                bit IS_FALLING_BIT, a
                 ; if it's falling, don't permit any movements at all
                 ; TODO check gameplay, is this correct? feels correct but that's just my guess.
                 ret nz
@@ -338,7 +338,7 @@ update_cursor_position:
                 ld l, a
                 ld a, (hl)
                 pop hl
-                bit 4, a
+                bit IS_FALLING_BIT, a
                 ; if it's 'effectively in mid air' then again ignore the FIRE and just
                 ; move cursor as if there's no tile being controlled
                 jp nz, @movements_no_tile
@@ -354,7 +354,6 @@ update_cursor_position:
                 ld (controller_flags_flashing_ctr), a
     @we_already_captured_earlier:
                 ; are we also pressing left or right?
-                ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
                 ld a, (controller_flags_dirs)
                 and %00001111
                 ; if not, do nothing else
@@ -452,8 +451,6 @@ update_cursor_position:
                 ld a, (hl)
                 and IS_SLIDER_MASK
                 jr z, @+done_checking_slider
-        chicken:
-
                 ; clear the slider flag (in fact clear all flags, that old position is now empty)
                 ; clear the flags above us too, and call 'check falling tile' on those
                 push hl ; let's remember where we started
@@ -465,8 +462,7 @@ update_cursor_position:
                 ld l, a
                 ld a, (hl)
                 and IS_SLIDER_MASK
-                jr z, @finished_clearing_flags_for_slider_stack
-                jp @-next
+                jr nz, @-next
         @finished_clearing_flags_for_slider_stack:
                 ; now work out new height of the slider stack
                 ; get y-coord of slider and subtract y-coord of this tile
@@ -487,8 +483,7 @@ update_cursor_position:
                 ld (slider_stack_height), a
         @done_checking_slider:
                 inc h ; point back to tiles
-                ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
-                ; check if the one ABOVE us in the OLD location is now falling
+                ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 16
                 ld l, a
@@ -496,14 +491,15 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
                 push hl
-                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call queue_check_falling_tile_l
                 pop hl
 @above_is_not_a_tile:
                 ; move to the new location
                 ld a,l
                 add 16 - 1 ; down one row and left one column
                 ld l, a
-                ; check if it's falling
+                ; add a check for the tile we push in its new location, if it's falling
                 push hl ; TODO use a reg instead of push/pop
                 call queue_check_falling_tile_l
                 pop hl
