@@ -44,44 +44,6 @@ queue_check_falling_tile_l:
                 ld (queue_tiles_to_check_tail), hl
                 ret
 
-        ;         ; check if the slider is immediately below us and moving up
-        ;         ; if so, we actually don't do anything (no update, nothing to redraw)
-        ;         ; have I landed on a slider?
-        ;         add 16
-        ;         ld c, a
-        ;         ld b, tiles_flags/256
-        ;         ld a, (bc)
-        ;         bit IS_SLIDER_BIT, a
-        ;         jr z, @+not_landed_on_upward_slider
-        ;         ld a, (slider_info)
-        ;         bit SLIDER_DIRECTION_BIT, a
-        ;         jr nz, @+not_landed_on_upward_slider
-        ;         ; yeah so now we kindof just sit still for a bit and
-        ;         ; wait for the slider to catch up with us.
-        ;         ; If the slider is precisely below us right now, then we hop onto it
-        ;         ld a, (bc)
-        ;         and 15
-        ;         jr z, @+landed_exactly_on_upward_slider
-        ;         ; otherwise, we do nothing
-        ;         ; because slider is not at exactly the tile boundary
-        ;         ; (and so our tile just hovers for a bit waiting for slider to meet it)
-        ;         ; (check next falling tile)
-        ;         inc hl
-        ;         jp @-next
-        ; @landed_exactly_on_upward_slider:
-        ;         ld c, (hl)
-        ;         ld b, tiles_flags/256
-        ;         ld a, IS_SLIDER_BIT + 0 ; 0 y-offset - this also clears the 'falling'bit
-        ;         ld (bc), a
-        ;         ld a, (slider_stack_height)
-        ;         inc a
-        ;         ld (slider_stack_height), a
-        ;         ; this tile has finished 'falling'
-        ;         ld a, DEAD_ENTRY
-        ;         ld (hl), a
-        ;         inc hl
-        ;         jp @-next
-
 
 check_falling_tile_hl:
                 ; modifies: HL, A
@@ -225,6 +187,81 @@ draw_falling_tiles:
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
                 ;
 
+                ; check if the slider is immediately below us and moving up
+                ; if so, we actually don't do anything (no update, nothing to redraw)
+                ; have I landed on a slider?
+                add 16
+                ld c, a
+                ld b, tiles_flags/256
+                ld a, (bc)
+                bit IS_SLIDER_BIT, a
+                jr z, @+not_landed_on_slider
+                ld a, (slider_info)
+                bit SLIDER_DIRECTION_BIT, a
+                jr nz, @+landed_on_downward_slider
+                ; yeah so now we kindof just sit still for a bit and
+                ; wait for the slider to catch up with us.
+                ; If the slider is precisely below us right now, then we hop onto it
+                ld a, (bc)
+                and 15
+                jr z, @+landed_exactly_on_upward_slider
+                ; otherwise, we do nothing
+                ; because slider is not at exactly the tile boundary
+                ; (and so our tile just hovers for a bit waiting for slider to meet it)
+                ; (check next falling tile)
+                inc hl
+                jp @-next
+        @landed_exactly_on_upward_slider:
+                ld c, (hl)
+                ld b, tiles_flags/256
+                ld a, IS_SLIDER_BIT + 0 ; 0 y-offset - this also clears the 'falling'bit
+                ld (bc), a
+                ld a, (slider_stack_height)
+                inc a
+                ld (slider_stack_height), a
+                ; this tile has finished 'falling'
+                ld a, DEAD_ENTRY
+                ld (hl), a
+                inc hl
+                jp @-next
+        @landed_on_downward_slider:
+                ; if we're here, the slider is going down, and we immediately hop on board
+                ; copy the slider bit and offset to our tile, and mark this tile as no longer falling
+                ld a, (bc)
+                ld b, a
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, b
+                ld b, tiles_flags/256
+                ld (bc), a
+                ; and update the stack
+                ld a, (slider_stack_height)
+                inc a
+                ld (slider_stack_height), a
+
+                ; ; blank the old location of the tile
+                ; ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; ; landed on a y coordinate within that range
+                ; ; FIXME or we could use the dirty_tiles mechanism (by splitting
+                ; ; falling_tiles into separate update and draw steps)
+                ; push de
+                ; push bc
+                ; push af
+                ; call fillrect_16x16_black_at_de
+                ; pop af
+                ; pop bc
+                ; pop de
+
+                ; the block landed on a slider so it is no longer handled by the falling logic
+                ; so remove this entry
+                ld a, DEAD_ENTRY
+                ld (hl), a
+                inc hl ; point to next entry in falling tiles for @next loop
+                jp @-next
+
+        @not_landed_on_slider:
+                ld a, (hl)
                 ld c, a
                 and 15
                 add a,a ; a = x * 2
