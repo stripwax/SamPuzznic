@@ -22,6 +22,8 @@ slider_tile_detect:
 
 @temp: defb 0
 slider_moved_this_frame: defb 0
+screen_y_top_of_slider_tile: defw 0
+screen_y_top_of_slider_stack: defw 0
 SLIDER_MOVED_YESNO_BIT: equ 0
 SLIDER_MOVED_YESNO_MASK: equ 1
 SLIDER_MOVED_NO_VALUE: equ 0
@@ -37,6 +39,42 @@ draw_sliders:
                 and a
                 ret z 
                 ;
+
+                ; FIRST, blank out a 1-pixel-high row at the top or bottom of the stack,
+                ; according to where the stack was last frame. (and according to the stack
+                ; height last frame))
+                ; if slider went up, we need to blank a 1-pixel-high row at the bottom below the slider
+                ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
+                ; If slider didn't move this frame, we should not blank anything
+                ; I encode these facts into two bits in slider_moved_this_frame
+                ld a, (slider_moved_this_frame)
+                bit SLIDER_MOVED_YESNO_BIT, a
+                jr z, @neither_up_nor_down
+                and SLIDER_MOVED_UPDOWN_MASK
+                jr z, @going_up
+        @going_down:
+                ; if we went down, the pixel row to blank is the top of the slider stack (from last frame)
+                ld de, (screen_y_top_of_slider_stack)
+                call fillrect_16x1_black_at_de
+                jp @+done_blank
+
+        @going_up:
+                ; if we went up, the pixel row to blank is the bottom of the slider tile (from last frame)
+                ; which is 15 pixel rows (=7*256 + 128)
+                ld de, (screen_y_top_of_slider_tile)
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 7
+                ld d, a
+                call fillrect_16x1_black_at_de
+
+        @done_blank:
+        @neither_up_nor_down:
+
+                ; ok now draw the slider tile and the stack of tiles on top of it.
+
                 ld a, (slider_xy)
 
                 ; copy and pasted from dirty_tiles:
@@ -81,7 +119,7 @@ draw_sliders:
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
 
-                push de ; <-- important for safekeeping
+                ld (screen_y_top_of_slider_tile), de
 
                 push de
                 push bc
@@ -97,7 +135,7 @@ draw_sliders:
                 ; will be one-frame-behind where the destructing tiles are))
                 ld a, (destruct_frame)
                 and a
-                jr nz, @done_drawing_stack
+                ret nz
 
 
                 ; loop for the rest of the tiles on the stack
@@ -126,44 +164,9 @@ draw_sliders:
                 jr nz, @more_on_the_stack
 
         @done_drawing_stack:
-                ; if slider went up, we need to blank a 1-pixel-high row at the bottom below the slider
-                ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
-                ; If slider didn't move this frame, we should not blank anything
-                ; I encode these facts into two bits in slider_moved_this_frame
-                ; FIXME this doesn't take into account the size of the stack changing between
-                ; frames. ugh.
-                ld a, (slider_moved_this_frame)
-                bit SLIDER_MOVED_YESNO_BIT, a
-                jr z, @neither_up_nor_down
-                and SLIDER_MOVED_UPDOWN_MASK
-                jr z, @going_up
-        @going_down:
-                ; find the place 1 pixel row above the top of the slider stack and blank it
-                pop hl ; YES! we pushed it from de, we're now junking it.
-                ld a, e
-                sub 128
-                ld e, a
-                ld a, d
-                sbc 0
-                ld d, a
-
-                call fillrect_16x1_black_at_de
-
+                ld (screen_y_top_of_slider_stack), de
                 ret
 
-        @going_up:
-                ; find the place 16 pixel rows below the slider tile and blank it
-                pop de ; YES! we pushed it from de, we're now recovering the old value. this is where the slider is.
-                ld a, d
-                add 8
-                ld d, a
-                call fillrect_16x1_black_at_de
-
-                ret
-
-        @neither_up_nor_down:
-                pop de ; yeah, we still have to pop this from earlier
-                ret
 
 slider_stack_height: defb 0 ; maybe redundant, but convenient.
 
