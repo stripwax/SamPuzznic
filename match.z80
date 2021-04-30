@@ -68,7 +68,9 @@ check_match:
                 ld a, (slider_info)
                 and a
                 jr z, @done_sliders
+                ld a, (slider_xy)
                 ld h, tiles_flags/256
+                ld l, a
                 ld a, (hl)
                 and 15
                 ; if this is non-zero then the slider is mid-move
