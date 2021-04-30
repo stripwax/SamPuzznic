@@ -244,6 +244,7 @@ main:
 
                 xor a
                 ld (clock_tick_frame), a
+                ld (clock_changed), a ; poke a nop here
 
                 call clear_dirty_tiles_list
                 call clear_falling_tiles
