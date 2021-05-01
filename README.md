@@ -21,7 +21,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 
 # DONE
 * Tile bitmaps
-* Cursor movement (auto-repeat, locking, impassable blocks).
+* Cursor movement (auto-repeat, locking (now including locking to sliders), impassable blocks).
 * Falling
 * Match detection
 * Destruction animation
@@ -32,7 +32,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
 * count of remaining tiles
 * sfx
-* Vertical sliders (80% complete)
+* Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
 * "Clear" (you win) condition when all tiles have been matched
 
 
