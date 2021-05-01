@@ -6,33 +6,103 @@ fire_pressed: defb 0 ; whether fire was held down since last time
 key_delay: equ 8
 key_repeat: equ 6
 
+old_cursor_xy: defb 0  ; where was cursor last frame
+old_cursor_flags_captured: defb 0  ; if cursor was captured last frame
+old_cursor_xoffs: defb 0  ; additional x offset (if any) ie. in the case where cursor is locked to a horizontal slider
+old_cursor_yoffs: defb 0  ; additional y offset (if any) ie. in the case where cursor is locked to a vertical slider, or a falling tile
+
+controller_flags_xoffs: defb 0 ; x-offset
+controller_flags_yoffs: defb 0 ; y-offset
+
 init_cursor_controller:
                 xor a
                 ld (keyrepeat_ctr), a
                 ld (keyrepeat_dirs), a
                 ld (fire_pressed), a
+                ld (old_cursor_xoffs), a
+                ld (old_cursor_yoffs), a
+                ld (controller_flags_xoffs), a
+                ld (controller_flags_yoffs), a
+                ld a, (controller_flags_xy_pos)
+                ld (old_cursor_xy), a
+                ret
+
+erase_cursor:
+                ; blank out where the cursor WAS last frame
+                ; Except, if it's in the same place this frame, then do nothing here.
+                ; If the cursor was captured last frame, and is still captured this frame
+                ; (and xy hasn't changed) then we assume whatever is drawing the tile that is captured
+                ; (which might have also moved between two frames) is also blanking out where bits of the
+                ; tile were last frame (which also means it blanks out the cursor from last frame too)
+                ; and so in those cases we do nothing
+                ld hl, old_cursor_xy
+                ld a, (controller_flags_xy_pos)
+                cp (hl)
+                jr nz, @+need_to_erase
+                inc hl
+                ld a, (controller_flags_tile_captured)
+                cp (hl)
+                ret z ; cursor location unchanged
+            @need_to_erase:
+                ; todo erase the cursor here according to its old position
+                ; either its old xy differs from new xy, or its captured state changed
+                ; ...
                 ret
 
 draw_cursor:
+                ; make a note of the cursor xoffs and yoffs
+                ; (inefficient - we assume zero and fix later - hmm)
+                xor a
+                ld (old_cursor_xoffs), a
+                ld (old_cursor_yoffs), a
                 ; is the cursor on a tile with fire still held?
                 ; if so, we follow the tile
                 ld a, (controller_flags_tile_captured)
                 and a
                 jr z, @tile_not_captured
                 ld a, (controller_flags_xy_pos)
+                ld (old_cursor_xy), a  ; save so we can blank it next frame
                 ld l, a
                 ld h, (tiles-1)/256
                 ; is tile falling
                 ld a, (hl)
-                bit 4, a
-                jr z, @tile_not_captured ; tile isn't falling so y-offset is zero (TODO check sliders)
-                ; get the offset for top-left into hl
-    captured_cursor:
+                bit IS_FALLING_BIT, a
+                jr nz, @captured_falling_tile ; tile is falling so y-offset matches tile
+                bit IS_SLIDER_BIT, a
+                jr nz, @captured_sliding_tile ; tile is sliding so y-offset or x-offset matches tile (according to slider direction)
+                jp @tile_not_captured
+
+    @captured_sliding_tile:
+                ; is it vertical or horizontal?
+                ; if vertical, use same logic as falling tile (handy)
+                ld hl, slider_info
+                bit SLIDER_AXIS_BIT, (hl)
+                jr z, @captured_vertical_slider
+
+    @captured_horizontal_slider:
+                ; ... TODO not implemented
+                jp @tile_not_captured
+                ; ... should do something like
                 and 15
+                ld (old_cursor_xoffs), a
+                ; ...
+                ; ... and some stuff here
+                ; ... and some stuff here
+                ; ... and some stuff here
+                ; ... and some stuff here
+                jp @+draw_cursor
+
+    @captured_vertical_slider:
+    @captured_falling_tile:
+                ; get the offset for top-left into hl
+                and 15
+                ld (old_cursor_yoffs), a
                 ld h, a
                 ld l, 0
                 srl h
                 rl l
+                ld a, 1
+                ld (old_cursor_flags_captured), a
                 ld a, (controller_flags_xy_pos)
                 ld d, a ; backup
                 ; 16 pixels wide = multiply x by 8
@@ -51,12 +121,13 @@ draw_cursor:
                 rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 add a, h ; <-- this is what's different
                 ld h, a
-                jr @+draw_cursor
-                ; .. TODO IMPLEMENT SLIDERS
-                ; ...
-                ; ...
+                jp @+draw_cursor
+
 @tile_not_captured:
+                xor a
+                ld (old_cursor_flags_captured), a ; save so we can blank it next frame
                 ld a, (controller_flags_xy_pos)
+                ld (old_cursor_xy), a  ; save so we can blank it next frame
                 ld d, a ; backup
                 ; 16 pixels wide = multiply by 8
                 and 15

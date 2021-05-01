@@ -339,6 +339,27 @@ slider_update:
                 ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
                 ld (slider_moved_this_frame), a
 
+                ; (move the cursor too, if it is captured)
+                ; (it feels like this logic is in totally the wrong place)
+                ; ===========
+                push hl
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @+done_checking_slider_captured
+                ld a, (controller_flags_xy_pos)
+                ld l, a
+                ld h, tiles_flags/256
+                bit IS_SLIDER_BIT, (hl)
+                jr z, @+done_checking_slider_captured
+            @slider_is_captured:
+                ; move the cursor to the new spot
+                sub 16 ; subtract 1 from Y
+                ld (controller_flags_xy_pos), a
+                
+            @done_checking_slider_captured:
+                pop hl
+                ; ==============
+
                 ; we move our tile AND everything in the stack, up to the next cell
                 ; (start at the end furthest from the slider)
                 ld a, (slider_stack_height)
@@ -349,6 +370,7 @@ slider_update:
                 ld l, a
                 ld d, 15 + IS_SLIDER_MASK
         @move_next_thing_in_stack:
+        
                 ld c, (hl)
                 sub 16
                 ld l, a ; point to where it is moving TO
@@ -436,6 +458,27 @@ slider_update:
                 ; say that the slider did move this frame (and in which direction)
                 ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_DOWN_VALUE
                 ld (slider_moved_this_frame), a
+
+                ; (move the cursor too, if it is captured)
+                ; (it feels like this logic is in totally the wrong place)
+                ; ===========
+                push hl
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @+done_checking_slider_captured
+                ld a, (controller_flags_xy_pos)
+                ld l, a
+                ld h, tiles_flags/256
+                bit IS_SLIDER_BIT, (hl)
+                jr z, @+done_checking_slider_captured
+            @slider_is_captured:
+                ; move the cursor to the new spot
+                add 16 ; add 1 to Y
+                ld (controller_flags_xy_pos), a
+                
+            @done_checking_slider_captured:
+                pop hl
+                ; ==============
 
                 ; we move our slider tile down AND everything in the stack
                 ; (start at the slider itself and work thru the stack)
