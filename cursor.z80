@@ -100,7 +100,7 @@ draw_cursor:
                 ld h, a
                 ld l, 0
                 srl h
-                rl l
+                rr l
                 ld a, 1
                 ld (old_cursor_flags_captured), a
                 ld a, (controller_flags_xy_pos)
