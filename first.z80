@@ -127,16 +127,32 @@ game_loop:
                 call sort_by_y
 
                 IF DEBUG_VSYNC
-                    ld a, 37
+                    ld a, 35
                     out (254), a
                 ENDIF
                 call wait_frame
+
+                ; ======================================
 
                 IF DEBUG_VSYNC
                     ld a, 38
                     out (254), a
                 ENDIF
                 call draw_clock
+
+                ; update cursor position - must do this before redrawing dirty tiles
+                ; (since moving the cursor can make tiles dirty)
+                IF DEBUG_VSYNC
+                    ld a, 3
+                    out (254), a
+                ENDIF
+                call update_cursor_position
+
+                IF DEBUG_VSYNC
+                    ld a, 32
+                    out (254), a
+                ENDIF
+                call erase_old_cursor
 
                 IF DEBUG_VSYNC
                     ld a, 39
@@ -150,17 +166,10 @@ game_loop:
                 ENDIF
                 call draw_sliders
 
-                ; draw (update) falling tiles before handling 'cursor shove'
                 call draw_falling_tiles
 
                 IF DEBUG_VSYNC
-                    ld a, 3
-                    out (254), a
-                ENDIF
-                call update_cursor_position
-
-                IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 2
                     out (254), a
                 ENDIF
                 call render_destruct ; this will call decrement on remaining blocks upon completion
@@ -172,7 +181,7 @@ game_loop:
                 call draw_overlays
 
                 IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 5
                     out (254), a
                 ENDIF
                 call render_score ; TODO OPTIMIZE conditional call i.e. if score has changed this frame
@@ -190,7 +199,7 @@ game_loop:
                 call check_clear
 
                 IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 3
                     out (254), a
                 ENDIF
                 call music_tick

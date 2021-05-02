@@ -6,10 +6,12 @@ fire_pressed: defb 0 ; whether fire was held down since last time
 key_delay: equ 8
 key_repeat: equ 6
 
+cursor_moved: defb 0  ; where was cursor last frame
 old_cursor_xy: defb 0  ; where was cursor last frame
 old_cursor_flags_captured: defb 0  ; if cursor was captured last frame
 old_cursor_xoffs: defb 0  ; additional x offset (if any) ie. in the case where cursor is locked to a horizontal slider
 old_cursor_yoffs: defb 0  ; additional y offset (if any) ie. in the case where cursor is locked to a vertical slider, or a falling tile
+old_cursor_hl: defw 0  ; handy way to keep track of where the cursor was (screen memory) last frame
 
 controller_flags_xoffs: defb 0 ; x-offset
 controller_flags_yoffs: defb 0 ; y-offset
@@ -19,15 +21,21 @@ init_cursor_controller:
                 ld (keyrepeat_ctr), a
                 ld (keyrepeat_dirs), a
                 ld (fire_pressed), a
+
+                ld (cursor_moved), a
                 ld (old_cursor_xoffs), a
                 ld (old_cursor_yoffs), a
+                ld (old_cursor_hl), a
+                ld (old_cursor_hl+1), a
+
                 ld (controller_flags_xoffs), a
                 ld (controller_flags_yoffs), a
                 ld a, (controller_flags_xy_pos)
                 ld (old_cursor_xy), a
                 ret
 
-erase_cursor:
+erase_old_cursor:
+                ; TODO optimize and be smarter?
                 ; blank out where the cursor WAS last frame
                 ; Except, if it's in the same place this frame, then do nothing here.
                 ; If the cursor was captured last frame, and is still captured this frame
@@ -35,18 +43,27 @@ erase_cursor:
                 ; (which might have also moved between two frames) is also blanking out where bits of the
                 ; tile were last frame (which also means it blanks out the cursor from last frame too)
                 ; and so in those cases we do nothing
-                ld hl, old_cursor_xy
-                ld a, (controller_flags_xy_pos)
-                cp (hl)
-                jr nz, @+need_to_erase
-                inc hl
-                ld a, (controller_flags_tile_captured)
-                cp (hl)
-                ret z ; cursor location unchanged
-            @need_to_erase:
-                ; todo erase the cursor here according to its old position
-                ; either its old xy differs from new xy, or its captured state changed
-                ; ...
+            ;     ld hl, old_cursor_xy
+            ;     ld a, (controller_flags_xy_pos)
+            ;     cp (hl)
+            ;     jr nz, @+need_to_erase
+            ;     inc hl
+            ;     ld a, (controller_flags_tile_captured)
+            ;     cp (hl)
+            ;     ret z ; cursor location unchanged
+            ; @need_to_erase:
+            ;     ; todo erase the cursor here according to its old position
+            ;     ; either its old xy differs from new xy, or its captured state changed
+            ;     ld hl, (old_cursor_hl)
+            ;     xor a ; because palette black is 0 ; TODO BACKGROUND IMAGES
+            ;     call box_at_hl
+            ;     ret
+                ld a, (cursor_moved)
+                and a
+                ret z
+                ld hl, (old_cursor_hl)
+                xor a ; because palette black is 0 ; TODO BACKGROUND IMAGES
+                call box_at_hl
                 ret
 
 draw_cursor:
@@ -160,15 +177,20 @@ draw_cursor:
                 jr nz, @white
 @red:
                 ld a, palette_index_red * 17
+                ld (old_cursor_hl), hl
                 call box_at_hl
                 ret
 @white:
                 ld a, palette_index_white * 17
+                ld (old_cursor_hl), hl
                 call box_at_hl
                 ret
 
 
 update_cursor_position:
+                ; initially assume cursor did not move
+                xor a
+                ld (cursor_moved), a
                 ; controller can be periodically disabled during game logic
                 ; so check that first
                 ld a, (controller_flags_disabled)
@@ -259,6 +281,8 @@ update_cursor_position:
                 ; (old location was the row below this one)
                 add a, 16
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_down:
@@ -290,6 +314,8 @@ update_cursor_position:
                 ; (old location was the row above this one)
                 sub 16
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_left:
@@ -319,6 +345,8 @@ update_cursor_position:
                 ; (old location was the column right of this one)
                 inc a
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_right:
@@ -349,6 +377,8 @@ update_cursor_position:
                 ; (old location was the column left of this one)
                 dec a
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_dirs_with_fire_pressed:
@@ -583,6 +613,8 @@ update_cursor_position:
                 ; mark the new locations as dirty also
                 dec a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_push_right:
@@ -651,6 +683,8 @@ update_cursor_position:
                 ; mark the new locations as dirty also
                 inc a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
 
