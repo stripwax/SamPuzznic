@@ -147,6 +147,25 @@ check_falling_tiles_queue:
         @DONE:
                 jp clear_queue_tiles_to_check
 
+; use a list to say which tiles "have fallen" this frame, keeping a record of their
+; previous screen memory location.  This means we can efficiently blank out their previous
+; position (just need to blank out the 2-pixel rows from where they used to be higher-up-the-screen)
+; and overwrite their new location, rather than needing to blank-and-redraw the whole thing
+; You could (and I did) consider putting the update-and-redraw into a single routing but I wanted
+; to split the update- from the redraw- and this seemed like the easiest way:
+; 1. Put falling tiles into linked list
+; 2. For each falling tile, work out its screen location
+; 3. Update the y-location of the falling tiles. if the y-location changed, put the OLD
+;    y-location into the 'falling_rects_to_clear' list
+; 4. go through the list in 3. and clear out on-screen 2 pixel rows
+;    for all the falling tiles that moved
+; 5. (after doing any other on-screen erasing/updating/etc) draw the tiles in new location
+; This is actually kindof equivalent to putting the "erase" into the "update" logic,
+; while still having separate 'draw', which is obviously better than putting "update and erase and draw"
+; into a single blob of code that's harder to interleave with other drawing operations
+falling_rects_to_clear: defs 80
+falling_rects_to_clear_tail: defw falling_rects_to_clear
+
 update_falling_tiles:
 
 draw_falling_tiles:
