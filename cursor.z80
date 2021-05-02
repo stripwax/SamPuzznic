@@ -7,10 +7,6 @@ key_delay: equ 8
 key_repeat: equ 6
 
 cursor_moved: defb 0  ; where was cursor last frame
-old_cursor_xy: defb 0  ; where was cursor last frame
-old_cursor_flags_captured: defb 0  ; if cursor was captured last frame
-old_cursor_xoffs: defb 0  ; additional x offset (if any) ie. in the case where cursor is locked to a horizontal slider
-old_cursor_yoffs: defb 0  ; additional y offset (if any) ie. in the case where cursor is locked to a vertical slider, or a falling tile
 old_cursor_hl: defw 0  ; handy way to keep track of where the cursor was (screen memory) last frame
 
 controller_flags_xoffs: defb 0 ; x-offset
@@ -23,41 +19,16 @@ init_cursor_controller:
                 ld (fire_pressed), a
 
                 ld (cursor_moved), a
-                ld (old_cursor_xoffs), a
-                ld (old_cursor_yoffs), a
                 ld (old_cursor_hl), a
                 ld (old_cursor_hl+1), a
 
                 ld (controller_flags_xoffs), a
                 ld (controller_flags_yoffs), a
                 ld a, (controller_flags_xy_pos)
-                ld (old_cursor_xy), a
                 ret
 
 erase_old_cursor:
                 ; TODO optimize and be smarter?
-                ; blank out where the cursor WAS last frame
-                ; Except, if it's in the same place this frame, then do nothing here.
-                ; If the cursor was captured last frame, and is still captured this frame
-                ; (and xy hasn't changed) then we assume whatever is drawing the tile that is captured
-                ; (which might have also moved between two frames) is also blanking out where bits of the
-                ; tile were last frame (which also means it blanks out the cursor from last frame too)
-                ; and so in those cases we do nothing
-            ;     ld hl, old_cursor_xy
-            ;     ld a, (controller_flags_xy_pos)
-            ;     cp (hl)
-            ;     jr nz, @+need_to_erase
-            ;     inc hl
-            ;     ld a, (controller_flags_tile_captured)
-            ;     cp (hl)
-            ;     ret z ; cursor location unchanged
-            ; @need_to_erase:
-            ;     ; todo erase the cursor here according to its old position
-            ;     ; either its old xy differs from new xy, or its captured state changed
-            ;     ld hl, (old_cursor_hl)
-            ;     xor a ; because palette black is 0 ; TODO BACKGROUND IMAGES
-            ;     call box_at_hl
-            ;     ret
                 ld a, (cursor_moved)
                 and a
                 ret z
@@ -67,18 +38,12 @@ erase_old_cursor:
                 ret
 
 draw_cursor:
-                ; make a note of the cursor xoffs and yoffs
-                ; (inefficient - we assume zero and fix later - hmm)
-                xor a
-                ld (old_cursor_xoffs), a
-                ld (old_cursor_yoffs), a
                 ; is the cursor on a tile with fire still held?
                 ; if so, we follow the tile
                 ld a, (controller_flags_tile_captured)
                 and a
                 jr z, @tile_not_captured
                 ld a, (controller_flags_xy_pos)
-                ld (old_cursor_xy), a  ; save so we can blank it next frame
                 ld l, a
                 ld h, (tiles-1)/256
                 ; is tile falling
@@ -101,7 +66,6 @@ draw_cursor:
                 jp @tile_not_captured
                 ; ... should do something like
                 and 15
-                ld (old_cursor_xoffs), a
                 ; ...
                 ; ... and some stuff here
                 ; ... and some stuff here
@@ -113,13 +77,10 @@ draw_cursor:
     @captured_falling_tile:
                 ; get the offset for top-left into hl
                 and 15
-                ld (old_cursor_yoffs), a
                 ld h, a
                 ld l, 0
                 srl h
                 rr l
-                ld a, 1
-                ld (old_cursor_flags_captured), a
                 ld a, (controller_flags_xy_pos)
                 ld d, a ; backup
                 ; 16 pixels wide = multiply x by 8
@@ -141,10 +102,7 @@ draw_cursor:
                 jp @+draw_cursor
 
 @tile_not_captured:
-                xor a
-                ld (old_cursor_flags_captured), a ; save so we can blank it next frame
                 ld a, (controller_flags_xy_pos)
-                ld (old_cursor_xy), a  ; save so we can blank it next frame
                 ld d, a ; backup
                 ; 16 pixels wide = multiply by 8
                 and 15
@@ -451,6 +409,9 @@ update_cursor_position:
                 jr nz, @we_already_captured_earlier
                 ld a, 1
                 ld (controller_flags_tile_captured), a
+                ; also - essentially this means the cursor moved because it may have jumped in position
+                ; now, to meet the tile that was in this location
+                ld (cursor_moved), a
                 ld a, 4 ; seed with 4 which is when we first change cursor colour (so that the colour change is immediate on this frame)
                 ld (controller_flags_flashing_ctr), a
     @we_already_captured_earlier:
