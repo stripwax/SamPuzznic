@@ -17,7 +17,6 @@ init_cursor_controller:
                 ld (keyrepeat_ctr), a
                 ld (keyrepeat_dirs), a
                 ld (fire_pressed), a
-
                 ld (cursor_moved), a
                 ld (old_cursor_hl), a
                 ld (old_cursor_hl+1), a
