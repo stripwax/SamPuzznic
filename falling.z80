@@ -1,10 +1,13 @@
+END_OF_LIST: equ 255
+DEAD_ENTRY: equ 254
+
 push_falling_tiles:
                 ; modifies: HL, A
                 ; a contains tile x and y (YYYYxxxx)
                 ld hl, (falling_tiles_tail)
                 ld (hl), a
                 inc hl
-                ld a, 255 ; end marker
+                ld a, END_OF_LIST
                 ld (hl), a
                 ld (falling_tiles_tail), hl
                 ret
@@ -12,7 +15,7 @@ push_falling_tiles:
 clear_falling_tiles:
                 ; modifies: HL, A
                 ld hl, falling_tiles
-                ld a, 255 ; end marker
+                ld a, END_OF_LIST ; end marker
                 ld (hl), a
                 ld (falling_tiles_tail), hl
                 ret
@@ -22,44 +25,149 @@ falling_tiles:
 
 falling_tiles_tail: defw falling_tiles
 
+queue_tiles_to_check: defs 80 + 2
+queue_tiles_to_check_tail: defw queue_tiles_to_check
+
+clear_queue_tiles_to_check:
+                ld hl, queue_tiles_to_check
+                ld (queue_tiles_to_check_tail), hl
+                ld (hl), 255
+                ret
+
+queue_check_falling_tile_l:
+                ; modifies: HL, A
+                ld a, l
+                ld hl, (queue_tiles_to_check_tail)
+                ld (hl), a
+                inc hl
+                ld (hl), 255
+                ld (queue_tiles_to_check_tail), hl
+                ret
+
+
 check_falling_tile_hl:
+                ; check a tile. adds it to the list of 'falling' tiles if it is falling
+                ; Call this whenever a tile has been moved, including for tiles above
+                ; the tile-that-was-moved.
+                ; Handles checks for tiles that end up on-a-slider. 
                 ; modifies: HL, A
                 ; is the tile pointed (in tiles array) by hl, suspended in midair
                 ; if so, update the state to say it is falling (and add it to the
                 ; list of falling tiles)
+                ; QUESTION: WHAT TO DO ABOUT SLIDERS?
+                ; A:  1.  if the block currently in midair actually has a slider
+                ;         (or, the top of the slider stack) immediately below it
+                ;         then add this tile to the top of the slider stack.
+                ;         This means the tile actually somewhat magically jumps down
+                ;         onto the top of the stack, rather than falling gracefully,
+                ;         but that's what the original game seems to really do, so I'm
+                ;         just replicating that
+                ;     2.  if there is a slider but not *immediately* below this tile,
+                ;         then allow the tile to fall.  We will probably end up
+                ;         calling this same routine again later.
+                ;
                 ; 1. look one row below
                 ld a, l
                 add 16
                 ld l, a
                 ld a, (hl)
                 and a ; if a is zero, it means the square (below the xy) is empty space
-                jr nz, @+not_falling ; not falling
+                jr nz, @+not_empty_space ; maybe on solid ground, or maybe about to land on slider
                 ; make sure the state is correct - zero offset for now (flag as falling)
                 ; (2. go back up one row)
                 ld a, l
                 sub 16
                 ld l, a
-                ld a, 16 ; bit 4 = falling
+                ld a, IS_FALLING_MASK ; bit 4 = falling
                 dec h ; (point to tiles_flags)
                 ld (hl), a
                 ld a, l
                 jp push_falling_tiles
-    @not_falling:
+
+    @not_empty_space:
+                ; maybe, the thing immediately below is actually a part of a slider
+                ; (the slider, or the stack).  If so, put this tile onto the top of the
+                ; stack
+                dec h ; point to tiles_flags
+                ld a, (hl)
+                bit IS_SLIDER_BIT, a
+                jr z, @on_solid_ground
+
+                ; if the slider is aligned to grid boundary, then this tile isn't falling
+                ; because it just hops on the top of the stack
+                and 15
+                jr nz, @slider_is_somewhere_below_us
+    @slider_is_immedately_below_us:
+                ; whee, we landed right on the slider
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, IS_SLIDER_BIT + 0 ; 0 y offset
+                ld h, tiles_flags/256
+                ld (hl), a
+                ld a, (slider_stack_height)
+                inc a
+                ld (slider_stack_height), a
+                ret
+
+        
+    @slider_is_somewhere_below_us:
+                ; basically, if the slider is below us but not exactly
+                ; aligned to grid boundary, then we treat the falling tile as
+                ; falling, and let the falling logic get it to land on the slider
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, IS_FALLING_MASK ; bit 4 = falling
+                ld (hl), a
+                ld a, l
+                jp push_falling_tiles
+
+    @on_solid_ground:
                 ; make sure the state is correct - zero offset (and flag as not falling)
                 ; (2. go back up one row)
                 ld a, l
                 sub 16
                 ld l, a
                 xor a
-                dec h ; (point to tiles_flags)
                 ld (hl), a
                 ret
 
-; FIXME TODO : the below combines process (update) and drawing, and is
-; extra complex as a result. Should split into an update step, and a draw
-; step (where the latter could be optimised for raster to avoid tearing)
-; Separating might also make it easy(easier) to introduce a gameplay backdrop
-; rather than plan black
+check_falling_tiles_queue:
+                ld bc, queue_tiles_to_check
+        @next:
+                ld a, (bc)
+                cp 255
+                jr z, @+DONE
+                ld l, a
+                ld h, tiles/256
+                call check_falling_tile_hl
+                inc bc
+                jp @-next
+        @DONE:
+                jp clear_queue_tiles_to_check
+
+; use a list to say which tiles "have fallen" this frame, keeping a record of their
+; previous screen memory location.  This means we can efficiently blank out their previous
+; position (just need to blank out the 2-pixel rows from where they used to be higher-up-the-screen)
+; and overwrite their new location, rather than needing to blank-and-redraw the whole thing
+; You could (and I did) consider putting the update-and-redraw into a single routing but I wanted
+; to split the update- from the redraw- and this seemed like the easiest way:
+; 1. Put falling tiles into linked list
+; 2. For each falling tile, work out its screen location
+; 3. Update the y-location of the falling tiles. if the y-location changed, put the OLD
+;    y-location into the 'falling_rects_to_clear' list
+; 4. go through the list in 3. and clear out on-screen 2 pixel rows
+;    for all the falling tiles that moved
+; 5. (after doing any other on-screen erasing/updating/etc) draw the tiles in new location
+; This is actually kindof equivalent to putting the "erase" into the "update" logic,
+; while still having separate 'draw', which is obviously better than putting "update and erase and draw"
+; into a single blob of code that's harder to interleave with other drawing operations
+falling_rects_to_clear: defs 80
+falling_rects_to_clear_tail: defw falling_rects_to_clear
+
+update_falling_tiles:
+
 draw_falling_tiles:
                 ; step through list of falling tiles (x,y) coords
                 ; and erase (redraw) tile rects
@@ -67,11 +175,11 @@ draw_falling_tiles:
     @keep_seeing_if_any_found:
                 ld a, (hl)
                 ; is it end marker?
-                cp 255
+                cp END_OF_LIST
                 jr z, @none_found_and_cleanup
                 ; is it a dead entry (something was falling, and has stopped now,
                 ; but we've still got other falling things in this list)
-                cp 254
+                cp DEAD_ENTRY
                 jr nz, @+not_dead
                 inc hl
                 jr @-keep_seeing_if_any_found
@@ -83,19 +191,104 @@ draw_falling_tiles:
     @next:
                 ld a, (hl)
                 ; is it end marker?
-                cp 255
+                cp END_OF_LIST
                 ret z ; DONE
                 ; is it a dead entry
-                cp 254
+                cp DEAD_ENTRY
                 jr nz, @+not_dead
                 inc hl
-                jr @-next
+                jp @-next
     @not_dead:
                 ; a = YYYYxxxx
                 ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
+                ;
+
+                ; check if the slider is immediately below us and moving up
+                ; if so, we actually don't do anything (no update, nothing to redraw)
+                ; have I landed on a slider?
+                add 16
+                ld c, a
+                ld b, tiles_flags/256
+                ld a, (bc)
+                bit IS_SLIDER_BIT, a
+                jr z, @+not_landed_on_slider
+                ld a, (slider_info)
+                bit SLIDER_DIRECTION_BIT, a
+                jr nz, @+landed_on_downward_slider
+                ; yeah so now we kindof just sit still for a bit and
+                ; wait for the slider to catch up with us.
+                ; If the slider is precisely below us right now, then we hop onto it
+                ld a, (bc)
+                and 15
+                jr z, @+landed_exactly_on_upward_slider
+                ; otherwise, we do nothing
+                ; because slider is not at exactly the tile boundary
+                ; (and so our tile just hovers for a bit waiting for slider to meet it)
+                ; (check next falling tile)
+                inc hl
+                jp @-next
+        @landed_exactly_on_upward_slider:
+                ld c, (hl)
+                ld b, tiles_flags/256
+                ld a, IS_SLIDER_BIT + 0 ; 0 y-offset - this also clears the 'falling'bit
+                ld (bc), a
+                ld a, (slider_stack_height)
+                inc a
+                ld (slider_stack_height), a
+                ; this tile has finished 'falling'
+                ld a, DEAD_ENTRY
+                ld (hl), a
+                inc hl
+                jp @-next
+        @landed_on_downward_slider:
+                ; if we're here, the slider is going down, and we immediately hop on board
+                ; copy the slider bit and offset to our tile, and mark this tile as no longer falling
+                ld a, (bc)
+                ld b, a
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, b
+                ld b, tiles_flags/256
+                ld (bc), a
+
+                ; blank the old location of the tile
+                ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; landed on a y coordinate within that range
+                ; FIXME or we could use the dirty_tiles mechanism (by splitting
+                ; falling_tiles into separate update and draw steps)
+                push bc
+                ld a, c
+                and 15
+                add a,a ; a = x * 2
+                add a,a; a = x * 4
+                add a,a ; a = x * 8
+                add a, GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
+                ld a, c
+                and 240 ; clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
+                ld d, a
+                call fillrect_16x16_black_at_de
+                pop bc
+
+                ; and update the stack
+                ld a, (slider_stack_height)
+                inc a
+                ld (slider_stack_height), a
+
+                ; the block landed on a slider so it is no longer handled by the falling logic
+                ; so remove this entry
+                ld a, DEAD_ENTRY
+                ld (hl), a
+                inc hl ; point to next entry in falling tiles for @next loop
+                jp @-next
+
+        @not_landed_on_slider:
+                ld a, (hl)
                 ld c, a
                 and 15
                 add a,a ; a = x * 2
@@ -133,6 +326,7 @@ draw_falling_tiles:
                 call fillrect_16x2_black_at_de
                 pop bc
                 pop de
+
                 ld a, (bc)
                 and 15
                 add a, 2
@@ -190,7 +384,7 @@ draw_falling_tiles:
                 cp NUM_NON_TILES
                 jr c, @finished_checking_falling_above ; jump if tile above was a non-moveable-tile
                 ; tile above me can now fall into empty space, great!
-                ld a, 16 ; falling but zero offset for now ; TODO IS THIS RIGHT?
+                ld a, IS_FALLING_MASK ; falling but zero offset for now ; TODO IS THIS RIGHT?
                 ld (bc), a
                 ; point at the xy coord of the above tile and add to the falling list
                 ; hl is still valid, but we can trash it here (we pop later when we need it)
@@ -214,10 +408,10 @@ draw_falling_tiles:
                 ld a, c
                 add a, 32 ; check TWO ROWS DOWN
                 ld c, a
-                ; is it solid ground? TODO test landing on a slider
+                ; is it solid ground (or maybe landed on a slider)
                 ld a, (bc)
                 and a
-                jr nz, @landed
+                jr nz, @landed_on_something
 @not_landed:
                 ; need to write where the tile is. get the correct address in bc:
                 ld a, c
@@ -225,7 +419,7 @@ draw_falling_tiles:
                 ld c, a
                 ; mark as zero offset and falling
                 dec b
-                ld a, 16
+                ld a, IS_FALLING_MASK
                 ld (bc), a
                 inc b
                 ; also get the correct tile ID in a (and we still need to draw this tile...)
@@ -253,10 +447,106 @@ draw_falling_tiles:
                 ; FIX ME PUT THE ACTUAL CHECKS HERE
                 ; is it on solid ground? if so mark entry (x coord, so dec hl one more time) as dead (=64)
                 ld a, (hl) ; this is the xy-coord
-                add a, 16 ; add 1 to y
+                add 16 ; add 1 to y
                 ld (hl), a
                 inc hl ; point to next entry in falling tiles for @next loop
                 jp @-next
+@landed_on_something:
+                ; have I landed on a slider?
+                dec b ; point to tiles_flags
+                ld a, (bc)
+                bit IS_SLIDER_BIT, a
+                jr z, @landed ; nope, didn't land on a slider, must be solid ground or tile
+    @landed_on_slider:
+                ; hey, whee, we landed on a slider
+                ; we have a tricky choice now.  if the slider is moving UP towards us,
+                ; then, right now, we should actually hover in-place until the slider
+                ; meets us.  Yeah, weird right? Puzznic is not a physics simulation.
+                ld a, (slider_info)
+                and a
+                bit SLIDER_DIRECTION_BIT, a
+                jr nz, @+land_exactly_on_slider
+
+
+    @slider_is_moving_up:
+                ; yeah so now we kindof just sit still for a bit and
+                ; wait for the slider to catch up with us.
+                ; If the slider is precisely below us right now, then we hop onto it
+                ld a, (bc)
+                and 15
+                jr z, @+land_exactly_on_slider
+                ; so, we do nothing
+                pop hl
+                inc hl ; because slider is not at exactly the tile boundary
+                jp @-next ; so we do nothing, and look at the next falling stuff
+        
+        @land_exactly_on_slider:
+                ; if we're here, the slider is at exactly the tile boundary, (or
+                ; the slider is going down), and we immediately hop on board
+                ; copy the slider bit and offset to our tile
+                ld a, (bc)
+                ld b, a
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, b
+                ld b, tiles_flags/256
+                ld (bc), a
+
+                ; blank the old location of the tile
+                ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; landed on a y coordinate within that range
+                ; FIXME or we could use the dirty_tiles mechanism (by splitting
+                ; falling_tiles into separate update and draw steps)
+                push de
+                push bc
+                push af
+                call fillrect_16x16_black_at_de
+                pop af
+                pop bc
+                pop de
+
+                ; next work out what actual y-coordinate we are now at (on the slider)
+                ; this should be easy, it's the same as the other tiles on the slider
+                ; but we need to adjust de to point to the correct screen pixel now
+                and 15 ; clears carry
+                rra ; a*=128 . really just srl a but rra is cheaper when carry is clear
+                jr nc, @+even
+    ; @odd:
+                set 7, e
+    @even:
+                add a, d
+                ld d, a
+
+                ; also get the correct tile ID in a (and we still need to draw this tile...)
+                ld a, l ; the old tile (we preserved from earlier)
+
+                if DEBUG
+                ; assert that the tile we're drawing here is not a zero
+                ; because we have had bugs here
+                @fatal:
+                and a
+                nop
+                jr z, @-fatal
+                ENDIF
+
+                inc b
+                ld (bc), a
+                call draw_tile_at_de_tile_a
+
+                ; update the slider stack FIXME this feels like it's in totally the wrong place
+                ld hl, slider_stack_height
+                inc (hl)
+
+                pop hl
+
+                ; 2b. the block landed on a slider so it is no longer handled by the falling logic
+                ; so remove this entry
+                ld a, DEAD_ENTRY
+                ld (hl), a
+                inc hl ; point to next entry in falling tiles for @next loop
+                jp @-next
+
 @landed:
                 ; this is duplicate of some of logic above, but the ending is different
                 ; need to write where the tile is. get the correct address in bc:
@@ -264,7 +554,6 @@ draw_falling_tiles:
                 sub 16 ; go back up one row (i.e. where the tile actually is now)
                 ld c, a
                 ; no longer falling, so clear flag
-                dec b
                 xor a
                 ld (bc), a
                 inc b
@@ -289,14 +578,14 @@ draw_falling_tiles:
                 call draw_tile_at_de_tile_a
                 pop hl
                 ; no longer falling, mark entry as dead
-                ld a, 254
+                ld a, DEAD_ENTRY
                 ld (hl), a
                 inc hl ; point to next entry in falling tiles for @next loop
                 jp @-next
 
 @still_falling:
                 push hl
-                or 16 ; keep the flag that says 'falling' set
+                or IS_FALLING_MASK ; keep the flag that says 'falling' set
                 ld (bc), a ; write its new y offset back
                 ; add the offset to d, the screen y location
                 and 15 ; clears carry
@@ -342,12 +631,12 @@ any_tiles_falling:
     @keep_seeing_if_any_found:
                 ld a, (hl)
                 ; is it a valid xy coord?
-                ; 255 means end-of-list and
-                ; 254 means a-dead-entry-you-can-skip
-                cp 255
+                ; END_OF_LIST means end-of-list and
+                ; DEAD_ENTRY means a-dead-entry-you-can-skip
+                cp END_OF_LIST
                 ret z ; end of list, nothing found, so nothing in freefall
-                cp 254
-                ret nz ; != 254, so a real xy => something in freefall
+                cp DEAD_ENTRY
+                ret nz ; != dead_entry, so a real xy => something in freefall
                 inc hl
                 jr @-keep_seeing_if_any_found
 

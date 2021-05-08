@@ -73,12 +73,6 @@ game_loop:
                 call get_input
 
                 IF DEBUG_VSYNC
-                    ld a, 3
-                    out (254), a
-                ENDIF
-                call update_cursor_position
-
-                IF DEBUG_VSYNC
                     ld a, 4
                     out (254), a
                 ENDIF
@@ -132,17 +126,33 @@ game_loop:
                 ENDIF
                 call sort_by_y
 
+                ; update cursor position - must do this before redrawing dirty tiles
+                ; (since moving the cursor can make tiles dirty)
                 IF DEBUG_VSYNC
-                    ld a, 37
+                    ld a, 3
+                    out (254), a
+                ENDIF
+                call update_cursor_position
+
+                IF DEBUG_VSYNC
+                    ld a, 35
                     out (254), a
                 ENDIF
                 call wait_frame
+
+                ; ======================================
 
                 IF DEBUG_VSYNC
                     ld a, 38
                     out (254), a
                 ENDIF
                 call draw_clock
+
+                IF DEBUG_VSYNC
+                    ld a, 32
+                    out (254), a
+                ENDIF
+                call erase_old_cursor
 
                 IF DEBUG_VSYNC
                     ld a, 39
@@ -156,8 +166,10 @@ game_loop:
                 ENDIF
                 call draw_sliders
 
+                call draw_falling_tiles
+
                 IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 2
                     out (254), a
                 ENDIF
                 call render_destruct ; this will call decrement on remaining blocks upon completion
@@ -169,7 +181,7 @@ game_loop:
                 call draw_overlays
 
                 IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 5
                     out (254), a
                 ENDIF
                 call render_score ; TODO OPTIMIZE conditional call i.e. if score has changed this frame
@@ -187,7 +199,7 @@ game_loop:
                 call check_clear
 
                 IF DEBUG_VSYNC
-                    ld a, 0
+                    ld a, 3
                     out (254), a
                 ENDIF
                 call music_tick
@@ -197,6 +209,9 @@ game_loop:
                     out (254), a
                 ENDIF
                 call sfx_tick
+
+                call check_falling_tiles_queue
+
                 jp game_loop
 
 ; These are anticipatory, maybe we don't need them (or maybe we cannot disentangle
@@ -222,7 +237,6 @@ draw_overlays:
                 ; stuff like the bonus score that floats over the tiles
                 ; also the cursor
                 ; should probably make some of this macro and inline into game loop 
-                call draw_falling_tiles
                 call draw_cursor
                 call render_bonus
                 ret
@@ -239,9 +253,11 @@ main:
 
                 xor a
                 ld (clock_tick_frame), a
+                ld (clock_changed), a ; poke a nop here
 
                 call clear_dirty_tiles_list
                 call clear_falling_tiles
+                call clear_queue_tiles_to_check
 
                 call debug_memcpy_level_data
                 call init_game_state
@@ -259,12 +275,12 @@ INCLUDE "draw.z80"
 INCLUDE "game_state.z80"
 INCLUDE "clock.z80"
 INCLUDE "vsync_utils.z80"
+INCLUDE "slider.z80"
 INCLUDE "cursor.z80"
 INCLUDE "music.z80"
 INCLUDE "sfx.z80"
 INCLUDE "dirty_tiles.z80"
 INCLUDE "falling.z80"
-INCLUDE "slider.z80"
 INCLUDE "score.z80"
 INCLUDE "bonus.z80"
 INCLUDE "remaining.z80"

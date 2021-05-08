@@ -62,6 +62,37 @@ check_match:
                 ld bc, 16*12-17-16 ; exclude edges
                 ldir
 
+                ; if sliders are mid-moving (not aligned to grid) then disregard those
+                ; coordinates for match
+                ; todo - surely we can make this more efficient than copying data and then removing it again later!
+                ld a, (slider_info)
+                and a
+                jr z, @done_sliders
+                ld a, (slider_xy)
+                ld h, tiles_flags/256
+                ld l, a
+                ld a, (hl)
+                and 15
+                ; if this is non-zero then the slider is mid-move
+                ; only if this is zero should we include the slider and stack
+                ; TODO OPTIMIZE surely we can look this up in a single test
+                jr z, @done_sliders
+                ; ok now we gotta zero out the slider and everything on top of it
+                ; from the match check algo
+                ld a, (slider_stack_height)
+                inc a ; include the slider tile itself ; TODO optimize could just unroll a bit
+                ld b, a
+                ld h, match_tiles_copy/256
+                ld a, (slider_xy)
+                ld l, a
+                ld d, 0
+        @more_on_stack:
+                ld (hl), d
+                sub 16
+                ld l, a
+                djnz @-more_on_stack
+
+        @done_sliders:
                 ; strategy: use ix to index into tiles array
                 ; we'll also use bc to do the scanning (top to bottom
                 ; and left to right)
@@ -282,6 +313,18 @@ check_match:
                 ld a, 1
                 ld (destruct_frame), a
 
+                ; TODO SPECIAL TREATMENT FOR MATCHES THAT INVOLVED TILES ON SLIDERS!
+                ; If any tiles on the slider are involved in match, you need to
+                ;  1. mark that tile as no longer on the slider
+                ;  2. mark all other tiles ABOVE THAT TILE as also no longer on the slider
+                ;  3. leave all other tiles below that tile alone BUT set the slider_stack_height
+                ;     to correspond to how many tiles are now remaining on the slider still
+                ; this should all be fairly easy since we easily know the slider xy and the stack
+                ; height and all the xy of tiles in the match, so can just compare match_x=slider_x and
+                ; match_y between (slider_y-1) and (slider_y-stack_height)
+                ; ....
+
+                
                 ; is controller already locked (i.e. this is a subsequent triggered match?)
                 ld a, (controller_flags_disabled)
                 and a
@@ -291,7 +334,7 @@ check_match:
                 ; starting a bonus calculation from the lowest tier (the tier
                 ; is sticky but resets when all triggered matches have finished)
                 call lock_controller ; TODO OPTIMIZE inline
-                ; call init_bonus ; TODO OPTIMIZE inline
+                
             @already_locked:                
                 ret
 
@@ -413,7 +456,7 @@ render_destruct:
                 ld a, (hl)
                 cp NUM_NON_TILES
                 jr c, @not_a_tile_above
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
         @not_a_tile_above:
                 pop hl
                 jp @-next_this_match

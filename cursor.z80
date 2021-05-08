@@ -6,11 +6,34 @@ fire_pressed: defb 0 ; whether fire was held down since last time
 key_delay: equ 8
 key_repeat: equ 6
 
+cursor_moved: defb 0  ; where was cursor last frame
+old_cursor_hl: defw 0  ; handy way to keep track of where the cursor was (screen memory) last frame
+
+controller_flags_xoffs: defb 0 ; x-offset
+controller_flags_yoffs: defb 0 ; y-offset
+
 init_cursor_controller:
                 xor a
                 ld (keyrepeat_ctr), a
                 ld (keyrepeat_dirs), a
                 ld (fire_pressed), a
+                ld (cursor_moved), a
+                ld (old_cursor_hl), a
+                ld (old_cursor_hl+1), a
+
+                ld (controller_flags_xoffs), a
+                ld (controller_flags_yoffs), a
+                ld a, (controller_flags_xy_pos)
+                ret
+
+erase_old_cursor:
+                ; TODO optimize and be smarter?
+                ld a, (cursor_moved)
+                and a
+                ret z
+                ld hl, (old_cursor_hl)
+                xor a ; because palette black is 0 ; TODO BACKGROUND IMAGES
+                call box_at_hl
                 ret
 
 draw_cursor:
@@ -24,15 +47,39 @@ draw_cursor:
                 ld h, (tiles-1)/256
                 ; is tile falling
                 ld a, (hl)
-                bit 4, a
-                jr z, @tile_not_captured ; tile isn't falling so y-offset is zero (TODO check sliders)
+                bit IS_FALLING_BIT, a
+                jr nz, @captured_falling_tile ; tile is falling so y-offset matches tile
+                bit IS_SLIDER_BIT, a
+                jr nz, @captured_sliding_tile ; tile is sliding so y-offset or x-offset matches tile (according to slider direction)
+                jp @tile_not_captured
+
+    @captured_sliding_tile:
+                ; is it vertical or horizontal?
+                ; if vertical, use same logic as falling tile (handy)
+                ld hl, slider_info
+                bit SLIDER_AXIS_BIT, (hl)
+                jr z, @captured_vertical_slider
+
+    @captured_horizontal_slider:
+                ; ... TODO not implemented
+                jp @tile_not_captured
+                ; ... should do something like
+                and 15
+                ; ...
+                ; ... and some stuff here
+                ; ... and some stuff here
+                ; ... and some stuff here
+                ; ... and some stuff here
+                jp @+draw_cursor
+
+    @captured_vertical_slider:
+    @captured_falling_tile:
                 ; get the offset for top-left into hl
-    captured_cursor:
                 and 15
                 ld h, a
                 ld l, 0
                 srl h
-                rl l
+                rr l
                 ld a, (controller_flags_xy_pos)
                 ld d, a ; backup
                 ; 16 pixels wide = multiply x by 8
@@ -51,10 +98,8 @@ draw_cursor:
                 rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 add a, h ; <-- this is what's different
                 ld h, a
-                jr @+draw_cursor
-                ; .. TODO IMPLEMENT SLIDERS
-                ; ...
-                ; ...
+                jp @+draw_cursor
+
 @tile_not_captured:
                 ld a, (controller_flags_xy_pos)
                 ld d, a ; backup
@@ -89,15 +134,20 @@ draw_cursor:
                 jr nz, @white
 @red:
                 ld a, palette_index_red * 17
+                ld (old_cursor_hl), hl
                 call box_at_hl
                 ret
 @white:
                 ld a, palette_index_white * 17
+                ld (old_cursor_hl), hl
                 call box_at_hl
                 ret
 
 
 update_cursor_position:
+                ; initially assume cursor did not move
+                xor a
+                ld (cursor_moved), a
                 ; controller can be periodically disabled during game logic
                 ; so check that first
                 ld a, (controller_flags_disabled)
@@ -188,6 +238,8 @@ update_cursor_position:
                 ; (old location was the row below this one)
                 add a, 16
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_down:
@@ -219,6 +271,8 @@ update_cursor_position:
                 ; (old location was the row above this one)
                 sub 16
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_left:
@@ -248,6 +302,8 @@ update_cursor_position:
                 ; (old location was the column right of this one)
                 inc a
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_right:
@@ -278,6 +334,8 @@ update_cursor_position:
                 ; (old location was the column left of this one)
                 dec a
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_dirs_with_fire_pressed:
@@ -322,7 +380,7 @@ update_cursor_position:
                 ; 2.  is it already falling maybe? can't move a falling tile
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                bit 4, a
+                bit IS_FALLING_BIT, a
                 ; if it's falling, don't permit any movements at all
                 ; TODO check gameplay, is this correct? feels correct but that's just my guess.
                 ret nz
@@ -330,13 +388,15 @@ update_cursor_position:
                 ; it could be mid falling, so effectively we're in 'mid air') - same rule
                 ; applies - you can't move it if it's in mid air
                 ; TODO optimise, now we're pushing and popping HL, ugh.
+                ; TODO does this condition apply for something that has landed 'onto' where
+                ; the slider is (or will be)?
                 push hl
                 ld a, l
                 add 16
                 ld l, a
                 ld a, (hl)
                 pop hl
-                bit 4, a
+                bit IS_FALLING_BIT, a
                 ; if it's 'effectively in mid air' then again ignore the FIRE and just
                 ; move cursor as if there's no tile being controlled
                 jp nz, @movements_no_tile
@@ -348,11 +408,13 @@ update_cursor_position:
                 jr nz, @we_already_captured_earlier
                 ld a, 1
                 ld (controller_flags_tile_captured), a
+                ; also - essentially this means the cursor moved because it may have jumped in position
+                ; now, to meet the tile that was in this location
+                ld (cursor_moved), a
                 ld a, 4 ; seed with 4 which is when we first change cursor colour (so that the colour change is immediate on this frame)
                 ld (controller_flags_flashing_ctr), a
     @we_already_captured_earlier:
                 ; are we also pressing left or right?
-                ; (bit 4 or 6, with corresponding latches in bits 5 and 7)
                 ld a, (controller_flags_dirs)
                 and %00001111
                 ; if not, do nothing else
@@ -383,6 +445,8 @@ update_cursor_position:
                 ld a, b
 
     @check_push_left:
+                ; This implements the shove_left action.
+
                 inc h ; (point back to tiles data)
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit, a
@@ -394,6 +458,15 @@ update_cursor_position:
                 pop hl
 
                 ; get new position (left = dec l, right = inc l)
+                ; TODO more edge cases here.  what happens when the tile being shoved is part
+                ; of the stack on top of a vertical slider?  it seems to do the following:
+                ;  if the slider is grid-aligned then this just works (look left or right and
+                ;  see a space), but if the slider is part-way then the tile will move to the
+                ;  nearest grid-aligned y-coordinate after being shoved.  So in some cases that
+                ;  means the tile y-coordinate will be 'rounded up' and jump up, or 'rounded down'
+                ;  and jump down.  In either case, the tile might find itself immediately on
+                ;  solid ground, or it might start to fall, etc.
+                ; ....
                 dec l
                 ld a, (hl)
                 and a ; check if it is zero.  you can only push a tile into zero
@@ -405,9 +478,19 @@ update_cursor_position:
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                ; bit 4 set -> tile at that location is falling
-                bit 4, a
+                ; is it falling or slider? if so, we can't move into that space
+                bit IS_FALLING_BIT, a
                 ret nz
+                bit IS_SLIDER_BIT, a
+                jr z, @+done_checking_slider
+                ; urgh, we also have to check the slider y offset.  if it's zero, then we're actually
+                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
+                ; there's enough space to sneak in under it.
+                and 15 ; get the y-coordinate-offset of the slider
+                ret nz ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
+                       ; where we want to move our tile))
+                
+        @done_checking_slider:
                 ; all good, we can move there
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
@@ -416,12 +499,52 @@ update_cursor_position:
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
-                dec l
+                dec l ; go left
                 ld (hl), a
                 inc l
                 ld (hl), 0
-                ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
-                ; check if the one ABOVE us in the OLD location is now falling
+                ; SLIDER - if this tile WAS in the slider stack, then we also need to
+                ; clear the 'is_slider' bit from the old position, and reduce the height of
+                ; the slider stack (to equal the remaining height of all tiles STRICTLY BELOW
+                ; this one), and clear the 'is_slider bit from all the tiles strictly above us
+                ; in the slider stack.
+                dec h ; point to flags
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                jr z, @+done_checking_slider
+                ; clear the slider flag (in fact clear all flags, that old position is now empty)
+                ; clear the flags above us too, and call 'check falling tile' on those
+                push hl ; let's remember where we started
+        @next:
+                xor a
+                ld (hl), a
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                jr nz, @-next
+        @finished_clearing_flags_for_slider_stack:
+                ; now work out new height of the slider stack
+                ; get y-coord of slider and subtract y-coord of this tile
+                pop hl
+                ld a, l
+                srl a
+                srl a
+                srl a
+                srl a ; get y-coord only into a
+                ld b, a
+                ld a, (slider_xy)
+                srl a
+                srl a
+                srl a
+                srl a ; get y-coord only into a
+                sub b
+                dec a ; subtract one because we have removed a tile from the stack
+                ld (slider_stack_height), a
+        @done_checking_slider:
+                inc h ; point back to tiles
+                ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 16
                 ld l, a
@@ -429,16 +552,17 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call queue_check_falling_tile_l
                 pop hl
 @above_is_not_a_tile:
                 ; move to the new location
                 ld a,l
                 add 16 - 1 ; down one row and left one column
                 ld l, a
-                ; check if it's falling
+                ; add a check for the tile we push in its new location, if it's falling
                 push hl ; TODO use a reg instead of push/pop
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
                 pop hl
                 ; and mark this as our new cursor position
                 ld a, l
@@ -449,6 +573,8 @@ update_cursor_position:
                 ; mark the new locations as dirty also
                 dec a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
     @check_push_right:
@@ -497,7 +623,7 @@ update_cursor_position:
                 cp NUM_NON_TILES
                 jr c, @+above_is_not_a_tile
                 push hl
-                call check_falling_tile_hl ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
                 pop hl
 @above_is_not_a_tile:
                 ; move to the new location
@@ -506,7 +632,7 @@ update_cursor_position:
                 ld l, a
                 ; check if it's falling
                 push hl ; TODO use a reg instead of push/pop
-                call check_falling_tile_hl
+                call queue_check_falling_tile_l
                 pop hl
                 ; and mark this as our new cursor position
                 ld a, l
@@ -517,6 +643,8 @@ update_cursor_position:
                 ; mark the new locations as dirty also
                 inc a ; TODO hm am I drawing twice, if it's also falling?
                 call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
                 ret
 
 

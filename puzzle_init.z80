@@ -61,7 +61,8 @@ render_puzzle_tiles:
                 ld d, a ; ...
                 dec c
                 jr nz, @-next_col
-                jp render_remaining_tiles
+                call render_remaining_tiles
+                call init_slider_stack
                 ret
 
 
@@ -132,6 +133,10 @@ init_game_state:
                 LDIR
 
                 call init_cursor_controller
+
+                ; initialize slider wait state
+                ld a, (slider_wait_init)
+                ld (slider_wait_frame), a
 
                 ret
 

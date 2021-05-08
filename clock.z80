@@ -1,4 +1,6 @@
 draw_clock:
+clock_changed: equ $ ; poke  NOP or RET here
+                nop
                 ; minutes
                 ld a, (clock_min_bcd)
                 ; top minute decimal
@@ -31,6 +33,8 @@ draw_clock:
                 and 15
                 ld de, CLOCK_Y_OFFSET*128 + 16 ; y*128+(x/2)
                 call digit_a_xy_de ; TODO optimize maybe JP rather than call+ret?
+                ld a, 201
+                ld (clock_changed), a
                 ret
 
 update_clock:
@@ -48,6 +52,8 @@ update_clock:
                 ret nz
     @next_sec:
                 ; decrement number of remaining seconds
+                ; a is zero - poke a nop into clock draw routine!
+                ld (clock_changed), a
                 ld a, (clock_sec_bcd)
                 dec a
                 daa
