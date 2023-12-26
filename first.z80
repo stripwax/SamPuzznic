@@ -18,7 +18,7 @@ init:
                 ld bc, 16*256+248
                 otdr
     @enable_video:
-                ld a, %00000033 ; black border, screen enabled
+                ld a, %00000000 ; black border, screen enabled
                 out (BORDER),a
 	@set_stack:
 				ld sp,stack						; Use our own stack, point to below bottom of stack

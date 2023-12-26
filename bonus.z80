@@ -89,7 +89,7 @@ calculate_bonus_de:
                     cp 254 ; skip 254 (and we shouldn't find any 255 here because WE KNOW there is a valid match in here)
                     jr c, @match_found
                     inc hl
-                    jp -@find_match
+                    jp @find_match
                     ; a = the tile type, which we can ignore. find the first xy
             @match_found:
                     inc hl
