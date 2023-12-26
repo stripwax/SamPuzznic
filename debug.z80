@@ -73,3 +73,15 @@ debug_wait_for_a_bit:
                 dec c
                 jr nz, @-loop1
                 ret
+
+
+fatal:
+                ; this is like our version of assert. called when something
+                ; has gone horribly wrong, during a DEBUG build
+                ld a, c
+                inc c
+                and 0x17
+                out (254), a
+                nop
+                jp fatal
+

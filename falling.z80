@@ -1,37 +1,41 @@
 END_OF_LIST: equ 255
 DEAD_ENTRY: equ 254
 
+falling_tiles:
+                defs 80 + 2 ; worst case
+                defb END_OF_LIST
+
+falling_tiles_tail: defw falling_tiles
+
 push_falling_tiles:
                 ; modifies: HL, A
                 ; a contains tile x and y (YYYYxxxx)
                 ld hl, (falling_tiles_tail)
                 ld (hl), a
                 inc hl
-                ld a, END_OF_LIST
-                ld (hl), a
+                ld (hl), END_OF_LIST  ; end marker
                 ld (falling_tiles_tail), hl
                 ret
 
 clear_falling_tiles:
-                ; modifies: HL, A
+                ; modifies: HL
                 ld hl, falling_tiles
-                ld a, END_OF_LIST ; end marker
-                ld (hl), a
+                ld (hl), END_OF_LIST  ; end marker
                 ld (falling_tiles_tail), hl
                 ret
 
-falling_tiles:
-                defs 80 + 2 ; worst case
 
-falling_tiles_tail: defw falling_tiles
+queue_tiles_to_check:
+                defs 80 + 2
+                defb END_OF_LIST
 
-queue_tiles_to_check: defs 80 + 2
 queue_tiles_to_check_tail: defw queue_tiles_to_check
 
 clear_queue_tiles_to_check:
+                ; modifies: HL
                 ld hl, queue_tiles_to_check
+                ld (hl), END_OF_LIST
                 ld (queue_tiles_to_check_tail), hl
-                ld (hl), 255
                 ret
 
 queue_check_falling_tile_l:
@@ -40,7 +44,7 @@ queue_check_falling_tile_l:
                 ld hl, (queue_tiles_to_check_tail)
                 ld (hl), a
                 inc hl
-                ld (hl), 255
+                ld (hl), END_OF_LIST
                 ld (queue_tiles_to_check_tail), hl
                 ret
 
@@ -306,10 +310,8 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the 'falling' bit is actually set
                 ; because we have had bugs here
-                @fatal:
                 bit 4, a
-                nop
-                jr z, @-fatal
+                call z, fatal
                 ENDIF
 
                 ; Move the tile down 2 pixels.
@@ -433,10 +435,8 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the tile we're drawing here is not a zero
                 ; because we have had bugs here
-                @fatal:
                 and a
-                nop
-                jr z, @-fatal
+                call z, fatal
                 ENDIF
 
                 ld (bc), a
@@ -524,10 +524,8 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the tile we're drawing here is not a zero
                 ; because we have had bugs here
-                @fatal:
                 and a
-                nop
-                jr z, @-fatal
+                call z, fatal
                 ENDIF
 
                 inc b
@@ -568,10 +566,8 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the tile we're drawing here is not a zero
                 ; because we have had bugs here
-                @fatal:
                 and a
-                nop
-                jr z, @-fatal
+                call z, fatal
                 ENDIF
 
                 ld (bc), a
@@ -595,9 +591,7 @@ draw_falling_tiles:
                 ; I think we could only get here due to corruption
                 ; as currently our y-coordinates for falling are all even-aligned
                 if DEBUG
-                @fatal:
-                nop
-                jr @-fatal
+                call fatal
                 endif
 
                 set 7, l
@@ -612,10 +606,8 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the tile we're drawing here is not a zero
                 ; because we have had bugs here
-                @fatal:
                 and a
-                nop
-                jr z, @-fatal
+                call z, fatal
                 ENDIF
 
                 call draw_tile_at_de_tile_a
