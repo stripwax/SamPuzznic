@@ -6,7 +6,7 @@ fire_pressed: defb 0 ; whether fire was held down since last time
 key_delay: equ 8
 key_repeat: equ 6
 
-cursor_moved: defb 0  ; where was cursor last frame
+cursor_moved: defb 0  ; 0 if cursor did not move since last frane; nonzero if it did
 old_cursor_hl: defw 0  ; handy way to keep track of where the cursor was (screen memory) last frame
 
 controller_flags_xoffs: defb 0 ; x-offset
@@ -145,6 +145,8 @@ draw_cursor:
 
 
 update_cursor_position:
+                ; update the data structures associated with the current cursor position and state
+                ;
                 ; initially assume cursor did not move
                 xor a
                 ld (cursor_moved), a

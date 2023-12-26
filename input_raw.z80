@@ -1,3 +1,7 @@
+; raw keyboard read routine (based on a bugfixed version from the sam technical manual)
+; It just checks all key bits and writes directly into "keyb_buffer" for another routine
+; to process (see input.z80)
+
 get_input_raw:
                 ; keyscan routine from sam technical manual
                 ld hl, keyb_buffer

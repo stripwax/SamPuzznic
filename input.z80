@@ -1,3 +1,13 @@
+; functions for input recognition, mapped to behaviours in the game
+; handles key and joystick
+; Current interface is that the main function get_input processes the keyb_buffer
+; (see input_raw.z80), identifies inputs that map to actions (up/down/left/right/fire/pause/quit/etc)
+; and updates one of a few state variables:
+; controller_flags_fire : non-zero if the fire button is held
+; controller_flags_dirs : a bitmask of up/down/left/right actions
+;                         (where up+down are mutually exclusive and so are left+right
+;                          but diagonals are allowed)
+
 ; todo: redefinable keys
 ; todo: include joystick
 
