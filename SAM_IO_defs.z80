@@ -1,5 +1,7 @@
 LOKEY: equ 254
 HIKEY: equ 249
+STATUS: equ 249
+STATUS_FRAME_BIT: equ 3
 
 LMPR: equ 250
 HMPR: equ 251

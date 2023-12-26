@@ -81,7 +81,7 @@ fatal:
                 ld a, c
                 inc c
                 and 0x17
-                out (254), a
+                out (BORDER), a
                 nop
                 jp fatal
 
