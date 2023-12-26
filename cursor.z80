@@ -70,7 +70,7 @@ draw_cursor:
                 ; ... and some stuff here
                 ; ... and some stuff here
                 ; ... and some stuff here
-                jp @+draw_cursor
+                jp @+_draw_cursor
 
     @captured_vertical_slider:
     @captured_falling_tile:
@@ -98,7 +98,7 @@ draw_cursor:
                 rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
                 add a, h ; <-- this is what's different
                 ld h, a
-                jp @+draw_cursor
+                jp @+_draw_cursor
 
 @tile_not_captured:
                 ld a, (controller_flags_xy_pos)
@@ -128,7 +128,7 @@ draw_cursor:
                 ; where the cursor is.
                 ; so, cheat for now.  draw the cursor always, but in one of two colours.
                 ; red usually, but white/red if flashing.
-@draw_cursor:
+@_draw_cursor:
                 ld a, (controller_flags_flashing_ctr)
                 and 4
                 jr nz, @white

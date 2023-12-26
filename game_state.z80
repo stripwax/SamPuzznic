@@ -1,4 +1,4 @@
-; Current state of a puzzle
+ ; Current state of a puzzle
 ; We maintain a 12x12 grid of tile_info (each is a few bytes)
 ; Actually there are multiple tables, each aligned to 256 boundaries
 ;     tiles

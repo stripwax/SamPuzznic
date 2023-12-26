@@ -1,6 +1,13 @@
 ; This is all about the sliders, which is what I call
 ; those up-and-down elevators or left-to-right travelling blocks
 
+; A point of note: each level has either no slider, or exactly one slider
+; The slider will be either up/down, or left/right .
+; The slider has some predefined range, which it won't deviate from, but it can be
+; partially or completely blocked from moving (e.g. when there's a block in its way)
+; Also, the slider will travel in one direction, hit an obstacle (block or wall), and then
+; pause briefly, before reversing direction (and hit obstacle, pause, and then reverse again).
+
 ; Data structures:
 ; The slider has a regular entry in the tiles and tiles_flags grids.
 ; In the tiles_flags grid, the slider tile has the IS_SLIDER_MASK bit set,
@@ -11,9 +18,9 @@
 ; This is important, for the falling logic, because it needs to know if a horizontal slider
 ; is near with a non-zero x coordinate, because this will impede any block immediately
 ; above from falling down the cell.
-; Example:  if tile is at 7:3 and slider is at 7:4 (one row down), regardless of y
+; Example:  if tile is at 7:3 and a (vertical) slider is at 7:4 (one row down), regardless of slider y
 ;           coordinate (0-15), then the tile at 7:3 is blocked from falling down
-; Example2: if tile is at 7:3 and slider is at 6:4 (one row down and diagonally left), then
+; Example2: if tile is at 7:3 and a (horizontal) slider is at 6:4 (one row down and diagonally left), then
 ;           the tile at 7:3 is NOT blocked from falling down IF THE SLIDER X COORDINATE is ZERO
 ;           but the tile at 7:3 IS blocked from falling down IF THE SLIDER X COORDINATE is NONZERO
 
@@ -34,7 +41,7 @@ SLIDER_MOVED_UP_VALUE: equ 0
 SLIDER_MOVED_DOWN_VALUE: equ 2
 
 draw_sliders:
-                ; 
+                ; do nothing if slider disabled for this level
                 ld a, (slider_info)
                 and a
                 ret z 
@@ -77,20 +84,17 @@ draw_sliders:
 
                 ld a, (slider_xy)
 
-                ; copy and pasted from dirty_tiles:
+                ; copy and pasted from dirty_tiles (with some small changes):
+
                 ; draw this tile
                 ; a = YYYYxxxx
                 ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
-                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later
-                ; check : IS IT FALLING?  if so, do NOT render it now
+                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later                
                 ld b, tiles_flags / 256
                 ld a, (bc)
-                ; skip this next check
-                ;bit 4, a
-                ;jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
                 and 15 ; y-offset (in this case it's y... for horiz slider it would be x though...)
                 
                 ; now, get h= (y_offset/2) and l = 128*(y_offset % 2)
