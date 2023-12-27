@@ -1,6 +1,6 @@
 PUZZLEDATA_INDEX:
                 ; Level 1: 1-1 thru 1-4
-                defw PUZZLEDATA_DUMMY
+                defw PUZZLEDATA_DUMMY_2
                 defw 0
                 defw 0
                 defw 0

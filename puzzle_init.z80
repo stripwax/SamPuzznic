@@ -1,4 +1,8 @@
 render_puzzle_tiles:
+                IF DEBUG_DIRTY_FLASH
+                call reset_dirty_flasher
+                ENDIF
+                
                 ld a, REMAINING_REDRAW_ALL_FORCE
                 ld (redraw_remaining_tiles_flags), a
                 ; memset remaining tiles to zero (we count

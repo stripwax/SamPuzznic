@@ -64,6 +64,9 @@ game_loop:
                     IF DEBUG_KEYMATRIX==1
                         call print_debug_keymatrix
                     ENDIF
+                    IF DEBUG_DIRTY_FLASH
+                        call update_dirty_flasher
+                    ENDIF
                 ENDIF
 
                 IF DEBUG_VSYNC
