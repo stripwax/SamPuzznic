@@ -81,42 +81,22 @@ draw_cursor:
                 srl h
                 rr l
                 ld a, (controller_flags_xy_pos)
-                ld d, a ; backup
-                ; 16 pixels wide = multiply x by 8
-                and 15
-                add a,a
-                add a,a
-                add a,a
-                add GRID_X_OFFSET
-                add a, l ; <-- this is what's different
-                ld l,a
+                ld c, a ; backup
+                call grid_xy_in_C_and_A_to_screen_de
+                ld a, e
+                add l
+                ld l, a
                 ld a, d
-                ; 16 pixels high = multiply by 8
-                ; (since 256 bytes = 2 rows)
-                ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                add a, h ; <-- this is what's different
+                add h
                 ld h, a
                 jp @+_draw_cursor
 
 @tile_not_captured:
                 ld a, (controller_flags_xy_pos)
-                ld d, a ; backup
-                ; 16 pixels wide = multiply by 8
-                and 15
-                add a,a
-                add a,a
-                add a,a
-                add GRID_X_OFFSET
-                ld l,a
-                ld a, d
-                ; 16 pixels high = multiply by 8
-                ; (since 256 bytes = 2 rows)
-                ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld h, a
+                ld c, a ; backup
+                call grid_xy_in_C_and_A_to_screen_de
+                ; cursor draw expects screen location in hl not de
+                ex de, hl
                 ; TODO only draw the cursor if the flashing counter tells us to
                 ; i.e. redraw the title where the cursor would be,  the cursor is flashing
                 ; what does that mean? well, if fire is held then we draw the cursor

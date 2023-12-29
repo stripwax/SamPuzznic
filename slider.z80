@@ -105,19 +105,12 @@ draw_sliders:
                 ld h, a
                 rr l
 
-                ld a, c
-                and 15
-                add a, a
-                add a, a
-                add a, a
-                add a, GRID_X_OFFSET
-                add a, l
-                ld e, a ; e = x*8+GRID_X_OFFSET + 128*(y_offset % 2)
-
-                ld a, c ; a = y
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                add h ; a = y * 8 + (y_offset/2)
+                call grid_xy_in_C_to_screen_de
+                ld a, l
+                add e
+                ld e, a
+                ld a, d
+                add h
                 ld d, a
 
                 inc b ; point to tiles

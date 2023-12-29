@@ -265,17 +265,7 @@ draw_falling_tiles:
                 ; FIXME or we could use the dirty_tiles mechanism (by splitting
                 ; falling_tiles into separate update and draw steps)
                 push bc
-                ld a, c
-                and 15
-                add a,a ; a = x * 2
-                add a,a; a = x * 4
-                add a,a ; a = x * 8
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_to_screen_de
                 call fillrect_16x16_black_at_de
                 pop bc
 
@@ -294,16 +284,7 @@ draw_falling_tiles:
         @not_landed_on_slider:
                 ld a, (hl)
                 ld c, a
-                and 15
-                add a,a ; a = x * 2
-                add a,a; a = x * 4
-                add a,a ; a = x * 8
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_and_A_to_screen_de
                 ld b, tiles_flags/256
                 ld a, (bc) ; the state of the tile
 

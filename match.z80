@@ -568,16 +568,7 @@ render_destruct:
 
                 ; convert xy into screen de
                 ld c, a
-                and 15
-                add a, a
-                add a, a
-                add a, a
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c ; a = y
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_and_A_to_screen_de
                 ld a, b ; the actual tile to draw
 
                 push hl
@@ -636,16 +627,7 @@ render_destruct:
 
                 ; convert xy into screen de
                 ld c, a
-                and 15
-                add a, a
-                add a, a
-                add a, a
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c ; a = y
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_and_A_to_screen_de
                 ld a, b ; the actual tile to draw
 
                 push hl

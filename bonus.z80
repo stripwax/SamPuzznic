@@ -193,25 +193,17 @@ render_bonus:
                     ld (bonus_icon_frame), a
                     ret
         @still_going:
+                    ld a, (bonus_icon_xy)
+                    ld c, a
+                    call grid_xy_in_C_to_screen_de
                     ld (bonus_icon_frame), a
                     ; the bonus icon placement goes up by one pixel row every two frames
                     ; TODO implement that. for now, I fake it (two pixel rows every four frames)
                     srl a
                     srl a
+                    neg
+                    add d ; subtract the "rising y" offset
                     ld d, a
-                    ld a, (bonus_icon_xy)
-                    and 240 ; y
-                    rra ; a = y*128
-                    sub d ; subtract the "rising y" offset
-                    ld d, a
-
-                    ld a, (bonus_icon_xy)
-                    and 15
-                    rla
-                    rla
-                    rla
-                    add GRID_X_OFFSET
-                    ld e, a
 
                     ld a, (bonus_icon)
                     ; each bonus tile is 32x16 pixels * 2 (due to mask) = 16x16*2 bytes = 512

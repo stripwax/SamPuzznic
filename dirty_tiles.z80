@@ -43,6 +43,7 @@ redraw_dirty:
                 ; a = YYYYxxxx
                 ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
+                ;             (reuse helper function "grid_xy_in_C_to_screen_de")
                 ; for tiles: a is (conveniently) already the low byte offset into table
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
                 ld c, a ; used for bc address AND ALSO used as a backup of a that we need later
@@ -52,17 +53,7 @@ redraw_dirty:
                 and IS_FALLING_MASK + IS_SLIDER_MASK
                 jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
 
-                ld a, c
-                and 15
-                add a, a
-                add a, a
-                add a, a
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c ; a = y
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_to_screen_de
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
 
@@ -71,26 +62,20 @@ redraw_dirty:
                 pop hl
                 jr @-next
     @falling_dirty:
-                ld a, c
-                and 15
-                add a, a
-                add a, a
-                add a, a
-                add a, GRID_X_OFFSET
-                ld e, a ; e = x*8+GRID_X_OFFSET
-                ld a, c ; a = y
-                and 240 ; clears carry
-                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
-                ld d, a
+                call grid_xy_in_C_to_screen_de
+                ; determine how many pixels rows below top left grid-aligned we need to draw at
                 ld a, (bc)
-                and 15
+                and 15 ; a = 0000pppp where p = number of pixel rows offset
+                ; modify DE accordingly: multiply a by 128 and add to E with overflow to D
+                ; but really that just means flip the top bit of E if A is odd; and 
+                ; add the remaining bits to D
                 srl a
                 jr nc, @+nocarry
                 set 7, e
             @nocarry:
                 add d
                 ld d, a
-                xor a
+                xor a ; tile 0 = blank space
                 push hl
                 call draw_tile_at_de_tile_a
                 pop hl

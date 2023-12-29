@@ -710,3 +710,35 @@ fillrect_16x8_black_at_de:
                 dec d
                 djnz @-odds
                 ret
+
+grid_xy_in_C_to_screen_de:
+                ; modifies a, de
+                ; Converts grid xy coords to screen memory in DE
+                ; (pointing to top-left of that xy cell)
+                ; multiply both grid x and grid y by 8 (and add GRID_X_OFFSET in x direction)
+                ; and put into DE
+                ; on entry: c = the YYYYxxxx grid coords
+                ; Uses the assumption that grid is made up of 16x16 cells.
+
+                ld a, c
+grid_xy_in_C_and_A_to_screen_de:
+                ; get x coord. we want to multiply x by 8 bytes (= 16 pixels)
+                ; 16 pixels wide = multiply by 8
+                and 15 ; a = xxxx
+                add a, a ; a = x * 2
+                add a, a; a = x * 4
+                add a, a ; a = x * 8
+                add GRID_X_OFFSET
+                ld e, a ; e = x*8+GRID_X_OFFSET
+
+                ; now get Y coord
+                ; 16 pixels high = multiply by 8
+                ; (since 256 bytes = 2 rows)
+                ; A contains YYYYxxxx so to multiply Y by 8 we actually divide A by 2
+                ld a, c ; YYYYxxxx
+                and 240 ; a = YYYY0000 (i.e. 16*y , and we want 8*y). AND clears carry
+                rra ; a = y * 8   really just srl a but rra is cheaper when carry is already clear
+                ld d, a
+
+                ; de is now pointing to top left xy on screen memory
+                ret
