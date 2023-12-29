@@ -26,7 +26,12 @@ IF DEBUG_DIRTY_FLASH
                 ret
 ENDIF
 
-    box_at_hl:
+
+box_at_hl:
+                ; modifies bc, hl
+                ; draw just a square outline box (used for the cursor)
+                ; using color nibble passed in A register
+                ; on entry, hl = screen location for drawing the box
                 IF DEBUG_DIRTY_FLASH
                 call dirty_flasher
                 ENDIF
@@ -138,6 +143,7 @@ ENDIF
                 ld (hl), a
                 ret
 
+; TODO
 ; need a vertical slice, horizontal slice, and full 16x16 rect fill
 ; vertical slice is for horizontal sliders;
 ; horizontal slice is for vertical sliders and falling blocks;
@@ -154,9 +160,12 @@ fillrect_16x16_black_at_de:
 
 
 _draw_debug_tile_at_de_tile_a:
+                ; modifies bc, de
+                ; draw a fake tile, for debug purposes
+                ; (just solid fill 16x16)
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
-                ; multiply a by 17 to get a conveniently-coloured two-nibble (two pixel) value in a
+                ; multiply A by 17 to get a conveniently-coloured two-nibble (two pixel) value in A
 
                 ld b,a
                 sla a
@@ -164,8 +173,14 @@ _draw_debug_tile_at_de_tile_a:
                 sla a
                 sla a
                 add b
-                ; left to right and right to left even rows
-    _draw_debug_tile_at_de_colorbyte_a:
+
+                ; fall through to:
+
+_draw_debug_tile_at_de_colorbyte_a:
+                ; modifies bc, de
+                ; draw a solid 16x16 using color byte A (two nibbles)
+                ; step 1. left to right and right to left even rows
+                ; moving down the screen (even rows only)
                 ld b, 4
                 ld c, a ; backup
     @evens:
@@ -211,6 +226,8 @@ _draw_debug_tile_at_de_tile_a:
                 adc 0
                 ld d, a
 
+                ; step 2. left to right and right to left odd rows
+                ; moving up the screen (odd rows only)
                 ld a, c ; restore
                 ld b, 4
     @odds:
@@ -249,6 +266,7 @@ _draw_debug_tile_at_de_tile_a:
                 djnz @-odds
                 ret
 
+
 draw_tile_at_de_tile_a:
                 ; modifies de, hl, bc
                 ; on entry, de = screen buffer topleft corner of tile destination
@@ -270,7 +288,17 @@ draw_tile_at_de_tile_a:
                 add a, tiles_bitmaps/256
                 ld h,a
                 ;ld hl, tiles_bitmaps
-                ; left to right and right to left even rows
+                ; fall through to:
+
+draw_bitmap_16x16_hl_at_de:
+                ; modifies de, hl, bc
+                ; draws an unmasked full 16x16 bitmap onto screen
+                ; bitmap is already in 'optimized' format (butterfly sequence)
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; hl = bitmap data (could be anything; probably a tile)
+
+                ; step 1. draw left to right and right to left even rows
+                ; moving down the screen (even rows only)
                 ld b, 4
     @evens:
                 ld a, (hl)
@@ -348,6 +376,8 @@ draw_tile_at_de_tile_a:
                 adc 0
                 ld d, a
 
+                ; step 2. draw left to right and right to left odd rows
+                ; moving up the screen (odd rows only)
                 ld b, 4
     @odds:
                 ld a, (hl)
@@ -416,6 +446,7 @@ draw_tile_at_de_tile_a:
                 inc hl
                 djnz @-odds
                 ret
+
 
 fillrect_16x2_black_at_de:
                 ; get a black (double) pixel
@@ -526,8 +557,9 @@ fillrect_2x16_black_at_de:
                 ret
 
 
-draw_masked_32_16_hl_de:
-                ; hl points to bitmap with mask (first byte is mask, second byte is pixel data)
+draw_masked_bitmap_32x16_hl_at_de:
+                ; modifies hl, de, bc
+                ; hl points to 32x16 bitmap with mask (first byte is mask, second byte is pixel data)
                 ; de points to screen
                 @pairs_down: equ FOR 4
                     @row_l_to_r: equ FOR 16

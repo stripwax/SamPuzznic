@@ -221,7 +221,7 @@ render_bonus:
                     ld h,a
                     ld l,0
 
-                    call draw_masked_32_16_hl_de
+                    call draw_masked_bitmap_32x16_hl_at_de
                     ; also: these locations are going to be dirty next frame
                     ; TODO optimise. we definitely should not need to redraw the whole tile
                     ; and we're also drawing (bits of) these already anyway due to the destruction
