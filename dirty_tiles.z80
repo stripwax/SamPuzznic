@@ -1,12 +1,28 @@
-; data structures and functions for tagging which tiles need to be redrawn
+; data structures and functions for maintaining a draw-list of bitmaps to draw.
+; One main usecase is for marking tiles that need to be redrawn
 ; These tiles correspond to non-moving locations in the grid- needing to be
 ; redrawn due to the cursor passing over them, or an overlay being drawn
-; over them.
-; Really it's just a variable-length array of xy coords for lookup
-; into the tiles data, and a loop which iterates over and draws bitmaps
-; for each one (and clears the todo-list after drawing them all)
+; over them, etc.
+; Really it's just a variable-length array of tuples (screen ptr, bitmap ptr)
+; One helper function exists to push data into that array via the xy coords of a
+; tile (so, by looking up into the tiles data, we obtain the bitmap ptr, and we
+; transform the grid xy into the screen ptr)
+; Then there's a draw function, which simple iterates over and draws bitmaps
+; for each one (and clears the draw-list after drawing them all)
 
 END_OF_LIST: equ 255
+
+dirty_tiles:    defb END_OF_LIST
+                defs 10*8+1-2 ; shouldn't need anything like this much
+                defb END_OF_LIST
+dirty_tiles_tail: defw dirty_tiles ; pointer to address from dirty_tails or up
+
+draw_list:      defb END_OF_LIST
+                defs 10*8*4+1-2 ; shouldn't need anything like this much
+                defb END_OF_LIST
+draw_list_tail: defw draw_list ; pointer to address from draw_list or up
+
+
 
 clear_dirty_tiles_list:
                 ; modifies: HL
@@ -15,7 +31,18 @@ clear_dirty_tiles_list:
                 ld (dirty_tiles_tail), hl
                 ret
 
+clear_draw_list:
+                ; modifies: HL
+                ld hl, draw_list
+                ld (hl), END_OF_LIST ; end marker
+                ld (draw_list_tail), hl
+                ret
+
+
+
 push_dirty_tile:
+                ; add an (xy) tile grid coord pair to the dirty list
+                ; (this will be transformed to screen+sprite ptrs in a second step)
                 ; a = (xy) tile data to push
                 ; modifies: HL
                 ld hl, (dirty_tiles_tail)
@@ -25,12 +52,29 @@ push_dirty_tile:
                 ld (dirty_tiles_tail), hl
                 ret
 
-dirty_tiles: defs 10*8+1 ; shouldn't need anything like this much
-dirty_tiles_tail: defw 0 ; pointer to address from dirty_tails or up
 
-redraw_dirty:
+
+push_draw_list_bc_de:
+                ; push the sprite ptr (in bc) and the screen ptr (in de)
+                ; to the draw list
+                ; modifies: HL
+                ld hl, (draw_list_tail)
+                ld (hl), b
+                inc hl
+                ld (hl), c
+                inc hl
+                ld (hl), d
+                inc hl
+                ld (hl), e
+                inc hl
+                ld (hl), END_OF_LIST
+                ld (draw_list_tail), hl
+                ret
+
+
+transform_dirty_to_draw_list:
                 ; step through list of dirty tile (xy) coords
-                ; and erase (redraw) tile rects
+                ; and determine what to draw at what screen location
                 ; NB this only handles the STATIONARY tiles
                 ; We will need a separate routine for drawing falling or sliding tiles
                 ld hl, dirty_tiles
@@ -40,6 +84,8 @@ redraw_dirty:
                 cp END_OF_LIST
                 jr z, @+end
                 inc hl
+                push hl
+
                 ; a = YYYYxxxx
                 ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
                 ;             and put into de
@@ -53,12 +99,21 @@ redraw_dirty:
                 and IS_FALLING_MASK + IS_SLIDER_MASK
                 jr nz, @falling_dirty ; if FALLING bit is set, treat as a blank tile for redraw
 
+                ; get screen ptr in de
                 call grid_xy_in_C_to_screen_de
+
+                ; get sprite ptr in bc
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
+                ; multiply a by 128 to get offset into bitmap data
+                ld c, 0
+                sra a ; shift lowest bit of a into carry
+                rr c ; shift carry into c
+                add a, tiles_bitmaps/256
+                ld b,a
 
-                push hl
-                call draw_tile_at_de_tile_a
+                call push_draw_list_bc_de
+
                 pop hl
                 jr @-next
     @falling_dirty:
@@ -75,9 +130,16 @@ redraw_dirty:
             @nocarry:
                 add d
                 ld d, a
-                xor a ; tile 0 = blank space
-                push hl
-                call draw_tile_at_de_tile_a
+                ; screen ptr now in de
+
+                ; get sprite ptr in bc
+                ; we want bitmap #0 = the 'blank' bitmap
+                ; which is therefore just what tiles_bitmaps+0 points to
+                ; TODO if we have background bitmaps, this needs changing!
+                ld bc, tiles_bitmaps
+
+                call push_draw_list_bc_de
+
                 pop hl
                 jr @-next
     @end:
@@ -85,3 +147,37 @@ redraw_dirty:
                 call clear_dirty_tiles_list
                 ret
 
+
+render_draw_list:
+                ld hl, draw_list
+    @_next:
+                ld a, (hl)
+                cp END_OF_LIST
+                jr z, @+_end
+
+                ld b, a
+                inc hl
+                ld c, (hl)
+                inc hl
+
+                ld d, (hl)
+                inc hl
+                ld e, (hl)
+                inc hl
+                
+                ; we're now going to put bc into hl (and preserve hl first)
+                push hl
+                ; now put bc into hl
+                push bc
+                pop hl
+
+                call draw_bitmap_16x16_hl_at_de
+
+                ; and restore the original hl
+                ; TODO optimize this - see if using IX would save cycles compared to push/pop?
+                pop hl
+                jr @-_next
+
+    @_end:
+                call clear_draw_list
+                ret

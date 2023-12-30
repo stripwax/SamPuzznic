@@ -48,6 +48,7 @@ main:
                 ld (clock_changed), a ; poke a nop here
 
                 call clear_dirty_tiles_list
+                call clear_draw_list
                 call clear_falling_tiles
                 call clear_queue_tiles_to_check
 

@@ -273,14 +273,6 @@ draw_tile_at_de_tile_a:
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; w.r.t tile_bitmaps
 
-                IF DEBUG_DIRTY_FLASH
-                ; using a counter, flipflop the actual data with something else
-                ; to visually indicate which areas are being redrawn
-                ld hl, temp_dirty_flasher
-                bit 0, (hl)
-                jp nz, _draw_debug_tile_at_de_tile_a
-                ENDIF
-
                 ; multiply a by 128 to get offset into bitmap data
                 ld l, 0
                 sra a ; shift lowest bit of a into c
@@ -299,6 +291,20 @@ draw_bitmap_16x16_hl_at_de:
 
                 ; step 1. draw left to right and right to left even rows
                 ; moving down the screen (even rows only)
+
+                IF DEBUG_DIRTY_FLASH
+                ; using a counter, flipflop the actual data with something else
+                ; to visually indicate which areas are being redrawn
+                push hl
+                ld hl, temp_dirty_flasher
+                bit 0, (hl)
+                pop hl
+                jr z, @+_normal
+                ld hl, tiles_bitmaps ; blank tile
+            @_normal:
+                ENDIF
+
+
                 ld b, 4
     @evens:
                 ld a, (hl)
