@@ -29,7 +29,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Ascii/numeric font (8x8)
 * Single puzzle
 * Scoring including bonus calculation
-* bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus)
+* bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus - with masking)
+* bonus icon/animation now using 1-pixel vertical scrolling
 * count of remaining tiles
 * sfx
 * Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
@@ -42,7 +43,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  Horizontal sliders
 *  This requires one-pixel-shifted versions of all tiles
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
-*  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
+*  colourizing bonus icon/animation
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
 *  "next level" after win condition

@@ -1,6 +1,6 @@
 PUZZLEDATA_INDEX:
                 ; Level 1: 1-1 thru 1-4
-                defw PUZZLEDATA_DUMMY_2
+                defw PUZZLEDATA_DUMMY_BONUSES
                 defw 0
                 defw 0
                 defw 0
@@ -112,3 +112,37 @@ PUZZLEDATA_DUMMY:
                 defb 16 ; delay high
                 defb 0x01, 0x30
                 defb 0x26
+
+PUZZLEDATA_DUMMY_EMPTY_GRID:
+                defb 3,3,3,3,3,3,3,3,3,3
+                defb 3,2,2,2,2,2,2,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,2,2,2,2,2,2,3,3
+                defb 0,0,0,0,0 ; slider
+                defb 0x01, 0x30 ; 1 m 30 s
+                defb 0x54 ; y x
+
+PUZZLEDATA_DUMMY_BONUSES:
+                defb 3,3,3,3,3,3,3,3,3,3
+                defb 3,2,2,2,2,2,2,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,10,0,2,3,3
+                defb 2,2,0,0,0,9,0,2,3,3
+                defb 2,2,0,0,10,8,0,2,3,3
+                defb 2,2,0,0,3,7,8,2,3,3
+                defb 2,2,0,6,0,6,7,2,3,3
+                defb 2,2,2,2,2,2,2,2,3,3
+                defb 0,0,0,0,0 ; slider
+                defb 0x01, 0x30 ; 1 m 30 s
+                defb 0x54 ; y x
