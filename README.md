@@ -40,6 +40,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  Horizontal sliders
+*  This requires one-pixel-shifted versions of all tiles
+*  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
 *  colourizing bonus icon/animation , and using 1-pixel vertical scrolling (currently using 2-pixel vertical scrolling)
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
