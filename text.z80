@@ -165,22 +165,26 @@ char_hl_de:
 print_text_hl_de:
             ; print the message from hl, to screen location de
             ; message must be zero-terminated
-    @next_char:
             ld a, (hl)
             and a
             ret z
-            inc hl
+    @next_char:
+            inc hl ; preincrement
             push hl
             push de
             call alpha_a_xy_de
             pop de
             pop hl
+            ld a, (hl)  ; either this is next char, or nul terminator
+            and a
+            ret z
             ; go right 8 pixels
-            inc de
-            inc de
-            inc de
-            inc de
+            inc e
+            inc e
+            inc e
+            inc e
             jp @-next_char
+
 
 ds ALIGN 256
 ; BEGIN DEBUG FONT (NUMBERS ONLY)
