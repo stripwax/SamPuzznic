@@ -110,12 +110,12 @@ check_match:
                 cp 255 ; END MARKER
                 jp z, @DONE
                 cp NUM_NON_TILES
-                jr nc, @found
+                jr nc, @this_is_a_tile
                 inc bc
                 jr @-keep_looking
 
-    @found:
-                ; see if ANY neighbours match
+    @this_is_a_tile:
+                ; see if ANY neighbours match this tile.
                 ; if not, we can outright ignore this as a starting point.
                 ; BC is where we're at in the left-to-right-top-to-bottom-scan
                 ; we'll hang onto that in bc for the entire duration of the algo
@@ -142,7 +142,7 @@ check_match:
                 jp @keep_looking
 
     @match_1:
-                ; keep a record of what tile we're looking for, since we trash reg a
+                ; keep a record of what tile we're looking for, since we trash reg A
                 ld (matched_tile), a
                 ; make match list entry
                 ld (de), a ; headed with the number of the tile
@@ -182,11 +182,11 @@ check_match:
                 inc hl ; push onto search stack
                 ld a, (matched_tile)
         @add_neighbours_3:
-                cp (ix-15)
+                cp (ix-16)
                 jr nz, @next_item_from_search_stack
-                ld (ix-15), 0 ; mark as done
+                ld (ix-16), 0 ; mark as done
                 ld a, ixl
-                sub 15
+                sub 16
                 ld (de), a ; add to match list
                 inc de
                 ; ld (hl), a
@@ -247,7 +247,10 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix+16), 0 ; mark tile as done
                 inc de
+                inc hl
+                ld (hl), a ; and put its neighbours location into search stack
                 ; now add remaining neighbours to search stack
+                ld a, (matched_tile)
                 jp @add_neighbours_2
      
     @match_3:
@@ -264,7 +267,10 @@ check_match:
                 ld (de), a ; and its neighbours location
                 ld (ix-1), 0 ; mark tile as done
                 inc de
+                inc hl
+                ld (hl), a ; and put its neighbours location into search stack
                 ; now add remaining neighbours to search stack
+                ld a, (matched_tile)
                 jp @add_neighbours_3
     
     @match_4:

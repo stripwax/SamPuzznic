@@ -146,3 +146,20 @@ PUZZLEDATA_DUMMY_BONUSES:
                 defb 0,0,0,0,0 ; slider
                 defb 0x01, 0x30 ; 1 m 30 s
                 defb 0x54 ; y x
+
+PUZZLEDATA_DUMMY_4MATCH:
+                defb 3,3,3,3,3,3,3,3,3,3
+                defb 3,2,2,2,2,2,2,2,3,3
+                defb 3,2,0,0,6,0,0,2,3,3
+                defb 3,2,6,0,3,0,0,2,3,3
+                defb 3,2,3,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 3,2,0,0,0,0,0,2,3,3
+                defb 2,2,0,0,0,0,0,2,3,3
+                defb 2,2,0,0,0,0,0,2,3,3
+                defb 2,2,0,0,0,0,0,2,3,3
+                defb 2,2,6,0,6,0,0,2,3,3
+                defb 2,2,2,2,2,2,2,2,3,3
+                defb 0,0,0,0,0 ; slider
+                defb 0x01, 0x30 ; 1 m 30 s
+                defb 0x54 ; y x
