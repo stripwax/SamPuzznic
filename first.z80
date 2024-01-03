@@ -58,7 +58,23 @@ main:
                 call render_screen_layout
                 call render_puzzle_tiles ; also counts (and renders) remaining tiles
                 call sfx_init
-                jp game_loop
+                call game_loop
+                ; when game_loop exits, you're either onto the next level, or you died
+                ld a, (level_clear_process)
+                cp 2
+                jp z, @+next_level
+                cp 3
+                jp z, @+you_died
+    @next_level:
+                ld a, (level_number)
+                inc a
+                ld (level_number), a
+                jp main  ; round again!
+
+    @you_died:
+                ; TODO!
+                jp @-you_died
+
 
 INCLUDE "match.z80"
 INCLUDE "input.z80"

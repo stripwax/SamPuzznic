@@ -54,6 +54,15 @@ game_loop:
 
                 call update_game_state
 
+                ld a, (level_clear_process)
+                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = failed
+                ; if 0 or 1, still run the game loop (which includes the rendering etc for animations)
+                cp 2
+                ret z
+                cp 3
+                ret z
+
+
                 IF DEBUG_VSYNC
                     ld a, 35
                     out (BORDER), a
@@ -83,6 +92,14 @@ update_game_state:
                     out (BORDER), a
                 ENDIF
                 call check_clear
+
+                ld a, (level_clear_process)
+                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level)
+                cp 2
+                ret z
+                cp 1
+                ret z
+                ; very little to do if the level is clear - just play out animations
 
                 call check_falling_tiles_queue
 

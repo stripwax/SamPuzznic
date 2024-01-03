@@ -4,7 +4,17 @@ wait_b:
                 ret
 
 check_clear:
+                ; if no "remaining tiles" were drawn, then there are no remaining tiles!
                 ld a, (tiles_drawn_last_time)
+                and a
+                ret nz
+
+                ld a, 1 ; doing anims
+                ld (level_clear_process), a
+                call lock_controller
+                ; if we're in the middle of a bonus animation,
+                ; then let those play out before doing the CLEAR animation
+                ld a, (bonus_icon_frame)
                 and a
                 ret nz
 
@@ -32,6 +42,10 @@ check_clear:
 
                 ld b, FPS/2
                 call wait_b
+
+                ld a, 2 ; done - onto the next level!
+                ld (level_clear_process), a
+
                 ret
 
 message.CLEAR: defm "CLEAR !!"
