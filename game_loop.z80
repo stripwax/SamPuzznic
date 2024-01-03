@@ -171,8 +171,6 @@ update_game_state:
                 ENDIF
                 call update_cursor_position
 
-                call transform_dirty_to_draw_list
-
                 ret
 
 
@@ -183,6 +181,8 @@ draw_everything:
                 ; OTHER THAN DRAWING UPDATES TO SCREEN (AND RELATED
                 ; 'DIRTY' TRACKING STATE)
                 ; ======================================
+
+                call transform_dirty_to_draw_list
 
                 IF DEBUG_VSYNC
                     ld a, 38

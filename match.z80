@@ -440,6 +440,9 @@ render_destruct:
                 ; mark this xy as dirty (to redraw this xy as blank)
                 push hl
                 call push_dirty_tile
+                ; TODO FIXME this means we actually need to update again the dirty bitmaps
+                ; list after calling this render routine - seems wrong.  we've got the state
+                ; changes and the rendering interleaved still above.  :-( 
                 pop hl
 
                 ; (if any of the tiles being matched are actually the one the cursor
