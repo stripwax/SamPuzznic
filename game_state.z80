@@ -108,7 +108,19 @@ controller_flags_disabled: defb 0
 
 render_flags: defb 0
 destruct_frame: defb 0
+
+; end-of-level sequence:
+; 0 = level not clear (still playing!)
+; 1 = doing the "Clear!" animation
+; 2 = done (jump to next level)
+; 3 = failed
+level_clear_process: defb 0
+
 game_state_zero_end:
+
+; which level are you actually playing right now
+; (not part of the 'game state' which is really the 'level state')
+level_number: defb DEBUG_LEVEL_NUMBER
 
 ; array of remaining tiles
 ; element 0: how many of tile A is remaining

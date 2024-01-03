@@ -71,7 +71,7 @@ render_puzzle_tiles:
 
 
 debug_memcpy_level_data:
-                ld a, DEBUG_LEVEL_NUMBER
+                ld a, (level_number)
                 jp memcpy_level_data
 
 memcpy_level_data:
