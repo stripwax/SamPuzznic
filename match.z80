@@ -475,6 +475,14 @@ render_destruct:
         @END_ALL_MATCHES:
                 ; done with final sequence
                 ; anything falling? if so, controller is still locked!!!
+                ; TODO FIXME we should be able to combine all the "check falling tiles queue" into one place
+                ; by splitting this up into two parts (above part does the queueing, and can run alongside
+                ; other things that do queueing i.e. cursor logic, sliders, etc etc)
+                ; Until then, call explicitly (again):
+                ; !!!
+                call check_falling_tiles_queue
+                ; !!!
+
                 ld a, (falling_tiles) ; head
                 inc a ; cp 255
                 ret nz ; a != 255 therefore things are still falling therefore keep controller LOCKED
