@@ -1,15 +1,54 @@
+; wait_frame:
+;                 ; status FRAME line signals the very start (top) of the frame
+;                 IF DEBUG_VSYNC==1
+;                 ld a, 0
+;                 out (BORDER), a
+;                 ENDIF
+;     @busy_wait:
+;                 in a,(STATUS)
+;                 bit STATUS_FRAME_BIT, a
+;                 jr nz, @-busy_wait
+;                 IF DEBUG_VSYNC
+;                 ld a, 6
+;                 out (BORDER), a
+;                 ENDIF
+
+;                 if DEBUG_SLOWMO > 0
+;                 ld b, DEBUG_SLOWMO
+;     @busy_wait_slowmo:
+;                 in a,(STATUS)
+;                 bit STATUS_FRAME_BIT, a
+;                 jr nz, @-busy_wait_slowmo
+;                 djnz @-busy_wait_slowmo
+;                 ENDIF
+
+;                 ret
+
+
 wait_frame:
-                ; status FRAME line signals the very start (top) of the frame
+                ; HPEN port contains the Y coord. 
+                ; HPEN equals 192 when in the border area (both top and bottom)
+                ; so we can simply wait until HPEN is NOT 192 (i.e. we're still
+                ; main screen area 'just to check') and then wait until HPEN is 192
                 IF DEBUG_VSYNC==1
                 ld a, 0
                 out (BORDER), a
                 ENDIF
-    @busy_wait:
-                in a,(STATUS)
-                bit STATUS_FRAME_BIT, a
-                jr nz, @-busy_wait
+
+                ld bc, HPEN
+    @busy_wait_1:
+                in a, (c)
+                cp 192
+                jr z, @-busy_wait_1 ; assume still in the top border area
+    @busy_wait_2:
+                in a, (c)
+                cp 192
+                jr nz, @-busy_wait_2 ; we must be in the screen area
+
+                ; we're now on the first scanline of the bottom border
+        @done:
                 IF DEBUG_VSYNC
-                ld a, 6
+                ld a, 1
                 out (BORDER), a
                 ENDIF
 

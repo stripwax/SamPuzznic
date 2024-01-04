@@ -8,3 +8,4 @@ HMPR: equ 251
 VMPR: equ 252
 
 BORDER: equ 254
+HPEN: equ 504
