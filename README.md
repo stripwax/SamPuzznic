@@ -38,9 +38,10 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 
 
 # TODO
+*  reorder the tile IDs - order should be as follows (to match the "tiles remaining" which is based in ID order) -  red ball, yellow pyramid, purple cube, taito, pentagon, green pipe, downward triangle, box (or heart in my case).
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
-*  Horizontal sliders
+*  Horizontal sliders.. very important and lots of work.
 *  This requires one-pixel-shifted versions of all tiles
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
 *  colourizing bonus icon/animation
@@ -48,7 +49,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  'background' bricks and anything else surrounding the play area
 *  "next level" after win condition
 *  level select between stages / initial level select at start
-*  clock font
+*  clock font (it's not the default font)
 *  "panic mode" clock font (clock flashing at 30s or less remaining, and again at 10s or less remaining)
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
@@ -60,7 +61,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  joystick not yet done (50% done)
 
 # TODO LATER
-*  drop shadow on font? make sure font is clear.
+*  drop shadow on font? make sure font is clear. also should be masked.
 *  Passwords for level skip
 *  Gravnic mode
 *  Arcade mode
