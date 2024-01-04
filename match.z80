@@ -353,7 +353,7 @@ render_destruct:
                 ; 4. trigger a bonus overlay if necessary
                 ; 5. render an explosion/shattering animation (total 24 frames)
                 ; 6. remove the tiles from the game and playfield and update "remaining tiles"
-                ;    (5b. also triggers a falling process for tiles above the ones removed)
+                ;    (6b. also triggers a falling process for tiles above the ones removed)
                 ; 7. re-enable controller
                 ; 8. if all tiles have been destroyed, start the 'CLEAR!' puzzle complete process
                 ;     (this will happen in the game loop though, not happen here)
@@ -364,19 +364,40 @@ render_destruct:
                 ret z
 
                 ; what phase are we at?
+                ; nb increment first; so really A *was* 1 (for frame1), but now it's 2
+                ; counting from 1:
+                ; 1-32: flashing tiles (i.e. phase_1)
+                ; 33-56: shatter (handled by phase_2)
+                ; 57-60: blank space (tile should have disappeared) (also handled by phase_2)
+                ; but also:
+                ;  1 : calculate bonus score
+                ;  40 : trigger the popup of the "BONUS" overlay *IF APPLICABLE*
+                ;  60 : update the score (using the score calculated in step 1)
+                ; so, Using the above frame numbers, but add 1, you'll see the CP instructions below
                 inc a
                 ld (destruct_frame), a
                 cp 2
-                jp z, @calculate_bonus_score
-
-                cp 33
-                jp c, @phase_1
+                jr nz, @+not_frame1
+                call @calculate_bonus_score ; call not jump, because we also need to render tiles for phase_1
+                ld a, (destruct_frame) ; since calling trigger_bonus_overlay blows away A
+        @not_frame1:
+                cp 34
+                jp c, @phase_1 ; A is < 34 (so frame is < 33 i.e. frame <= 32)
                 cp 41
-                jp z, trigger_bonus_overlay
-                cp 61
-                jp c, @phase_2
+                jr nz, @+not_frame40 ; A != 41 (so frame != 40)
 
-                ; on frame 60 - final steps (5 + 6)
+                ; A == 41 (so frame == 40)
+                call z, trigger_bonus_overlay  ; call not jump, because we also need to do phase2 stuff
+                ld a, (destruct_frame) ; since calling trigger_bonus_overlay blows away A
+        @not_frame40:
+                cp 61
+                jp c, @phase_2 ; A < 61 (so frame < 60 i.e. frame is 33-59 inclusive)
+                ; (we handle frame 60 below)
+
+                ; A == 61 (so frame == 60)
+                ; still need to render phase_2 (but also do the other steps below)
+                call @phase_2
+                ; on frame 60 - final steps (6, 6b, 7, 8)
                 ; we add the score
                 ld bc, (bonus_score)
                 call add_score
@@ -567,6 +588,11 @@ render_destruct:
                 ; no shape on it" and "the tile with the shape on it" every 4 frames)
                 ld hl, match_list
         @next_match_in_phase_1:
+                sub 2 ; see comment below!
+                ; this is spaghetti...  on entry, A is equal to the (1-based) frame PLUS 1
+                ; or, if you like, the (0-based) frame PLUS 2!
+                ; if you want to do math on the frame number, fix it to be 0-based first
+
                 and 4
                 ld b, a
 
@@ -574,9 +600,9 @@ render_destruct:
                 ; based on the alternating bit in b
                 bit 2, b
                 ld b, 4 ; DOES NOT AFFECT FLAGS
-                jr z, @skip
+                jr z, @+tile_anim_chosen
                 ld b, (hl) ; this is the tile type
-        @skip:
+        @tile_anim_chosen:
         @next_this_match:
                 inc hl
                 ld a, (hl) ; this is the offset into tiles
@@ -613,29 +639,33 @@ render_destruct:
                 ; set b to the tile: either the empty space (=0)
                 ; or one of the destruction animations
                 ; based on the destruct_frame
-                ; Timings:
-                ;     33-40 : blank tile
+                ; Timings (based on 1-based frame numbers):
+                ;     33-40 : blank tile i.e. the tile that looks like a tile but has no face picture
                 ;     41-48 : frame1
                 ;     49-52 : frame2
                 ;     53-56 : frame3
-                ;     57+   : none
-                cp 41
-                ld b, 4; DOES NOT AFFECT FLAGS
-                jr c, @+skip ; >= 41
-                ; so we're in frames 33-40
-                ; the arcade just shows nothing 
-                cp 57
-                ld b, 0; DOES NOT AFFECT FLAGS
-                jr nc, @+skip ; >= 57
+                ;     57+   : none (empty space)
+
+                ld b, 4; blank tile
+                cp 42
+                jr c, @+tile_anim_chosen ; A < 42 (so frame < 41 i.e. frame is 33-40)
+
+                ld b, 0 ; no tile
+                cp 58
+                jr nc, @+tile_anim_chosen ; A >= 58 (so frame >= 57)
+
                 ld b, 13 ; frame1
-                cp 49
-                jr c, @+skip ; < 49
+                cp 50
+                jr c, @+tile_anim_chosen ; A < 50 (so frame < 49 i.e. frame is 41-48)
+
                 ld b, 14 ; frame2
-                cp 53
-                jr c, @+skip ; < 53
-                ; otherwise 53-36:
+                cp 54
+                jr c, @+tile_anim_chosen ; A < 54 (so frame < 53 i.e. frame is 49-52)
+
+                ; otherwise 53+
                 ld b, 15 ; frame3
-        @skip:
+
+        @tile_anim_chosen:
         @next_this_match:
                 inc hl
                 ld a, (hl) ; this is the offset into tiles
