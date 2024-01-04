@@ -38,7 +38,7 @@ get_input:
                 ; REMEMBER: if key is down then bit reads ZERO.  if key is not down then bit reads ONE
                 xor a
                 ld hl, keyb_buffer+7
-                bit 0,(hl)
+                bit 0, (hl)
                 jr nz, @+next
                 inc a; set key flag for FIRE
     @next:
@@ -83,5 +83,16 @@ get_input:
                 and 255 - controller_flags_dirs_up - controller_flags_dirs_down
     @done_checking_up_down_combo:
                 ld (controller_flags_dirs), a
+
+                ; check for freeze key (use H to halt)
+                if DEBUG
+                    ld hl, keyb_buffer+6
+                    xor a
+                    bit 4, (hl)
+                    jr nz, @+next
+                    inc a
+            @next:  ld (freeze), a
+                ENDIF
+
                 ret
 

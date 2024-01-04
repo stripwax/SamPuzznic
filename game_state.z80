@@ -122,6 +122,9 @@ game_state_zero_end:
 ; (not part of the 'game state' which is really the 'level state')
 level_number: defb DEBUG_LEVEL_NUMBER
 
+; pause control (debug only?)
+freeze: defb 0
+
 ; array of remaining tiles
 ; element 0: how many of tile A is remaining
 ; element 1: how many of tile B is remaining, etc

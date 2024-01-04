@@ -52,16 +52,44 @@ game_loop:
                     ENDIF
                 ENDIF
 
+                IF DEBUG_VSYNC
+                    ld a, 2
+                    out (BORDER), a
+                ENDIF
+                call get_input
+
+                if DEBUG==1
+                    if DEBUG_FREEZEFRAME_ENABLED
+                        ; if key is pressed, halt
+                        ; space advances a single frame
+                        ld a, (freeze)
+                        and a
+                        jr z, @+no_freeze
+                        ; wait for key up or space
+                    @check_freeze_keyup:
+                        ; if space, advance single frame (while halt key is still held
+                        ; so we'll still wait here on next frame)
+                        call get_input
+                        ld a, (controller_flags_fire)
+                        and a
+                        jr nz, @+freeze_advance_one_frame
+                        ; otherwise wait for halt key up
+                        ld a, (freeze)
+                        and a
+                        jr nz, @-check_freeze_keyup
+                        jp @+no_freeze
+                    @freeze_advance_one_frame:
+                        ; space was pressed, so now we need to wait for space keyup
+                        ; (otherwise it will just run like normal while space is held)
+                        call get_input
+                        ld a, (controller_flags_fire)
+                        and a
+                        jr nz, @-freeze_advance_one_frame
+            @no_freeze:
+                    ENDIF
+                ENDIF
+
                 call update_game_state
-
-                ld a, (level_clear_process)
-                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = failed
-                ; if 0 or 1, still run the game loop (which includes the rendering etc for animations)
-                cp 2
-                ret z
-                cp 3
-                ret z
-
 
                 IF DEBUG_VSYNC
                     ld a, 35
@@ -70,6 +98,14 @@ game_loop:
                 call wait_frame
 
                 call draw_everything
+
+                ld a, (level_clear_process)
+                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = failed
+                ; if 0 or 1, still run the game loop (which includes the rendering etc for animations)
+                cp 2
+                ret z
+                cp 3
+                ret z
 
                 IF DEBUG_VSYNC
                     ld a, 3
@@ -102,12 +138,6 @@ update_game_state:
                 ; very little to do if the level is clear - just play out animations
 
                 call check_falling_tiles_queue
-
-                IF DEBUG_VSYNC
-                    ld a, 2
-                    out (BORDER), a
-                ENDIF
-                call get_input
 
                 IF DEBUG_VSYNC
                     ld a, 4
