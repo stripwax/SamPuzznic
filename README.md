@@ -20,7 +20,7 @@ I've done.
 Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win" detection but no "you lose" implemented yet
 
 # DONE
-* Tile bitmaps
+* Tile bitmaps .  NOW IN THE CORRECT ORDER (including the 'remaining tiles' panel)
 * Cursor movement (auto-repeat, locking (now including locking to sliders), impassable blocks).
 * Falling
 * Match detection
@@ -38,7 +38,6 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 
 
 # TODO
-*  reorder the tile IDs - order should be as follows (to match the "tiles remaining" which is based in ID order) -  red ball, yellow pyramid, purple cube, taito, pentagon, green pipe, downward triangle, box (or heart in my case).
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  Horizontal sliders.. very important and lots of work.
