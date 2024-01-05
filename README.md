@@ -43,7 +43,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  Horizontal sliders.. very important and lots of work.
 *  This requires one-pixel-shifted versions of all tiles
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
-*  colourizing bonus icon/animation
+*  colourizing bonus icon/animation : 4 frames red, 4 frames cyan, 4 frames yellow, 4 frames blue with a darker-blue outline.  Hard to do using just bitmasking to change colour, so just another set of bitmaps?
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
 *  "next level" after win condition
