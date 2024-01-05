@@ -181,13 +181,16 @@ calculate_bonus_de:
                  
 render_bonus:
                     ; show the 'bonus' overlay, if we're supposed to
+                    ; bonus_icon_frame will be >= 1 (if we're supposed to)
+                    ; top bit is magic, means "there is a bonus, it's ready to show"
+                    ; so ignore that top bit
                     ld a, (bonus_icon_frame)
-                    and 127 ; top bit is magic, means "there is a bonus, it's ready to show"
+                    and 127 
                     ret z ; no bonus so do nothing
                     ;
                     inc a
-                    cp 32
-                    jr nz, @+still_going
+                    cp 34
+                    jr nz, @+still_going ; A != 34 (frame != 33 i.e. frame 1-32)
 
                     xor a
                     ld (bonus_icon_frame), a
@@ -201,8 +204,8 @@ render_bonus:
                     ; so divide the frame by 2, and if the low bit is 1 then subtract 128 from DE;
                     ; and then divide by 2 again (with the value in A being subtracted from D)
                     ; maybe better ways to do this but I divide by 4, and test carry instead
-                    sub 2 ; because if everything else is working, then bonus_icon_frame already == 2 on the first frame.
                     ld a, (bonus_icon_frame)
+                    sub 2 ; because if everything else is working, then bonus_icon_frame already == 2 on the first frame.
                     srl a
                     srl a
                     jr nc, @+_skip_adjust_for_odd
@@ -214,11 +217,24 @@ render_bonus:
                     add d ; subtract the "rising y" offset
                     ld d, a
 
+                    ; now point HL to the correct bitmap (a combination of
+                    ; the bonus_icon AND the frame count, due to the colour change!)
+                    ; each bonus tile is 32x16 pixels * 2 (due to mask) = 16x16*2 bytes = 512 * bonus_icon
+                    ; but then add another (32x16x2)*4 = 2048 bytes for each colour change (which happens every 8 frames)
+                    ; so 512 * bonus_icon + 2048 * (frame_count // 8)
+                    ; H will be equal to the above divided by 256 (L will be 0)
+                    ; so H needs to be 2 * bonus_icon + 8 * (frame_count // 8)
+                    ;                = 2 * bonus_icon + (frame_count AND 0xf8))
+                    ld a, (bonus_icon_frame)
+                    sub 2 ; same reason as before above
+                    and 0xf8
+                    ld h, a
                     ld a, (bonus_icon)
-                    ; each bonus tile is 32x16 pixels * 2 (due to mask) = 16x16*2 bytes = 512
                     dec a ; bonus_icon (0) means nothing
                     add a, a
+                    add h
                     add bonus_icon_bitmaps/256
+
                     ld h,a
                     ld l,0
 
