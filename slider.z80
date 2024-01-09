@@ -23,6 +23,34 @@
 ; Example2: if tile is at 7:3 and a (horizontal) slider is at 6:4 (one row down and diagonally left), then
 ;           the tile at 7:3 is NOT blocked from falling down IF THE SLIDER X COORDINATE is ZERO
 ;           but the tile at 7:3 IS blocked from falling down IF THE SLIDER X COORDINATE is NONZERO
+;
+; Video evidence:
+; https://www.youtube.com/watch?v=Wpy5U2_O55E
+; 22:34 - there is one frame where the downward-triangle block has fallen already (2 pixels)
+;         in the same frame where the horizontal slider has just moved left one pixel to a position
+;         that allows the downward-triangle block to fall.  Therefore, the order of execution
+;         seems to be horizontal sliders THEN falling blocks
+; 12:08 - another example of the same timing effect as above
+;
+;  4:40 - falling tile (green pipe) jumps onto horizontal slider and aligns itself.
+;       - Note that there is one frame when the tile is "on" the slider but not yet aligned
+;         (you can tell because the bottom of the red cursor is the same as the bottom
+;          of the tile), and it aligns itself one frame later
+;
+; Note that tiles on a horizontal slider don't quite reach the side walls
+; - there is a one pixel gap and the tile remains misaligned until the slider
+;   reverses direction.  I don't yet know if this technically prevents tiles in the
+; next-column-along from falling (it should, unless it's just a cosmetic bug)
+; Looking for examples!
+;
+; Also looking for example of what happens when a falling tile just misses
+; a horizontal slider.  Does it confirm that the order of processing is "slider then falling tile"
+; i.e. a falling tile at exactly the boundary pixel above a horizontal slider will not
+; fall in the way of the slider (the slider will pass horizontally under the piece which
+; will land on the slider)?  What about what happens when the falling tile is just missing
+; the bottom pixel of the horizontal slider coming towards it - any example confiming that just one
+; pixel in the way will prevent the slider from moving (because slider-then-falling)?
+
 
 slider_tile_detect:
                 ret
