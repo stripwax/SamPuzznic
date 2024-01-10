@@ -35,6 +35,16 @@ ENDIF
 digit_a_xy_de:
             ; modifies: hl, de, bc
             ; render bcd digit in a (0-9) to screen location at de
+            ; TODO background bitmaps
+            ; FOR NOW JUST BLACK THE AREA
+            ; !!!
+            push af
+            push de
+            call fillrect_8x8_black_at_de
+            pop de
+            pop af
+            ; !!!
+
             ld h, digit_bitmap/256
             ; multiply a by 32 to get offset into table
             add a, a
@@ -47,124 +57,183 @@ digit_a_xy_de:
             inc h
             jp char_hl_de
 
+alpha_a_xy_de_shadow:
+            ld hl, alpha_bitmap_shadow
+            jp @_alpha_a_xy_de_internal_common
+
 alpha_a_xy_de:
             ; modifies: hl, de, bc
             ; render alphabetic character (upper ascii A=65 etc)
             ; to screen location at de
             ; to do, support more characters (need to finish bitmaps) but maybe ok for now
+
+            ; multiply A by 32 to get offset into table
+            ; into BC (i.e. BC = A*32)
+            ; and add the base address in HL (alpha_bitmap)
+            ;
+            ; B        C            H        L
+            ; 00000aaa AAA00000  +  hhhhhhhh llllllll
+            ;
+            ; since the first 32 values of A are unused (ASCII 0 to 31), the base address is oriented
+            ; around A=32, so subtract 32 first
+            ; Then, multiplying A by 32 is usually left-shift 5 times; but here we right-shift 3 times
+            ; and shift the carry into the low byte (C)
+            ;
+            ; A = 00aaaAAA  =>  B = 00000aaa , C = AAA00000
+
             ld hl, alpha_bitmap
-            sub 32
-            ; a is <= 64
-            ; multiply a by 32 to get offset into table
-            ; into bc (i.e. bc = a*32)
-            ld b, 0
-            add a, a
-            add a, a
-            add a, a ; this might overflow
-            rl b
-            add a, a ; this might overflow
-            rl b
-            add a, a ; this might overflow
-            rl b
-            ld c, a
+    @_alpha_a_xy_de_internal_common:
+            push bc
+            ld c, 0
+            sub 32 ; now 0 <= A <= 64 , and also carry flag is cleared
+            rra
+            rr c
+            rra
+            rr c
+            rra
+            rr c
+            ld b, a
             add hl, bc
+            pop bc
 
 char_hl_de:
             ; modifies: hl, de, bc
-            ; render 8x8 char pointed to by hl, to screen memory pointed to by de
-            LDI
-            LDI
-            LDI
-            LDI
-            dec e
-            inc d
+            ; render 8x8 mask char pointed to by hl, to screen memory pointed to by de
+            ; The bitmap data is an (expanded) bitmask - each nibble will be either 0x0 or 0xF
+            ; We mask the existing screen contents (using the inverse of the bitmap), and AND the
+            ; bitmap with the colorbyte in C.
+            ;
+            ; small trick:
+            ; We want to compute (s & ^m) | (c & m) (where s = existing screen bit, m = mask bit, c = color bit)
+            ; across all 8 bits at a time (of course, only two pixels, but we can think of everything bitwise here)
+            ; but, thinking one bit a time:
+            ; s | m | c | bit
+            ; --+---+---+----
+            ; s | 0 | x | s
+            ; x | 1 | c | c
+            ;
+            ; so what's the quickest way to do that?
+            ;
+
+            @pairs_down: equ FOR 2
+                    @row_l_to_r: equ FOR 4
+                    ld a, (hl)
+                    and c
+                    ld b, a ; b is now masked pixel to merge with (de)
+                    ld a, (de)
+                    cpl
+                    or (hl)  ; the sequence "cpl or cpl" is equivalent to "and"ing with the inverted mask
+                    cpl
+                    or b
+                    ld (de), a
+                    inc hl
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    inc d
+                    @row_r_to_l: equ FOR 4
+                    ld a, (hl)
+                    and c
+                    ld b, a ; b is now masked pixel to merge with (de)
+                    ld a, (de)
+                    cpl
+                    or (hl)  ; the sequence "cpl or cpl" is equivalent to "and"ing with the inverted mask
+                    cpl
+                    or b
+                    ld (de), a
+                    inc hl
+                    dec e
+                    NEXT @row_r_to_l
+                    inc e
+                    inc d
+                NEXT @pairs_down
+                    dec d
+                    ld a, e
+                    add 128
+                    ld e, a
+                    ld a, d
+                    adc 0
+                    ld d, a
+                @pairs_up: equ FOR 2
+                    @row_l_to_r: equ FOR 4
+                    ld a, (hl)
+                    and c
+                    ld b, a ; b is now masked pixel to merge with (de)
+                    ld a, (de)
+                    cpl
+                    or (hl)  ; the sequence "cpl or cpl" is equivalent to "and"ing with the inverted mask
+                    cpl
+                    or b
+                    ld (de), a
+                    inc hl
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    dec d
+                    @row_r_to_l: equ FOR 4
+                    ld a, (hl)
+                    and c
+                    ld b, a ; b is now masked pixel to merge with (de)
+                    ld a, (de)
+                    cpl
+                    or (hl)  ; the sequence "cpl or cpl" is equivalent to "and"ing with the inverted mask
+                    cpl
+                    or b
+                    ld (de), a
+                    inc hl
+                    dec e
+                    NEXT @row_r_to_l
+                    inc e
+                    dec d
+                NEXT @pairs_up
+                ret
+
+print_text_hl_de:
+            ; print the message from hl, to screen location de,
+            ; in color C (this is a colorbyte maskwith two nibbles so usually C = color x 17)
+            ; message must be zero-terminated
+
+    ; ---
+    ; drop shadow:
             ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            inc d
-            LDI
-            LDI
-            LDI
-            LDI
-            dec e
-            inc d
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
+            and a
+            ret z
+            push hl
+            push de
+            push bc
+            ld c, 0
+            ; drop shadow is one pixel to the right (hence different font bitmap)
+            ; and one pixel row lower
             ld a, e
             add 128
             ld e, a
-            LDI
-            LDI
-            LDI
-            LDI
-            dec e
-            dec d
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec d
-            LDI
-            LDI
-            LDI
-            LDI
-            dec e
-            dec d
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            inc hl
-            dec e
-            ld a, (hl)
-            ld (de), a
-            ret
+            ld a, 0
+            adc d
+            ld d, a
+            ld a, (hl) ; annoying that we do this twice in this case
+    @next_char:
+            inc hl ; preincrement
+            push hl
+            push de
+            call alpha_a_xy_de_shadow
+            pop de
+            pop hl
+            ld a, (hl)  ; either this is next char, or nul terminator
+            and a
+            jr z, @+done
+            ; go right 8 pixels
+            inc e
+            inc e
+            inc e
+            inc e
+            jp @-next_char
+    @done:
+            pop bc
+            pop de
+            pop hl
+    ; end drop shadow
+    ; ---
 
-print_text_hl_de:
-            ; print the message from hl, to screen location de
-            ; message must be zero-terminated
             ld a, (hl)
             and a
             ret z
@@ -177,13 +246,15 @@ print_text_hl_de:
             pop hl
             ld a, (hl)  ; either this is next char, or nul terminator
             and a
-            ret z
+            jr z, @+done
             ; go right 8 pixels
             inc e
             inc e
             inc e
             inc e
             jp @-next_char
+    @done:
+            ret
 
 
 ds ALIGN 256
@@ -202,3 +273,5 @@ ds ALIGN 256
 alpha_bitmap:
 MDAT "alpha.b"
 digit_bitmap: equ alpha_bitmap + 512 ; oh that's handy!
+alpha_bitmap_shadow:
+MDAT "alpha2.b"

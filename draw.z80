@@ -590,7 +590,7 @@ draw_masked_bitmap_32x16_hl_at_de:
                     and c
                     or b
                     ld (de), a
-                    dec de
+                    dec e
                     NEXT @row_r_to_l
                     inc e
                     inc d
@@ -625,7 +625,76 @@ draw_masked_bitmap_32x16_hl_at_de:
                     and c
                     or b
                     ld (de), a
-                    dec de
+                    dec e
+                    NEXT @row_r_to_l
+                    inc e
+                    dec d
+                NEXT @pairs_up
+                ret
+
+draw_masked_bitmap_16x16_hl_at_de:
+                ; modifies hl, de, bc
+                ; hl points to 16x16 bitmap with mask (first byte is mask, second byte is pixel data)
+                ; de points to screen
+                @pairs_down: equ FOR 4
+                    @row_l_to_r: equ FOR 8
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    inc d
+                    @row_r_to_l: equ FOR 8
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    dec e
+                    NEXT @row_r_to_l
+                    inc e
+                    inc d
+                NEXT @pairs_down
+                    dec d
+                    ld a, e
+                    add 128
+                    ld e, a
+                    ld a, d
+                    adc 0
+                    ld d, a
+                @pairs_up: equ FOR 4
+                    @row_l_to_r: equ FOR 8
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    inc e
+                    NEXT @row_l_to_r
+                    dec e
+                    dec d
+                    @row_r_to_l: equ FOR 8
+                    ld c, (hl)
+                    inc hl
+                    ld b, (hl)
+                    inc hl
+                    ld a, (de)
+                    and c
+                    or b
+                    ld (de), a
+                    dec e
                     NEXT @row_r_to_l
                     inc e
                     dec d
@@ -706,6 +775,59 @@ fillrect_16x8_black_at_de:
                 dec e
                 ld (de), a
                 dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec d
+                djnz @-odds
+                ret
+
+fillrect_8x8_black_at_de:
+                ; get a black (double) pixel
+                xor a
+                ld b, 2
+    @evens:
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc d
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                dec e
+                ld (de), a
+                inc d
+                djnz @-evens
+                dec d
+
+                ld a, e ; move down one row of pixels
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+
+                xor a
+                ld b, 2
+    @odds:
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                inc e
+                ld (de), a
+                dec d
                 ld (de), a
                 dec e
                 ld (de), a

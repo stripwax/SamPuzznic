@@ -1,5 +1,33 @@
+; Clear scoring consists of two parts, a clear bonus and a time bonus
+;
+; Clear bonus:
+; The bonus depends only on how many tiers of levels have been completed
+; and not which level you are playing.  This is because at the start of the game
+; you can begin on Level 1, Level 2, or Level 3.
+;
+; 1st level (i.e. level 1,2,or 3, depending which you started) : 1000 
+; next level: 2000
+; next level: 3000
+; next level: 5000
+; next level: 10000
+; next level: 30000
+; next level: 50000
+; next level: 90000  (the maximum; only if you started on level 1 and cleared a level 8 grid)
+;
+; Time bonus:
+; This is equal to the  number of seconds remaining on the clock multiplied by p
+; Level 1 time bonus : p = 100
+; Level 2 time bonus : p = 200
+; Level 3 time bonus : p = 300
+; Level 4 time bonus : p = 400
+; Level 5 time bonus : p = 500
+; Level 6 time bonus : p = 600
+; Level 7 time bonus : p = 700
+; Level 8 time bonus : p = 800
+
+
 wait_b:
-                call wait_frame
+                call wait_frame_slow
                 djnz wait_b
                 ret
 
@@ -24,6 +52,7 @@ check_clear:
 
                 ld hl, message.CLEAR
                 ld de, 128*CLEAR_Y_OFFSET + GRID_X_OFFSET + 6*4
+                ld c, 0x11  ;  WHITE
                 call print_text_hl_de
 
                 ld b, FPS
@@ -31,16 +60,34 @@ check_clear:
 
                 ld hl, message.BONUS
                 ld de, 128*CLEAR_Y_OFFSET + 16*128 + GRID_X_OFFSET + 7*4
+                ld c, 0x99  ;  YELLOW
                 call print_text_hl_de
 
                 ld b, FPS/2
                 call wait_b
 
-                ld hl, message.FAKE_BONUS_POINTS
+                ld hl, message.FAKE_CLEAR_BONUS_POINTS
                 ld de, 128*CLEAR_Y_OFFSET + 32*128 + GRID_X_OFFSET + 5*4
+                ld c, 0x99  ;  YELLOW
                 call print_text_hl_de
 
                 ld b, FPS/2
+                call wait_b
+
+                ld hl, message.FAKE_TIME_BONUS_POINTS
+                ld de, 128*CLEAR_Y_OFFSET + 48*128 + GRID_X_OFFSET + 5*4
+                ld c, 0x11  ;  WHITE
+                call print_text_hl_de
+
+                ld b, FPS/2
+                call wait_b
+
+                ld hl, message.FAKE_TOTAL_BONUS_POINTS
+                ld de, 128*CLEAR_Y_OFFSET + 64*128 + GRID_X_OFFSET + 4*4
+                ld c, 0x99  ;  YELLOW
+                call print_text_hl_de
+
+                ld b, FPS*4
                 call wait_b
 
                 ld a, 2 ; done - onto the next level!
@@ -52,5 +99,9 @@ message.CLEAR: defm "CLEAR !!"
 defb 0
 message.BONUS: defm "BONUS"
 defb 0
-message.FAKE_BONUS_POINTS: defm "50000 PTS"
+message.FAKE_CLEAR_BONUS_POINTS: defm "50000 PTS"
+defb 0
+message.FAKE_TIME_BONUS_POINTS: defm "0'00"" x 800"
+defb 0
+message.FAKE_TOTAL_BONUS_POINTS: defm "124000 PTS"
 defb 0

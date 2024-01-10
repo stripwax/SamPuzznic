@@ -11,6 +11,7 @@ clock_changed: equ $ ; poke  NOP or RET here
                 rrca
                 rrca
                 ld de, CLOCK_Y_OFFSET*128 ; y*128+(x/2)
+                ld c, 0x11 ; WHITE
                 call digit_a_xy_de
                 ; bottom minute decimal
                 ld a, (clock_min_bcd)

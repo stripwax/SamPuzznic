@@ -1,31 +1,40 @@
-; wait_frame:
-;                 ; status FRAME line signals the very start (top) of the frame
-;                 IF DEBUG_VSYNC==1
-;                 ld a, 0
-;                 out (BORDER), a
-;                 ENDIF
-;     @busy_wait:
-;                 in a,(STATUS)
-;                 bit STATUS_FRAME_BIT, a
-;                 jr nz, @-busy_wait
-;                 IF DEBUG_VSYNC
-;                 ld a, 6
-;                 out (BORDER), a
-;                 ENDIF
+wait_frame_slow:
+                ; wait until the start of the next frame
+                ; status FRAME line signals the very start (top) of the frame
+                IF DEBUG_VSYNC==1
+                ld a, 0
+                out (BORDER), a
+                ENDIF
+    @busy_wait:
+                in a,(STATUS)
+                bit STATUS_FRAME_BIT, a
+                jr nz, @-busy_wait
+                IF DEBUG_VSYNC
+                ld a, 6
+                out (BORDER), a
+                ENDIF
 
-;                 if DEBUG_SLOWMO > 0
-;                 ld b, DEBUG_SLOWMO
-;     @busy_wait_slowmo:
-;                 in a,(STATUS)
-;                 bit STATUS_FRAME_BIT, a
-;                 jr nz, @-busy_wait_slowmo
-;                 djnz @-busy_wait_slowmo
-;                 ENDIF
+                if DEBUG_SLOWMO > 0
+                ld b, DEBUG_SLOWMO
+    @busy_wait_slowmo:
+                in a,(STATUS)
+                bit STATUS_FRAME_BIT, a
+                jr nz, @-busy_wait_slowmo
+                djnz @-busy_wait_slowmo
+                ENDIF
 
-;                 ret
+                ret
 
 
 wait_frame:
+                ; wait until the start of the next frame
+                ; (specifically, wait until scan line is after the bottom main screen area)
+                ;
+                ; WARNING, contains a bug somewhere
+                ; (it's not guaranteed to wait until the next frame,
+                ; so sometimes if there's not a lot happening (e.g. CLEAR render)
+                ; then it cannot be used for delay/timing loops.  So I'm still using wait_frame_slow for that.
+                ;
                 ; HPEN port contains the Y coord. 
                 ; HPEN equals 192 when in the border area (both top and bottom)
                 ; so we can simply wait until HPEN is NOT 192 (i.e. we're still

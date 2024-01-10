@@ -148,6 +148,7 @@ init_game_state:
 render_screen_layout:
                 ld de, PLAYER_Y_OFFSET*128
                 ld hl, strings.PLAYER
+                ld c, 0x11  ;  WHITE
                 call print_text_hl_de
                 ld de, TIME_LABEL_Y_OFFSET*128
                 ld hl, strings.TIME

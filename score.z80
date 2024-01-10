@@ -33,6 +33,7 @@ add_score:
 render_score:
         ; skip leading zeros until we find a non-zero
         ; and then don't skip anything
+        ld c, 0x11 ; WHITE
         ld de, SCORE_Y_OFFSET*128+SCORE_X_OFFSET/2
         ld a, (score_bcd_1)
         and a

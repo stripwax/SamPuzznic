@@ -77,6 +77,7 @@ render_remaining_tiles:
                 add REMAINING_TILES_TEXT_X_OFFSET/2 + 4 ; + 4 to skip the x and move to the digit
                 ld e, a
                 ld a, (ix+0)
+                ld c, 0x11 ; WHITE                
                 call digit_a_xy_de
                 jp @+done_drawing_this_tile
 
@@ -122,6 +123,7 @@ render_remaining_tiles:
                 jr z, @skip_drawing_the_x
                 ld a, 42 ; *
                 push de
+                ld c, 0x11 ; WHITE
                 call alpha_a_xy_de
                 pop de
         @skip_drawing_the_x:
@@ -129,6 +131,7 @@ render_remaining_tiles:
                 add 4
                 ld e, a
                 ld a, (ix+0)
+                ld c, 0x11 ; WHITE                
                 call digit_a_xy_de
         @done_drawing_this_tile:
                 pop de
