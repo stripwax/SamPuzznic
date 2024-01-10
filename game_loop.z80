@@ -137,8 +137,6 @@ update_game_state:
                 ret z
                 ; very little to do if the level is clear - just play out animations
 
-                call check_falling_tiles_queue
-
                 IF DEBUG_VSYNC
                     ld a, 4
                     out (BORDER), a
@@ -162,6 +160,8 @@ update_game_state:
                     out (BORDER), a
                 ENDIF
                 call slider_update
+
+                call check_falling_tiles_queue
 
                 IF DEBUG_VSYNC
                     ld a, 32
