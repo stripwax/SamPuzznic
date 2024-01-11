@@ -666,6 +666,8 @@ draw_masked_bitmap_16x16_hl_at_de:
 fillrect_16x8_black_at_de:
                 ; get a black (double) pixel
                 xor a
+fillrect_16x8_de_colorbyte_a:
+                ld c, a
                 ld b, 2
     @evens:
                 ld (de), a
@@ -710,7 +712,7 @@ fillrect_16x8_black_at_de:
                 adc 0
                 ld d, a
 
-                xor a
+                ld a, c
                 ld b, 2
     @odds:
                 ld (de), a
@@ -842,4 +844,3 @@ clear_screen:
                 ld bc, 24575
                 ldir
                 ret
-                
