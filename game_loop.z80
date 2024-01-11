@@ -164,7 +164,7 @@ update_game_state:
                 call check_falling_tiles_queue
 
                 IF DEBUG_VSYNC
-                    ld a, 32
+                    ld a, 35
                     out (BORDER), a
                 ENDIF
                 call check_match
