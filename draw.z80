@@ -307,34 +307,15 @@ draw_bitmap_16x16_hl_at_de:
 
                 ld b, 4
     @evens:
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
+                push bc
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                pop bc
                 ld a, (hl)
                 ld (de), a
                 inc d
@@ -386,34 +367,15 @@ draw_bitmap_16x16_hl_at_de:
                 ; moving up the screen (odd rows only)
                 ld b, 4
     @odds:
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                inc e
-                inc hl
+                push bc
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                pop bc
                 ld a, (hl)
                 ld (de), a
                 dec d
