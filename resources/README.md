@@ -8,10 +8,11 @@ For the tiles and various game objects/fonts/etc:
 3. save the disk image in simcoupe
 4. on your build machine, use samfile to extract the .b files from the disk image e.g.
 
-samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f tiles.b > tiles.b  
-samfile-windows-amd64.exe" cat -i resources\newpuzz_2.mgt -f alpha.b > alpha.b  
-samfile-windows-amd64.exe" cat -i resources\newpuzz_2.mgt -f bonus.b > bonus.b  
-
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f tiles.b > tiles.b
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha.b > alpha.b
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha2.b > alpha2.b
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f bonus.b > bonus.b
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f fatnums.b > fatnums.b  
 
 TODO: how to extract/compile the music files
 

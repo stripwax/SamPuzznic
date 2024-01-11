@@ -275,3 +275,5 @@ MDAT "alpha.b"
 digit_bitmap: equ alpha_bitmap + 512 ; oh that's handy!
 alpha_bitmap_shadow:
 MDAT "alpha2.b"
+fatnums:
+MDAT "fatnums.b"
