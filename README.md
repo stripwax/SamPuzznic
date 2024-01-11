@@ -26,8 +26,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Match detection
 * Destruction animation
 * Clock ticking (animation plays concurrently i.e. clock doesn't halt, unlike ZX Spectrum version)
-* Ascii/numeric font (8x8)
-* Single puzzle
+* Ascii/numeric font (8x8) - including drop-shadow effect!
+* Puzzle data for two more more puzzles. (But definitely incomplete)
 * Scoring including bonus calculation
 * bonus icon/animation  (an icon that shows 400, 600, 1000 to 2000 appears over the playing field when you get a bonus - with masking)
 * bonus icon/animation now using 1-pixel vertical scrolling
@@ -35,6 +35,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * sfx
 * Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
 * "Clear" (you win) condition when all tiles have been matched
+* "next level" after win condition
+* Clock font - nice shiny fat 16x16 bitmaps!
 
 
 # TODO
@@ -45,9 +47,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
 *  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
-*  "next level" after win condition
 *  level select between stages / initial level select at start
-*  clock font (it's not the default font)
 *  "panic mode" clock font (clock flashing at 30s or less remaining, and again at 10s or less remaining)
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
@@ -57,6 +57,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  two player mode
 *  diagonal cursor movement not yet done.
 *  joystick not yet done (50% done)
+*  minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed.
 
 # TODO LATER
 *  drop shadow on font? make sure font is clear. also should be masked.
