@@ -834,3 +834,12 @@ grid_xy_in_C_and_A_to_screen_de:
 
                 ; de is now pointing to top left xy on screen memory
                 ret
+
+clear_screen:
+                ld hl, 0
+                ld de, 1
+                ld (hl), a
+                ld bc, 24575
+                ldir
+                ret
+                

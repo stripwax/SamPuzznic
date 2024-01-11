@@ -146,6 +146,8 @@ init_game_state:
 
 
 render_screen_layout:
+                ld a, 0x66 ; RED
+                call clear_screen
                 ld de, PLAYER_Y_OFFSET*128
                 ld hl, strings.PLAYER
                 ld c, 0x11  ;  WHITE

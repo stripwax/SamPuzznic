@@ -14,6 +14,19 @@ REMAINING_REORDERED: equ 1
 REMAINING_REDRAW_ALL_FORCE: equ 2
 REMAINING_REDRAW_TRIGGER: equ 4
 
+@draw_the_x:
+                ld hl, remaining_x+1
+                ld a, (ix+0)
+                add 48
+                ld (hl), a
+                dec hl
+                ld a, e
+                add REMAINING_TILES_TEXT_X_OFFSET/2
+                ld e, a
+                ld c, 0x11 ; WHITE
+                call print_text_hl_de
+                jp @done_drawing_this_tile
+
 render_remaining_tiles:
                 ; this draws the bitmaps AND the counts.
                 ; but only draws what it needs to (compared to what it
@@ -114,21 +127,13 @@ render_remaining_tiles:
                 ld a, d
                 add REMAINING_TILES_TEXT_Y_OFFSET/2
                 ld d, a
-                ld a, e
-                add REMAINING_TILES_TEXT_X_OFFSET/2
-                ld e, a
                 ; can we skip drawing the 'x'?
                 ld a, (redraw_remaining_tiles_flags)
                 and REMAINING_REDRAW_ALL_FORCE
-                jr z, @skip_drawing_the_x
-                ld a, 42 ; *
-                push de
-                ld c, 0x11 ; WHITE
-                call alpha_a_xy_de
-                pop de
-        @skip_drawing_the_x:
+                jp nz, @draw_the_x
+        @skip_drawing_the_x: ; just draw the number (because the 'x' isn't changing)
                 ld a, e
-                add 4
+                add 4 + REMAINING_TILES_TEXT_X_OFFSET/2
                 ld e, a
                 ld a, (ix+0)
                 ld c, 0x11 ; WHITE                
@@ -267,3 +272,6 @@ render_remaining_tiles:
                 LDI
                 ret
 
+
+remaining_x:    defm "*0"
+                defb 0
