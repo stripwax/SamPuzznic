@@ -46,6 +46,7 @@ main:
                 xor a
                 ld (clock_tick_frame), a
                 ld (clock_changed), a ; poke a nop here
+                ld (score_changed), a ; poke a nop here too
 
                 call clear_dirty_tiles_list
                 call clear_draw_list

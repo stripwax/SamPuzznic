@@ -11,9 +11,12 @@ init_score:
         ld (score_bcd_1), a
         ld (score_bcd_2), a
         ld (score_bcd_3), a
+        ld (score_changed), a ; poke a nop - score has changed so re-render on next opportunity
         ret
 
 add_score:
+        xor a ; poke a nop - score has changed so re-render on next opportunity
+        ld (score_changed), a
         ; add a bcd amount in bc to the score
         ld a, (score_bcd_3)
         add a, c
@@ -31,6 +34,12 @@ add_score:
         ret
 
 render_score:
+score_changed: equ $ ; poke  NOP or RET here
+               nop
+
+        ld a, 201 ; next time round this will be a RET!
+        ld (score_changed), a
+
         ; skip leading zeros until we find a non-zero
         ; and then don't skip anything
         ld c, 0x11 ; WHITE

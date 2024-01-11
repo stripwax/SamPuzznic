@@ -256,7 +256,7 @@ draw_everything:
                     ld a, 5
                     out (BORDER), a
                 ENDIF
-                call render_score ; TODO OPTIMIZE conditional call i.e. if score has changed this frame
+                call render_score
 
                 IF DEBUG_VSYNC
                     ld a, 6
