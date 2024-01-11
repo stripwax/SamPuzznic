@@ -36,14 +36,49 @@ digit_a_xy_de:
             ; modifies: hl, de, bc
             ; render bcd digit in a (0-9) to screen location at de
             ; TODO background bitmaps
-            ; FOR NOW JUST BLACK THE AREA
+            ; FOR NOW JUST FILL THE AREA
             ; !!!
             push af
             push de
-            call fillrect_8x8_black_at_de
+            ld a, 0x66 ; RED
+            call fillrect_8x8_de_colorbyte_a
             pop de
             pop af
             ; !!!
+
+    ; ---
+    ; drop shadow:
+            push bc
+            push de
+            push af
+            ; drop shadow is one pixel to the right (hence different font bitmap)
+            ; and one pixel row lower; and black.
+            ld c, 0 ; black
+            ld b, a ; temp - A is "which digit to display" but we need to use A for some maths first
+            ld a, e
+            add 128
+            ld e, a
+            ld a, 0
+            adc d
+            ld d, a
+            ld a, b ; temp restore
+            ld h, digit_bitmap_shadow/256
+            ; multiply a by 32 to get offset into table
+            add a, a
+            add a, a
+            add a, a
+            add a, a
+            add a, a ; this might overflow
+            ld l, a
+            jr nc, @+no_carry
+            inc h
+        @no_carry:
+            call char_hl_de
+            pop af
+            pop de
+            pop bc
+    ; end drop shadow
+    ; ---
 
             ld h, digit_bitmap/256
             ; multiply a by 32 to get offset into table
@@ -257,6 +292,27 @@ print_text_hl_de:
             ret
 
 
+fatnum_digit_a_xy_de:
+            ; modifies: hl, de, bc
+            ; render bcd digit in a (0-9) to screen location at de
+            ; fatnum digits are 16x16 with mask; so 16*16/2)*2 = 256 bytes  (handy!)
+            ; TODO background bitmaps
+            ; FOR NOW JUST FILL THE AREA
+            ; !!!
+            push af
+            push de
+            ld a, 0x66 ; RED
+            call fillrect_16x16_de_colorbyte_a
+            pop de
+            pop af
+            ; !!!
+
+            add a, fatnums/256
+            ld h, a
+            ld l, 0
+            jp draw_masked_bitmap_16x16_hl_at_de
+
+
 ds ALIGN 256
 ; BEGIN DEBUG FONT (NUMBERS ONLY)
 ;             defb 0,255,255,0,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  15, 0, 0, 240,  0, 255, 255, 0,  0, 0, 0, 0
@@ -273,7 +329,12 @@ ds ALIGN 256
 alpha_bitmap:
 MDAT "alpha.b"
 digit_bitmap: equ alpha_bitmap + 512 ; oh that's handy!
+
+ds ALIGN 256
 alpha_bitmap_shadow:
 MDAT "alpha2.b"
+digit_bitmap_shadow: equ alpha_bitmap_shadow + 512
+
+ds ALIGN 256
 fatnums:
 MDAT "fatnums.b"

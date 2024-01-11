@@ -153,6 +153,7 @@ render_screen_layout:
                 ld de, TIME_LABEL_Y_OFFSET*128
                 ld hl, strings.TIME
                 call print_text_hl_de
+                ; FIXME TODO - this should render the fatnum ' and " symbols (not using print text)
                 ld de, CLOCK_Y_OFFSET*128
                 ld hl, strings.CLOCK
                 call print_text_hl_de
@@ -164,5 +165,5 @@ defb 0
 strings.TIME: defm "TIME"
 defb 0
 
-; render  0'00"
-strings.CLOCK: defb 32,48,39,48,48,34,0
+; render  0'00" (double-spaced for fatnums)
+strings.CLOCK: defb 32,32, 48,32, 39, 48,32, 48,32, 34, 0

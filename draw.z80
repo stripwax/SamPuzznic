@@ -156,7 +156,7 @@ fillrect_16x16_black_at_de:
                 ;call dirty_flasher
                 ;ENDIF
 
-                jr _draw_debug_tile_at_de_colorbyte_a
+                jp fillrect_16x16_de_colorbyte_a
 
 
 _draw_debug_tile_at_de_tile_a:
@@ -176,7 +176,7 @@ _draw_debug_tile_at_de_tile_a:
 
                 ; fall through to:
 
-_draw_debug_tile_at_de_colorbyte_a:
+fillrect_16x16_de_colorbyte_a:
                 ; modifies bc, de
                 ; draw a solid 16x16 using color byte A (two nibbles)
                 ; step 1. left to right and right to left even rows
@@ -751,6 +751,8 @@ fillrect_16x8_black_at_de:
 fillrect_8x8_black_at_de:
                 ; get a black (double) pixel
                 xor a
+fillrect_8x8_de_colorbyte_a:
+                push af
                 ld b, 2
     @evens:
                 ld (de), a
@@ -779,7 +781,7 @@ fillrect_8x8_black_at_de:
                 adc 0
                 ld d, a
 
-                xor a
+                pop af
                 ld b, 2
     @odds:
                 ld (de), a
