@@ -101,7 +101,7 @@ message.BONUS: defm "BONUS"
 defb 0
 message.FAKE_CLEAR_BONUS_POINTS: defm "50000 PTS"
 defb 0
-message.FAKE_TIME_BONUS_POINTS: defm "0'00"" x 800"
+message.FAKE_TIME_BONUS_POINTS: defm "0'00"" * 800"
 defb 0
 message.FAKE_TOTAL_BONUS_POINTS: defm "124000 PTS"
 defb 0
