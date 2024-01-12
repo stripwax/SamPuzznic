@@ -121,6 +121,8 @@ game_state_zero_end:
 ; which level are you actually playing right now
 ; (not part of the 'game state' which is really the 'level state')
 level_number: defb DEBUG_LEVEL_NUMBER
+level_problem_major_number: defb DEBUG_LEVEL_PROBLEM_MAJOR_NUMBER
+level_problem_minor_number: defb DEBUG_LEVEL_PROBLEM_MINOR_NUMBER
 
 ; pause control (debug only?)
 freeze: defb 0

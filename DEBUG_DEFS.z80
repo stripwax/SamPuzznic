@@ -5,5 +5,11 @@ DEBUG_VSYNC: equ 1
 DEBUG_KEYMATRIX: equ 0
 DEBUG_SLOWMO: equ 0
 DEBUG_DIRTY_FLASH: equ 0
-;DEBUG_LEVEL_NUMBER: equ 36 ; level 3-3
+
+; starting level (at least until we get level select)
+; 0-based
+; 0:0:0 means Level 1 [1-1]
+; 3:2:1 means Level 4 [3-2]
 DEBUG_LEVEL_NUMBER: equ 0
+DEBUG_LEVEL_PROBLEM_MAJOR_NUMBER: equ 0
+DEBUG_LEVEL_PROBLEM_MINOR_NUMBER: equ 0

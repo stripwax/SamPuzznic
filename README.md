@@ -37,6 +37,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * "Clear" (you win) condition when all tiles have been matched
 * "next level" after win condition
 * Clock font - nice shiny fat 16x16 bitmaps!
+* Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
 
 
 # TODO
@@ -45,7 +46,6 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  Horizontal sliders.. very important and lots of work.
 *  This requires one-pixel-shifted versions of all tiles
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
-*  information (which puzzle you're on, "Player 1")
 *  'background' bricks and anything else surrounding the play area
 *  level select between stages / initial level select at start
 *  "panic mode" clock font (clock flashing at 30s or less remaining, and again at 10s or less remaining)

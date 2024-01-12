@@ -67,9 +67,42 @@ main:
                 cp 3
                 jp z, @+you_died
     @next_level:
+                ; add one to the level
+                ; except the 'level' means three different things
+                ; (level:major:minor)
+                ; So, increment the right things in the right way.
+                ; minor counts 0, 1, 2, 3
+                ; major counts 0, ... up to 'level'
+                ; level counts up to 7 (there's nothing after level 7)
+                ; TODO if your starting problem is (e.g) Level 2 [2-1] or Level 3 [2-1] or Level 3 [3-1]
+                ;      then, after completing that set of 4, you go back and do the ones you missed out on
+                ;      (Level 3 [1-1] thru [1-4] and Level 3 [2-1] thru [2-4])
+                ;      so we're not just always 'incrementing' - we need to know + remember which ones we've done
+                ;      (or rather which ones we haven't done), and set those, and only increment Level Number after
+                ;      we've done all of them.
+                ld a, (level_problem_minor_number)
+                inc a
+                ld (level_problem_minor_number), a
+                cp 4
+                jr nz, @+done_adjusting_level_major_minor
+                xor a
+                ld (level_problem_minor_number), a
+                ld a, (level_problem_major_number)
+                inc a
+                ld (level_problem_major_number), a
+                ld b, a
+                ld a, (level_number)
+                cp b
+                jr nz, @+done_adjusting_level_major_minor
+                xor a
+                ld (level_problem_major_number), a
                 ld a, (level_number)
                 inc a
                 ld (level_number), a
+                cp 8
+                ; if Level Number==8, what now??
+
+        @done_adjusting_level_major_minor:
                 jp main  ; round again!
 
     @you_died:

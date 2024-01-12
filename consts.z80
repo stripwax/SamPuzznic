@@ -7,6 +7,8 @@ GRID_X_OFFSET: equ 44 ; how many bytes (pixels/2) in from the left-hand-edge of 
 CLOCK_Y_OFFSET: equ 48; how many rows down from the top of the screen should the clock be shown
 TIME_LABEL_Y_OFFSET: equ 40
 PLAYER_Y_OFFSET: equ 0
+LEVEL_Y_OFFSET: equ 20
+LEVEL_X_OFFSET: equ 16
 SCORE_Y_OFFSET: equ 8
 SCORE_X_OFFSET: equ 8
 REMAINING_TILES_Y_OFFSET: equ 96

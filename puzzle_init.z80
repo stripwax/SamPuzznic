@@ -71,7 +71,34 @@ render_puzzle_tiles:
 
 
 debug_memcpy_level_data:
+                ; compute level index (from level:major:minor)
+                ; each level_number from i=0..7 contributes i sets of 4 problems
+                ; within which, major points to a set of 4 problems, and minor points to a level within that set of 4 problems
                 ld a, (level_number)
+                ld b, a  ; do the summation this many times (which might be zero!)
+                inc b
+                ld a, 0
+                ld c, 0 ; the adder (which goes up by 4 each iteration - add 4, then add 8, then add 12, ...)
+        @keep_counting:
+                dec b
+                jr z, @_done_counting
+                inc c
+                inc c
+                inc c
+                inc c
+                add a, c
+                jp @-keep_counting
+        @_done_counting:
+                ; now add (major * 4) + minor to this:
+                ld b, a
+                ld a, (level_problem_major_number)
+                add a, a
+                add a, a ; multiply by 4
+                add b
+                ld b, a
+                ld a, (level_problem_minor_number)
+                add b
+
                 jp memcpy_level_data
 
 memcpy_level_data:
@@ -159,9 +186,32 @@ render_screen_layout:
                 ld de, CLOCK_Y_OFFSET*128
                 ld hl, strings.CLOCK
                 call print_text_hl_de
+                ;
+                ld a, (level_number)
+                add 49; '1' ascii
+                ld (strings.LEVEL + 6), a
+                ld c, 0x11  ;  WHITE
+                ld de, LEVEL_Y_OFFSET*128
+                ld hl, strings.LEVEL
+                call print_text_hl_de
+                ld a, (level_problem_major_number)
+                add 49; '1' ascii
+                ld (strings.PROBLEM + 1), a
+                ld a, (level_problem_minor_number)
+                add 49; '1' ascii
+                ld (strings.PROBLEM + 3), a
+                ld c, 0x11  ;  WHITE
+                ld de, 0+((LEVEL_Y_OFFSET+8)*128)+(LEVEL_X_OFFSET/2)
+                ld hl, strings.PROBLEM
+                call print_text_hl_de
                 ret
 
 strings.PLAYER: defm "PLAYER-1"
+defb 0
+
+strings.LEVEL: defm "LEVEL X"
+defb 0
+strings.PROBLEM: defm "(X-X)"
 defb 0
 
 strings.TIME: defm "TIME"
