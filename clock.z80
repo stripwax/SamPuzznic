@@ -73,7 +73,7 @@ update_clock:
                 ld (clock_sec_bcd), a
                 ret
     @just_tick:
-                ld a, FPS-1
+                ld a, FRAMES_PER_CLOCK_SECOND-1
                 ld (clock_tick_frame), a
                 ret
 

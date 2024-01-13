@@ -1,6 +1,7 @@
 ; game constants
 
 FPS: equ 50
+FRAMES_PER_CLOCK_SECOND: equ 60 ; yeah, so the whole game is essentially tied to a 60 FPS clock.  That just means one 'game second' on the clock last longer than one actual second.  Unless we implement dynamic frameskip.
 NUM_NON_TILES: equ 4 ; 0 = blank, 1 = wall, 2 = bricks, 3 = wall but cursor can pass . 4 = triangle is the first tile, etc
 IMPENETRABLE_TILE: equ 2
 GRID_X_OFFSET: equ 44 ; how many bytes (pixels/2) in from the left-hand-edge of the screen should the grid be drawn
