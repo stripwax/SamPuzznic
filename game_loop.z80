@@ -92,7 +92,7 @@ game_loop:
                 call update_game_state
 
                 IF DEBUG_VSYNC
-                    ld a, 35
+                    ld a, 1
                     out (BORDER), a
                 ENDIF
                 call wait_frame
@@ -182,7 +182,7 @@ update_game_state:
                 call check_clock_30
 
                 IF DEBUG_VSYNC
-                    ld a, 35
+                    ld a, 38    
                     out (BORDER), a
                 ENDIF
                 call check_clock_game_over
