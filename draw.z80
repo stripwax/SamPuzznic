@@ -306,8 +306,23 @@ draw_bitmap_16x16_hl_at_de:
 
 
                 ld b, 4
+                ld c, 255 ; just a dummy, to avoid LDI from decrementing B!
     @evens:
-                push bc
+                ; comparison of techniques here:
+                ; manual sequence ( ld a, (hl) / ld (de), a / dec e / inc l ) = 7+7+4+4 = 22
+                ; manual sequence * 8 = 8 * 22 = 176
+                ; LDI * 7 + manual * 1 = 16 * 7 + 22 = 134
+                ; LDI * 8 + push/pop + DEC D = 16 * 8 + 11 + 10 + 4 = 153 ; so that's definitely not better, it's worse
+                ;
+                ; consider two rows (both even; or both odd) . can either go left-to-right, right-to-left
+                ; in which case left-to-right is all LDI, right-to-left is all manual (and can just
+                ; inc d between those two things))
+                ; LDI * 7 + manual * 1 + manual * 8 = 176 + 134 = 310
+                ;
+                ; or can use LDI (left-to-right direction) for both rows, and just subtract 7 from E
+                ; LDI * 7 + manual * 1 + adjust E + LDI * 7 + manual * 1 + adjust E = 134 + 4+7+4 + 134 + 4+7+4 = 298
+                ;
+                ; Looks like that second approach is (slightly) better
                 LDI
                 LDI
                 LDI
@@ -315,43 +330,27 @@ draw_bitmap_16x16_hl_at_de:
                 LDI
                 LDI
                 LDI
-                pop bc
                 ld a, (hl)
                 ld (de), a
                 inc d
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
+                inc l
+                ld a, e
+                sub 7
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 ld a, (hl)
                 ld (de), a
                 inc d
-                inc hl
+                inc l
+                ld a, e
+                sub 7
+                ld e, a
                 djnz @-evens
                 dec d
 
@@ -367,7 +366,6 @@ draw_bitmap_16x16_hl_at_de:
                 ; moving up the screen (odd rows only)
                 ld b, 4
     @odds:
-                push bc
                 LDI
                 LDI
                 LDI
@@ -375,43 +373,27 @@ draw_bitmap_16x16_hl_at_de:
                 LDI
                 LDI
                 LDI
-                pop bc
                 ld a, (hl)
                 ld (de), a
                 dec d
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
-                ld a, (hl)
-                ld (de), a
-                dec e
-                inc hl
+                inc l
+                ld a, e
+                sub 7
+                ld e, a
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
                 ld a, (hl)
                 ld (de), a
                 dec d
-                inc hl
+                inc l
+                ld a, e
+                sub 7
+                ld e, a
                 djnz @-odds
                 ret
 
@@ -530,31 +512,37 @@ draw_masked_bitmap_32x16_hl_at_de:
                 ; hl points to 32x16 bitmap with mask (first byte is mask, second byte is pixel data)
                 ; de points to screen
                 @pairs_down: equ FOR 4
-                    @row_l_to_r: equ FOR 16
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
+                    @row_l_to_r: equ FOR 15
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     inc e
                     NEXT @row_l_to_r
-                    dec e
-                    inc d
-                    @row_r_to_l: equ FOR 16
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
+                    inc d
+                    @row_r_to_l: equ FOR 15
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     dec e
                     NEXT @row_r_to_l
-                    inc e
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
                     inc d
                 NEXT @pairs_down
                     dec d
@@ -565,31 +553,37 @@ draw_masked_bitmap_32x16_hl_at_de:
                     adc 0
                     ld d, a
                 @pairs_up: equ FOR 4
-                    @row_l_to_r: equ FOR 16
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
+                    @row_l_to_r: equ FOR 15
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     inc e
                     NEXT @row_l_to_r
-                    dec e
-                    dec d
-                    @row_r_to_l: equ FOR 16
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
+                    dec d
+                    @row_r_to_l: equ FOR 15
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     dec e
                     NEXT @row_r_to_l
-                    inc e
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
                     dec d
                 NEXT @pairs_up
                 ret
@@ -599,31 +593,37 @@ draw_masked_bitmap_16x16_hl_at_de:
                 ; hl points to 16x16 bitmap with mask (first byte is mask, second byte is pixel data)
                 ; de points to screen
                 @pairs_down: equ FOR 4
-                    @row_l_to_r: equ FOR 8
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
+                    @row_l_to_r: equ FOR 7
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     inc e
                     NEXT @row_l_to_r
-                    dec e
-                    inc d
-                    @row_r_to_l: equ FOR 8
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
+                    inc d
+                    @row_r_to_l: equ FOR 7
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     dec e
                     NEXT @row_r_to_l
-                    inc e
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
                     inc d
                 NEXT @pairs_down
                     dec d
@@ -634,31 +634,37 @@ draw_masked_bitmap_16x16_hl_at_de:
                     adc 0
                     ld d, a
                 @pairs_up: equ FOR 4
-                    @row_l_to_r: equ FOR 8
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
+                    @row_l_to_r: equ FOR 7
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     inc e
                     NEXT @row_l_to_r
-                    dec e
-                    dec d
-                    @row_r_to_l: equ FOR 8
-                    ld c, (hl)
-                    inc hl
-                    ld b, (hl)
-                    inc hl
                     ld a, (de)
-                    and c
-                    or b
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
+                    dec d
+                    @row_r_to_l: equ FOR 7
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
                     ld (de), a
                     dec e
                     NEXT @row_r_to_l
-                    inc e
+                    ld a, (de)
+                    and (hl)
+                    inc hl
+                    or (hl)
+                    inc hl
+                    ld (de), a
                     dec d
                 NEXT @pairs_up
                 ret
