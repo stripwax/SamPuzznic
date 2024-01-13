@@ -124,15 +124,17 @@ check_match:
                 push bc
                 pop ix
 
-                ; check neighbours east, south, west, north
+                ; check neighbours east, south
+                ; skip west and north because (since we've already been both west of here
+                ; and north of here) we've already looked at those!
                 cp (ix+1)
                 jr z, @match_1
                 cp (ix+16)
                 jp z, @match_2
-                cp (ix-1)
-                jp z, @match_3
-                cp (ix-16)
-                jp z, @match_4
+                ; cp (ix-1)
+                ; jp z, @match_3
+                ; cp (ix-16)
+                ; jp z, @match_4
     @nomatch:
                 ; mark tile as done (to avoid "re-finding" it on later iterations)
                 xor a
@@ -253,43 +255,43 @@ check_match:
                 ld a, (matched_tile)
                 jp @add_neighbours_2
      
-    @match_3:
-                ; keep a record of what tile we're looking for, since we trash reg a
-                ld (matched_tile), a
-                ; make match list entry
-                ld (de), a ; headed with the number of the tile
-                inc de
-                ld a, ixl
-                ld (de), a ; and its location
-                ld (ix), 0 ; mark tile as done
-                inc de
-                dec a
-                ld (de), a ; and its neighbours location
-                ld (ix-1), 0 ; mark tile as done
-                inc de
-                inc hl
-                ld (hl), a ; and put its neighbours location into search stack
-                ; now add remaining neighbours to search stack
-                ld a, (matched_tile)
-                jp @add_neighbours_3
+    ; @match_3:
+    ;             ; keep a record of what tile we're looking for, since we trash reg a
+    ;             ld (matched_tile), a
+    ;             ; make match list entry
+    ;             ld (de), a ; headed with the number of the tile
+    ;             inc de
+    ;             ld a, ixl
+    ;             ld (de), a ; and its location
+    ;             ld (ix), 0 ; mark tile as done
+    ;             inc de
+    ;             dec a
+    ;             ld (de), a ; and its neighbours location
+    ;             ld (ix-1), 0 ; mark tile as done
+    ;             inc de
+    ;             inc hl
+    ;             ld (hl), a ; and put its neighbours location into search stack
+    ;             ; now add remaining neighbours to search stack
+    ;             ld a, (matched_tile)
+    ;             jp @add_neighbours_3
     
-    @match_4:
-                ; keep a record of what tile we're looking for, since we trash reg a
-                ld (matched_tile), a
-                ; make match list entry
-                ld (de), a ; headed with the number of the tile
-                inc de
-                ld a, ixl
-                ld (de), a ; and its location
-                ld (ix), 0 ; mark tile as done
-                inc de
-                sub 16
-                ld (de), a ; and its neighbours location
-                ld (ix-16), 0 ; mark tile as done
-                inc de
-                ; we've already looked at all the other neighbours of ix+0
-                ; and this was the only one that matched, so carry on from here
-                jp @search_from_here
+    ; @match_4:
+    ;             ; keep a record of what tile we're looking for, since we trash reg a
+    ;             ld (matched_tile), a
+    ;             ; make match list entry
+    ;             ld (de), a ; headed with the number of the tile
+    ;             inc de
+    ;             ld a, ixl
+    ;             ld (de), a ; and its location
+    ;             ld (ix), 0 ; mark tile as done
+    ;             inc de
+    ;             sub 16
+    ;             ld (de), a ; and its neighbours location
+    ;             ld (ix-16), 0 ; mark tile as done
+    ;             inc de
+    ;             ; we've already looked at all the other neighbours of ix+0
+    ;             ; and this was the only one that matched, so carry on from here
+    ;             jp @search_from_here
 
     @DONE:
                 ; phew!
@@ -343,6 +345,7 @@ check_match:
                 
             @already_locked:                
                 ret
+
 
 render_destruct:
                 ; this will call decrement on remaining blocks upon completion
