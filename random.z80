@@ -1,0 +1,31 @@
+; a quick version of something like this https://en.wikipedia.org/wiki/Linear-feedback_shift_register
+; with taps at [16,14,13,11] except indexed the other way around
+; (i.e. taps at bitpositions 0, 2, 3, 5)
+; We do 3 xor operations, shifting a copy of the low byte such that the end result
+; is left in bitposition 0 (lsb) in A, and then just shift that out into CARRY and back into the top
+
+random_counter: defw 0xa64d
+
+random:
+        ld hl, (random_counter)
+        ld d, 0 ; this will be the output
+        ld b, 8 ; this many bits
+    @more_bits:
+        ld a, l
+        ld c, l
+        rra
+        rra
+        xor c
+        rra
+        xor c
+        rra
+        rra
+        xor c
+        rrca ; move the new bit into top of h
+        rr h ; shift h into l
+        rr l
+        rr d ; shift output bit into d
+        djnz @-more_bits
+        ld a, d
+        ld (random_counter), hl
+        ret

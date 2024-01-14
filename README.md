@@ -38,6 +38,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * "next level" after win condition
 * Clock font - nice shiny fat 16x16 bitmaps!
 * Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
+* Shiny glint of light on tiles, which occurs randomly during play
 
 
 # TODO
@@ -60,7 +61,6 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed.
 
 # TODO LATER
-*  drop shadow on font? make sure font is clear. also should be masked.
 *  Passwords for level skip
 *  Gravnic mode
 *  Arcade mode

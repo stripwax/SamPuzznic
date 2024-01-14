@@ -134,6 +134,7 @@ INCLUDE "bitmaps.z80"
 INCLUDE "palette.z80"
 INCLUDE "game_loop.z80"
 INCLUDE "glint.z80"
+INCLUDE "random.z80"
 
 IF DEBUG==1
 INCLUDE "debug.z80"

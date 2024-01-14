@@ -2,39 +2,6 @@ glint_frame: defb 0
 glint_de: defw 0
 glint_hl: defw 0
 glint_xy: defb 0
-glint_random_counter: defw 0xa64d
-
-random:
-        ld hl, (glint_random_counter)
-        ld d, 0 ; this will be the output
-        ld b, 8 ; this many bits
-    @more_bits:
-        xor a
-        ld e, a
-        ld c, l
-        srl c
-        rla
-        srl c
-        srl c
-        rl e
-        xor e
-        ld e,0
-        srl c
-        rl e
-        xor e
-        ld e,0
-        srl c
-        srl c
-        rl e
-        xor e
-        rrca ; move the new bit into top of h
-        rr h ; shift h into l
-        rr l
-        rr d ; shift output bit into d
-        djnz @-more_bits
-        ld a, d
-        ld (glint_random_counter), hl
-        ret
 
 render_glint:
             ; do nothing if no frame required
@@ -112,11 +79,9 @@ update_glint:
             and IS_FALLING_MASK + IS_SLIDER_MASK
             ret nz ; don't glint anything that is sliding or falling
 
-            ld a, c
-            ld (glint_xy), a
             inc h ; back to tile
             ld (glint_hl), hl
-            call grid_xy_in_C_and_A_to_screen_de
+            call grid_xy_in_C_to_screen_de
             ld (glint_de), de
             ld a, 1
             ld (glint_frame), a
