@@ -1,0 +1,34 @@
+; (based on the import order)
+; we would have already assembled first/main/everything into pages 1 and 2
+; so we're probably around the top of page 2 now
+; DS ALIGN 16384 will get us to the start of page 3
+
+DS ALIGN 16384
+; page 3
+DEFB 0
+
+DS ALIGN 16384
+; page 4
+DEFB 0
+
+DS ALIGN 16384
+; page 5
+DEFB 0
+
+DS ALIGN 16384
+; page 6
+DEFB 0
+
+DS ALIGN 16384
+; page 7
+DEFB 0
+
+DS ALIGN 16384
+; page 8
+; the video ram is paged here (page8+9)
+; and here we're making use of the 'spare' area after the frame buffer
+ORG 0
+DEFS 24576
+
+glint_bitmaps:
+MDAT "glint.b"

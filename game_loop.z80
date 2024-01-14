@@ -201,6 +201,7 @@ update_game_state:
                 ENDIF
                 call update_cursor_position
 
+                call update_glint
                 ret
 
 
@@ -290,6 +291,7 @@ draw_overlays:
                 ; stuff like the bonus score that floats over the tiles
                 ; also the cursor
                 ; should probably make some of this macro and inline into game loop 
+                call render_glint
                 call draw_cursor
                 call render_bonus
                 ret

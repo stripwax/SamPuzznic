@@ -34,8 +34,6 @@ stack:
 
 
 main:
-                ; clock_tick_frame counts from 49 to 0 (inclusive).
-                ; but 0 means "time to redraw the clock"                
                 ; wait loop for setting breakpoints in simice
                 IF DEBUG==1
                     IF DEBUG_WAIT_ON_START==1
@@ -43,6 +41,8 @@ main:
                     ENDIF
                 ENDIF
 
+                ; clock_tick_frame counts from 49 (or 59...) to 0 (inclusive).
+                ; but 0 means "time to redraw the clock"                
                 xor a
                 ld (clock_tick_frame), a
                 ld (clock_changed), a ; poke a nop here
@@ -133,8 +133,10 @@ INCLUDE "text.z80"
 INCLUDE "bitmaps.z80"
 INCLUDE "palette.z80"
 INCLUDE "game_loop.z80"
+INCLUDE "glint.z80"
 
 IF DEBUG==1
 INCLUDE "debug.z80"
 ENDIF
 
+INCLUDE "next_page.z80"

@@ -1,0 +1,148 @@
+glint_frame: defb 0
+glint_de: defw 0
+glint_hl: defw 0
+glint_xy: defb 0
+glint_random_counter: defw 0xa64d
+
+random:
+        ld hl, (glint_random_counter)
+        ld d, 0 ; this will be the output
+        ld b, 8 ; this many bits
+    @more_bits:
+        xor a
+        ld e, a
+        ld c, l
+        srl c
+        rla
+        srl c
+        srl c
+        rl e
+        xor e
+        ld e,0
+        srl c
+        rl e
+        xor e
+        ld e,0
+        srl c
+        srl c
+        rl e
+        xor e
+        rrca ; move the new bit into top of h
+        rr h ; shift h into l
+        rr l
+        rr d ; shift output bit into d
+        djnz @-more_bits
+        ld a, d
+        ld (glint_random_counter), hl
+        ret
+
+render_glint:
+            ; do nothing if no frame required
+            ld a, (glint_frame)
+            and a
+            ret z
+
+            ; render the corresponding glint bitmap
+            ; I think it's 3 frame ticks per bitmap
+            ; so 1-3 => bitmap1
+            ;    4-6 => bitmap2
+            ;    7-9 => bitmap3
+            ;   then cancel
+            cp 4
+            jr c, @bitmap1
+            cp 7
+            jr c, @bitmap2
+    @bitmap3:
+            ld hl, glint_bitmaps+512
+    @render:
+            ld de, (glint_de)
+            call draw_masked_bitmap_16x16_hl_at_de
+            ld a, (glint_xy)
+            call push_dirty_tile ; to redraw underlying bitmap on next frame
+            ret
+
+    @bitmap1:
+            ld hl, glint_bitmaps
+            jp @render
+
+    @bitmap2:
+            ld hl, glint_bitmaps+256
+            jp @render
+
+
+update_glint:
+            ; with some random probability,
+            ; choose a random tile and initiate glint animation
+            ; or do nothing if glint already in effect
+            ; or cancel glint if it should no longer apply here
+            ld a, (glint_frame)
+            cp 10 ; that's the last frame
+            jp z, @stop_glinting
+
+            and a
+            jr nz, @already_glinting
+
+            call random
+            cp 200
+            ret c ; do nothing if random was <= 200
+            ; (this prevents just continuously glinting stuff
+            ;  so there's a high probability that glints are rare)
+
+            call random ; gives x and y, effectively.  i.e. treat random value as xxxxyyyy
+            ld (glint_xy), a
+            ; see if this is a tile
+            ; anything outside of the puzzle area is not a tile (by definition)
+            ld c, a
+            and 15
+            cp 10
+            ret nc ; do nothing if x was >= 10
+
+            ld a, c
+            cp 12*16
+            ret nc ; do nothing if y was >= 16
+
+            ld h, tiles/256
+            ld l, c
+            ld a, (hl)
+            cp NUM_NON_TILES
+            ret c ; do nothing if this was a non-tile
+
+            dec h ; check tile flags
+            ld a, (hl)
+            and IS_FALLING_MASK + IS_SLIDER_MASK
+            ret nz ; don't glint anything that is sliding or falling
+
+            ld a, c
+            ld (glint_xy), a
+            inc h ; back to tile
+            ld (glint_hl), hl
+            call grid_xy_in_C_and_A_to_screen_de
+            ld (glint_de), de
+            ld a, 1
+            ld (glint_frame), a
+            ret
+
+        @already_glinting:
+            ; check tile is still a tile and not falling/sliding/etc
+            ld hl, (glint_hl)
+            ld a, (hl)
+            cp NUM_NON_TILES
+            jr c, @stop_glinting
+
+            dec h ; check tile flags
+            ld a, (hl)
+            and IS_FALLING_MASK + IS_SLIDER_MASK
+            jr nz, @stop_glinting
+
+            ; well, everything seems to be in order
+            ; so just update which frame to draw
+            ld a, (glint_frame)
+            inc a
+            ld (glint_frame), a
+            ret
+
+        @stop_glinting:
+            xor a
+            ld (glint_frame), a
+            ret
+
