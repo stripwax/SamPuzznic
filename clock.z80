@@ -3,6 +3,7 @@ clock_changed: equ $ ; poke  NOP or RET here
                 nop
                 ld a, 201 ; next time round this will be a RET!
                 ld (clock_changed), a
+                ; 
                 ; minutes
                 ld a, (clock_min_bcd)
                 ; top minute decimal
@@ -13,12 +14,14 @@ clock_changed: equ $ ; poke  NOP or RET here
                 rrca
                 rrca
                 ld de, CLOCK_Y_OFFSET*128 ; y*128+(x/2)
-                call fatnum_digit_a_xy_de
+                ld c, 1
+                call fatnum_digit_a_variant_c_xy_de
                 ; bottom minute decimal
                 ld a, (clock_min_bcd)
                 and 15
                 ld de, CLOCK_Y_OFFSET*128 + 8
-                call fatnum_digit_a_xy_de
+                ld c, 1
+                call fatnum_digit_a_variant_c_xy_de
 
                 ; seconds
                 ld a, (clock_sec_bcd)
@@ -29,12 +32,14 @@ clock_changed: equ $ ; poke  NOP or RET here
                 rrca
                 rrca
                 ld de, CLOCK_Y_OFFSET*128 + 20 ; y*128+(x/2)
-                call fatnum_digit_a_xy_de
+                ld c, 1
+                call fatnum_digit_a_variant_c_xy_de
                 ; bottom second decimal
                 ld a, (clock_sec_bcd)
                 and 15
                 ld de, CLOCK_Y_OFFSET*128 + 28 ; y*128+(x/2)
-                call fatnum_digit_a_xy_de ; TODO optimize maybe JP rather than call+ret?
+                ld c, 1
+                call fatnum_digit_a_variant_c_xy_de ; TODO optimize maybe JP rather than call+ret?
                 ret
 
 update_clock:

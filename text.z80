@@ -292,22 +292,32 @@ print_text_hl_de:
             ret
 
 
-fatnum_digit_a_xy_de:
+fatnum_digit_a_variant_c_xy_de:
             ; modifies: hl, de, bc
-            ; render bcd digit in a (0-9) to screen location at de
+            ; render bcd digit in A (0-9) to screen location at DE
+            ; on entry, C should be 0, 1, or 2, corresponding to font color set (yellow, red, or green)
             ; fatnum digits are 16x16 with mask; so 16*16/2)*2 = 256 bytes  (handy!)
             ; TODO background bitmaps
             ; FOR NOW JUST FILL THE AREA
             ; !!!
+            push bc
             push af
             push de
             ld a, 0x66 ; RED
             call fillrect_16x16_de_colorbyte_a
             pop de
             pop af
+            pop bc
             ; !!!
 
             add a, fatnums/256
+            ; since one digit is 256 bytes, 10 digits is 2560 bytes
+            ; (i.e. increment H by 10 to access other coloursets)
+            sla c
+            add a, c
+            sla c
+            sla c
+            add a, c
             ld h, a
             ld l, 0
             jp draw_masked_bitmap_16x16_hl_at_de

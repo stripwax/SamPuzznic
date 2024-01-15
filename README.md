@@ -36,7 +36,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
 * "Clear" (you win) condition when all tiles have been matched
 * "next level" after win condition
-* Clock font - nice shiny fat 16x16 bitmaps!
+* Clock font - nice shiny fat 16x16 bitmaps! Several colours (yellow, red, green), as required.
 * Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
 * Shiny glint of light on tiles, which occurs randomly during play
 
@@ -49,7 +49,7 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
 *  'background' bricks and anything else surrounding the play area
 *  level select between stages / initial level select at start
-*  "panic mode" clock font (clock flashing at 30s or less remaining, and again at 10s or less remaining)
+*  when to turn on "panic mode" clock font (clock color changes at 30s or less remaining, and flashing at 10s or less remaining)
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
 *  music (50% done)
