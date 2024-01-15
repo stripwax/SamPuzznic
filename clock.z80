@@ -3,7 +3,23 @@ clock_changed: equ $ ; poke  NOP or RET here
                 nop
                 ld a, 201 ; next time round this will be a RET!
                 ld (clock_changed), a
+
+                ld c, 0
+                ; use regular clock color (c=0)
+                ; unless time <= 30
+                ; If 10 < time <= 30, then use red (c=1)
+                ; If time <= 10, then alternate yellow/red every 0.5 s  (TODO)
                 ; 
+                ; minutes
+                ld a, (clock_min_bcd)
+                and a
+                jr nz, @no_panic
+                ld a, (clock_sec_bcd)
+                cp 0x31 ; since this is bcd .
+                jr nc, @no_panic
+                ld c, 1
+
+        @no_panic:
                 ; minutes
                 ld a, (clock_min_bcd)
                 ; top minute decimal
@@ -14,13 +30,14 @@ clock_changed: equ $ ; poke  NOP or RET here
                 rrca
                 rrca
                 ld de, CLOCK_Y_OFFSET*128 ; y*128+(x/2)
-                ld c, 1
+                push bc ; color
                 call fatnum_digit_a_variant_c_xy_de
                 ; bottom minute decimal
                 ld a, (clock_min_bcd)
                 and 15
                 ld de, CLOCK_Y_OFFSET*128 + 8
-                ld c, 1
+                pop bc ; color
+                push bc ; color
                 call fatnum_digit_a_variant_c_xy_de
 
                 ; seconds
@@ -32,13 +49,14 @@ clock_changed: equ $ ; poke  NOP or RET here
                 rrca
                 rrca
                 ld de, CLOCK_Y_OFFSET*128 + 20 ; y*128+(x/2)
-                ld c, 1
+                pop bc ; color
+                push bc ; color
                 call fatnum_digit_a_variant_c_xy_de
                 ; bottom second decimal
                 ld a, (clock_sec_bcd)
                 and 15
                 ld de, CLOCK_Y_OFFSET*128 + 28 ; y*128+(x/2)
-                ld c, 1
+                pop bc ; color
                 call fatnum_digit_a_variant_c_xy_de ; TODO optimize maybe JP rather than call+ret?
                 ret
 
