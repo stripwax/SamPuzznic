@@ -1,31 +1,27 @@
-; a quick version of something like this https://en.wikipedia.org/wiki/Linear-feedback_shift_register
-; with taps at [16,14,13,11] except indexed the other way around
-; (i.e. taps at bitpositions 0, 2, 3, 5)
-; We do 3 xor operations, shifting a copy of the low byte such that the end result
-; is left in bitposition 0 (lsb) in A, and then just shift that out into CARRY and back into the top
-
-random_counter: defw 0xa64d
+; http://www.retroprogramming.com/2017/07/xorshift-pseudorandom-numbers-in-z80.html
+; 16-bit xorshift pseudorandom number generator
+; 20 bytes, 86 cycles (excluding ret)
 
 random:
-        ld hl, (random_counter)
-        ld d, 0 ; this will be the output
-        ld b, 8 ; this many bits
-    @more_bits:
-        ld a, l
-        ld c, l
-        rra
-        rra
-        xor c
-        rra
-        xor c
-        rra
-        rra
-        xor c
-        rrca ; move the new bit into top of h
-        rr h ; shift h into l
-        rr l
-        rr d ; shift output bit into d
-        djnz @-more_bits
-        ld a, d
-        ld (random_counter), hl
-        ret
+    ; modifies: hl, a
+    ; on exit, HL = 16-bit pseudorandom number
+    ;           A = top 8-bits (i.e. H)
+    seed: equ $+1
+    ld hl, 0xa64d ; seed must not be 0
+    ld a, h
+    rra
+    ld a, l
+    rra
+    xor h
+    ld h, a
+    ld a, l
+    rra
+    ld a, h
+    rra
+    xor l
+    ld l, a
+    xor h
+    ld h, a
+    ld (seed),hl
+    ; a is still top 8 bits ()
+    ret

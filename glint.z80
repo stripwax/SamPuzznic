@@ -50,8 +50,8 @@ update_glint:
             jr nz, @already_glinting
 
             call random
-            cp 200
-            ret c ; do nothing if random was <= 200
+            cp 220
+            ret c ; do nothing if random was <= 220
             ; (this prevents just continuously glinting stuff
             ;  so there's a high probability that glints are rare)
 
