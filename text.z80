@@ -297,14 +297,11 @@ fatnum_digit_a_variant_c_xy_de:
             ; render bcd digit in A (0-9) to screen location at DE
             ; on entry, C should be 0, 1, or 2, corresponding to font color set (yellow, red, or green)
             ; fatnum digits are 16x16 with mask; so 16*16/2)*2 = 256 bytes  (handy!)
-            ; TODO background bitmaps
-            ; FOR NOW JUST FILL THE AREA
-            ; !!!
             push bc
             push af
             push de
-            ld a, 0x66 ; RED
-            call fillrect_16x16_de_colorbyte_a
+            ld hl, tiles_bitmaps+(128*3)
+            call draw_bitmap_16x16_hl_at_de
             pop de
             pop af
             pop bc

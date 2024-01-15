@@ -844,9 +844,27 @@ grid_xy_in_C_and_A_to_screen_de:
                 ret
 
 clear_screen:
-                ld hl, 0
-                ld de, 1
-                ld (hl), a
-                ld bc, 24575
-                ldir
+                ld de, 0
+                ld c, 12
+            @loop2:
+                ld b, 16
+            @loop1:
+                push de
+                push bc
+                ld hl, tiles_bitmaps+(128*3)
+                call draw_bitmap_16x16_hl_at_de
+                pop bc
+                pop de
+                ld a, e
+                add 8
+                ld e, a
+                djnz @-loop1
+            
+                ld e, 0
+                ld a, d
+                add 8
+                ld d, a
+                dec c
+                jr nz, @-loop2
+
                 ret
