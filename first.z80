@@ -41,12 +41,9 @@ main:
                     ENDIF
                 ENDIF
 
-                ; clock_tick_frame counts from 49 (or 59...) to 0 (inclusive).
-                ; but 0 means "time to redraw the clock"                
+                call init_clock
                 xor a
-                ld (clock_tick_frame), a
-                ld (clock_changed), a ; poke a nop here
-                ld (score_changed), a ; poke a nop here too
+                ld (score_changed), a ; poke a nop here
 
                 call clear_dirty_tiles_list
                 call clear_draw_list

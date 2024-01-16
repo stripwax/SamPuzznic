@@ -91,7 +91,6 @@ puzzle_copy_len: equ puzzle_copy_end - puzzle_copy_start
 ; following are initialized to zero at start of game loop
 ; from game_state_zero_start to game_state_zero_end
 game_state_zero_start:
-clock_tick_frame: defb 0
 bonus_tier: defb 0
 bonus_icon: defb 0
 bonus_icon_xy: defb 0

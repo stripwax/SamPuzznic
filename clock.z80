@@ -1,25 +1,41 @@
-draw_clock:
-clock_changed: equ $ ; poke  NOP or RET here
-                nop
-                ld a, 201 ; next time round this will be a RET!
-                ld (clock_changed), a
+clock_tick_frame: defb 0
+is_panic: defb 0
+panic_flash_counter: defb 0
+clock_color: defb 0
 
-                ld c, 0
-                ; use regular clock color (c=0)
-                ; unless time <= 30
-                ; If 10 < time <= 30, then use red (c=1)
-                ; If time <= 10, then alternate yellow/red every 0.5 s  (TODO)
+init_clock:
+                ; clock_tick_frame counts from 49 (or 59...) to 0 (inclusive).
+                ; When counter==0, update() will reset it to FPS-1 .
+                ; so when counter == FPS-1, draw() will redraw the clock.
+                ; Of course, update() will also subtract 1 second from the remaining time when this happens - 
+                ; but we want to force a redraw of clock on the first frame, without subtracting 1 second.
                 ; 
-                ; minutes
-                ld a, (clock_min_bcd)
-                and a
-                jr nz, @no_panic
-                ld a, (clock_sec_bcd)
-                cp 0x31 ; since this is bcd .
-                jr nc, @no_panic
-                ld c, 1
+                ; So initialize tick frame to FPS , so that update() will decrement it by 1, and draw() will see
+                ; that the counter == FPS-1
+                ld a, FRAMES_PER_CLOCK_SECOND
+                ld (clock_tick_frame), a
+                xor a
+                ld (panic_flash_counter), a
+                ld (is_panic), a
+                ld (clock_color), a
+                ret
 
-        @no_panic:
+draw_clock:
+                ; if we're in full panic mode, we'll actually redraw the time every 4 frames
+                ; (as well as if clock_frame == 0)
+                ld a, (is_panic)
+                and a
+                jp nz, @check_panic_clock
+
+                ; not a panic mode, so just redraw clock when frame counter resets
+                ld a, (clock_tick_frame)
+                cp FRAMES_PER_CLOCK_SECOND-1
+                ret nz
+
+                ld a, (clock_color)
+                ld c, a
+
+        @_draw_clock_main:
                 ; minutes
                 ld a, (clock_min_bcd)
                 ; top minute decimal
@@ -62,21 +78,17 @@ clock_changed: equ $ ; poke  NOP or RET here
 
 update_clock:
                 ld a, (clock_tick_frame)
-                and a ; set Z if a is zero
-                ; 0 is the 'first' tick, but we need to handle specially
-                ; so that we can set it to the FPS counter
-                jr z, @just_tick
-                ; if we are > 0 then we decrement
                 dec a
                 ld (clock_tick_frame), a
-                ; .. and if we are NOW zero then a full second has elapsed
-                ; (and if we are not at zero, then we're between second ticks
+                ; If we are now < 0 then a full second has elapsed
+                ; (if we are not < 0, then we're between second ticks
                 ; and we've done all the updates we need to do)
-                ret nz
+                ret p ; not negative i.e. not < 0
+                ld a, FRAMES_PER_CLOCK_SECOND-1
+                ld (clock_tick_frame), a
+
     @next_sec:
                 ; decrement number of remaining seconds
-                ; a is zero - poke a nop into clock draw routine!
-                ld (clock_changed), a
                 ld a, (clock_sec_bcd)
                 dec a
                 daa
@@ -84,7 +96,29 @@ update_clock:
                 jr c, @+next_min
                 ; no? ok, just save back the number of seconds
                 ld (clock_sec_bcd), a
+
+                ; quick check - are we in panic mode?
+                ld a, (clock_min_bcd)
+                and a
+                ret nz ; time >= 1:00 remaining
+                ld a, (clock_sec_bcd)
+                cp 0x31 ; bcd
+                ret nc ; time >= 0:30 remaining
+                ; either mild panic or full panic!
+                ; assume mild panic
+                cp 0x11 ; bcd
+                jr nc, @mild_panic ; 0:11 <= time <= 0:30 remaining, mild panic only
+                ld a, 1
+                ld (is_panic), a ; time <= 0:10 remaining!! panic!!
+                xor a
+                ld (clock_color), a
                 ret
+    @mild_panic:
+                ; <= 30 seconds remaining. red clock!
+                ld a, 1
+                ld (clock_color), a
+                ret
+
     @next_min:
                 ld a, (clock_min_bcd)
                 and a; set Z if a is zero
@@ -92,13 +126,37 @@ update_clock:
                 dec a
                 daa
                 ld (clock_min_bcd), a
-                ld a, %01011001 ; 59 bcd
+                ld a, 0x59 ; bcd
                 ld (clock_sec_bcd), a
                 ret
-    @just_tick:
-                ld a, FRAMES_PER_CLOCK_SECOND-1
-                ld (clock_tick_frame), a
-                ret
+
+@check_panic_clock:
+                ; called each frame to render a flashing clock (<10 seconds remaining)
+                ld a, (clock_tick_frame)
+                cp FRAMES_PER_CLOCK_SECOND-1
+                jr nz, @+flashing
+
+                ; not flashing, but need to redraw anyway
+                ld a, (panic_flash_counter)
+                inc a
+                ld (panic_flash_counter), a
+                jp @draw_panic_clock
+
+        @flashing:
+                ; only redraw every 4 frames (color change)
+                ld a, (panic_flash_counter)
+                inc a
+                ld (panic_flash_counter), a
+                and 3
+                ret nz  ; this is not frame 0 (it's frame 1/2/3) so do NOT redraw clock
+                ; get the color (0 or 1) from the 2th bit of the counter
+        @draw_panic_clock:
+                ld a, (panic_flash_counter)
+                rrca
+                rrca
+                and 1
+                ld c, a
+                jp @_draw_clock_main
 
 check_clock_30:
                 ret

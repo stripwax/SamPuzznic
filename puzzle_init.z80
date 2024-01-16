@@ -217,5 +217,5 @@ defb 0
 strings.TIME: defm "TIME"
 defb 0
 
-; render  0'00" (double-spaced for fatnums)
-strings.CLOCK: defb 32,32, 48,32, 39, 48,32, 48,32, 34, 0
+; render   '  " (double-spaced for fatnums)
+strings.CLOCK: defb 32,32, 32,32, 39, 32,32, 32,32, 34, 0
