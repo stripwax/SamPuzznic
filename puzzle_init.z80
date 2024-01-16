@@ -158,7 +158,7 @@ init_level_tileset:
                 add a, bricks_bitmaps/256
                 ld h, a
                 ld de, tiles_bitmaps+3*128
-                ld bc, 256
+                ld bc, 128
                 ldir
 
                 ; dunno where to put this, but set border color also:
