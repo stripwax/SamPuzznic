@@ -30,5 +30,17 @@ DS ALIGN 16384
 ORG 0
 DEFS 24576
 
+DS ALIGN 256
 glint_bitmaps:
 MDAT "glint.b"
+
+; TODO think about memory map. only one brick bitmap is used for each level,
+; so it's a bit weird to put all the bricks for all levels in the same page
+; as frame buffer
+DS ALIGN 256
+bricks_bitmaps:
+MDAT "bricks.b"
+
+ds ALIGN 256
+fatnums:
+MDAT "fatnums.b"

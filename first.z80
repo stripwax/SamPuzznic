@@ -51,6 +51,7 @@ main:
                 call clear_queue_tiles_to_check
 
                 call debug_memcpy_level_data
+                call init_level_tileset
                 call init_game_state
                 call init_score
                 call render_screen_layout

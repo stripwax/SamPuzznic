@@ -36,10 +36,11 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
 * "Clear" (you win) condition when all tiles have been matched
 * "next level" after win condition
-* Clock font - nice shiny fat 16x16 bitmaps! Several colours (yellow, red, green), as required.
+* Clock font - nice shiny fat 16x16 bitmaps! Several colours (yellow, red, green), as required.  (green is used for Retry count when you lose a life)
 * "Panic Mode" clock implemented - clock color changes at 30s or less remaining, and flashing at 10s or less remaining
 * Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
 * Shiny glint of light on tiles, which occurs randomly during play
+* Different 'bricks' background for each level (Level 1 thru Level 8), with matching Border color
 
 
 # TODO
@@ -47,8 +48,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
 *  Horizontal sliders.. very important and lots of work.
 *  This requires one-pixel-shifted versions of all tiles
-*  both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)
-*  'background' bricks and anything else surrounding the play area (50% done)
+*  ~both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)~  Won't Do, since I only have one variant of wall tiles now
+*  'background' bricks and anything else surrounding the play area (50% done - need to put a little outline around the "remaining tiles" section, and ensure it's blanked out)
 *  level select between stages / initial level select at start
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table

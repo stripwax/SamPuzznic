@@ -13,7 +13,8 @@ samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha.b > alpha.b
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha2.b > alpha2.b
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f bonus.b > bonus.b
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f fatnums.b > fatnums.b  
-samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f  glint.b > glint.b 
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f glint.b > glint.b 
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f bricks.b > bricks.b 
 
 TODO: how to extract/compile the music files
 

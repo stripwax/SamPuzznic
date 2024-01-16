@@ -341,7 +341,3 @@ ds ALIGN 256
 alpha_bitmap_shadow:
 MDAT "alpha2.b"
 digit_bitmap_shadow: equ alpha_bitmap_shadow + 512
-
-ds ALIGN 256
-fatnums:
-MDAT "fatnums.b"

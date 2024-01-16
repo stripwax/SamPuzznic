@@ -145,6 +145,37 @@ memcpy_level_data:
                 ret
 
 
+init_level_tileset:
+                ; we can probably have some level-specific tiles.
+                ; for now that's just the background brick
+                ; (which is not stored as part of the level data, but depends on
+                ; the level number instead)
+                xor a
+                ld l, a
+                ld a, (level_number)
+                rra
+                rr l
+                add a, bricks_bitmaps/256
+                ld h, a
+                ld de, tiles_bitmaps+3*128
+                ld bc, 256
+                ldir
+
+                ; dunno where to put this, but set border color also:
+                ld a, (level_number)
+                ld hl, border_colors
+                ld e, a
+                ld d, 0
+                add hl, de
+                ld a, (hl)
+                out (BORDER),a
+
+
+                ret
+
+border_colors:
+                defb %00100111, %00100100, %00100000, %00000100, %00000111, %00100011, %00100101, %00000101
+
 init_game_state:
                 ; call after doing memcpy_level_data
                 ; basically a memclear but also a few other things
