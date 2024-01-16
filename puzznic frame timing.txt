@@ -1,0 +1,207 @@
+falling block falls in 8 steps, the one above starts falling on the 8th step.
+So:   B: 1 2 3 4 5 6 7 8
+      A:               1 2 3 4 5 6 7 8
+
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA ....
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA
+BBBB .... .... .... .... .... .... .... AAAA
+BBBB BBBB .... .... .... .... .... .... ....
+BBBB BBBB BBBB .... .... .... .... .... ....
+BBBB BBBB BBBB BBBB .... .... .... .... ....
+BBBB BBBB BBBB BBBB BBBB .... .... .... ....
+BBBB BBBB BBBB BBBB BBBB BBBB .... .... ....
+BBBB BBBB BBBB BBBB BBBB BBBB BBBB .... ....
+BBBB BBBB BBBB BBBB BBBB BBBB BBBB BBBB ....
+.... BBBB BBBB BBBB BBBB BBBB BBBB BBBB BBBB 
+.... .... BBBB BBBB BBBB BBBB BBBB BBBB BBBB 
+.... .... .... BBBB BBBB BBBB BBBB BBBB BBBB 
+.... .... .... .... BBBB BBBB BBBB BBBB BBBB 
+.... .... .... .... .... BBBB BBBB BBBB BBBB 
+.... .... .... .... .... .... BBBB BBBB BBBB 
+.... .... .... .... .... .... .... BBBB BBBB 
+.... .... .... .... .... .... .... .... BBBB
+====
+
+
+When a tile moves sideways into space, so that it falls itself (and also causes the one originally above it to fall also), both tiles start falling at the same time.
+
+glint uses 3 animation frames.  each lasts for 4 frame ticks.
+
+PLAYER 1 flashes 8 frames
+
+Square selector flashes 4 frames.  Only flashes when over a tile.  (no delay though. as soon as over a tile, visible for 4 frames, hidden for 4 frames)
+
+
+When tiles are falling, the tiles are left to finish falling before doing any match rules. After tiles have finished falling, matches are determined.
+Three things then start happening, which kick off simultaneously:
+
+1. The tiles flash (and then crash and disappear).
+2. A bonus might appear if there's multiple matches
+3. The remaining tiles is decremented.
+
+t    TILES    BONUS    DECREMENT
+0    on
+1    off
+2    off
+3    off
+4    off
+5    on
+6    on
+7    on
+8    on
+9    off
+10    off
+11    off
+12    off
+13    on
+14    on
+15    on
+16    on
+17    off
+18    off
+19    off
+20    off
+21    on
+22    on
+23    on
+24    on
+25    off
+26    off
+27    off
+28    off
+29    on
+30    on
+31    on
+32    on       
+33    off      
+34    off
+35    off      
+36    off
+37    off
+38    off 
+39    off
+40    off      RED
+41    crash1   up
+42    crash1
+43    crash1   up
+44    crash1
+45    crash1   up
+46    crash1
+47    crash1   up
+48    crash1   CYAN
+49    crash2   up
+50    crash2
+51    crash2   up
+52    crash2
+53    crash3   up
+54    crash3
+55    crash3   up
+56    crash3   YELLOW
+57    off      up
+58    off      
+59    off      up
+60    off                UPDATED HERE (cursor regains control here too I think)
+61    off      up        (CLEAR !! shown here one tick later, if board is cleared)
+62    off
+63    off      up
+64    off      D BLUE
+65    off      up
+66    off
+67    off      up
+68    off
+69    off      up
+70    off
+71    off      up
+72    off      off
+
+Flashing tiles:Then there's a 1 frame pause
+Matching tiles flash for 32 frames.  (1 frame on, 3 frames off;  1 frame off, 3 frames on = 32 frames. each on or off is 4 frames, apart from the first or last).
+After the last on, there is:
+1 more frame of on;
+8 frames of off;
+8 frames for first crashing image;
+4 frames for second crashing image;
+4 frames for third crashing image
+
+Bonus scores are:
+(when starting the game on Level 1)
+400
+600
+1000
+2000
+3000
+
+(when starting the game on Level 2)
+1000
+2000
+3000
+
+(when starting the game on Level 3)
+2000
+
+Cursor keydelay/keyrepeat - seems to be 8 frames, then 6 frames, 6 frames, 6 frames...
+
+--------------------
+Analysis of scoring:
+--------------------
+https://www.youtube.com/watch?v=Wpy5U2_O55E
+Level 1 [1-1]
+      0
+    100   2-match (d=1, e=2)
+    100   2-match (d=1, e=2)
+    100   2-match (d=1, e=2)
+    100   2-match (d=1, e=2)
+    600   triggered 2-match (d=1, e=2, tier=1)
+   1000   triggered 2-match (d=1, e=2, tier=2)
+   2000   triggered 2-match (d=1, e=2, tier=3)
+  -----
+   4000
+  =4000
+
+Level Bonus 1000
+
+Level 1 [1-2]
+   9800
+    400   double 2-match (d=2, e=4)
+    600   triggered 2-match (d=1, e=2, tier=1)
+   2000   triggered double 2-match (d=2, e=4, tier=2)
+   2000   triggered 2-match (d=1, e=2, tier=3)
+   2000   triggered 2-match (d=1, e=2, tier=3)
+ ------
+  16800
+  =7000
+
+Level 2 [1-4]
+
+  78400
+    100   2-match (d=1, e=2)
+    100   2-match (d=1, e=2)
+    400   double 2-match (d=2, e=4), "Bonus 400"
+    600   triggered 2-match (d=1, e=2), "Bonus 600"
+  -----
+  79600
+  =1200
+
+Level Bonus 2000
+
+Level 8 [3-4]
+3894000
+    100  2-match
+    200  3-match
+    100  2-match
+    100  2-match
+    200  3-match
+    600  triggered 2-match (d=1, e=2, tier=1)
+   1000  triggered 2-match (d=1, e=2, tier=2)
+   2000  triggered 3-match (d=1, e=3, tier=3)
+   2000  triggered 2-match (d=1, e=2, tier=3)
+ ------
+   6300
+3900300
+ 
