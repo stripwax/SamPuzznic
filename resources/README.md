@@ -9,6 +9,7 @@ For the tiles and various game objects/fonts/etc:
 4. on your build machine, use samfile to extract the .b files from the disk image e.g.
 
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f tiles.b > tiles.b
+samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f tiles_hs.b > tiles_hs.b 
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha.b > alpha.b
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f alpha2.b > alpha2.b
 samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f bonus.b > bonus.b
@@ -19,6 +20,8 @@ samfile-windows-amd64.exe cat -i resources\newpuzz_2.mgt -f bricks.b > bricks.b
 TODO: how to extract/compile the music files
 
 TODO: background images?
+
+TODO: automate the above as part of the VSCode build script
 
 
 Utilities

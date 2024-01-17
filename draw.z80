@@ -398,6 +398,180 @@ draw_bitmap_16x16_hl_at_de:
                 ret
 
 
+draw_tile_at_de_tile_a_hshift:
+                ; modifies de, hl, bc
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; multiply A by 144 to get offset into bitmap data
+                ; since shifted bitmaps are 18*16 not 16*16
+                ; 144 = 128 + 16
+                ; do the 128 first (that's easy), then the 16.  A<16 so A*16 still fits in A.
+                ld b, a ; temp
+                ld l, 0
+                sra a ; shift lowest bit of A into carry
+                rr l ; shift carry into l - permissible since L=0 !!
+                ld h, a ; HL is now A * 128 (so, next get A *= 16)
+                ld a, b
+                add a, a
+                add a, a
+                add a, a
+                add a, a ; A *= 16
+                add a, l ; might generate carry, so add carry to h below
+                ld l, a
+                ld a, h
+                adc 0
+                ld h, a
+                ; now HL is A * 144
+                ld bc, tiles_bitmaps_hshift
+                add hl, bc
+
+                ; fall through to:
+
+draw_bitmap_18x16_hl_at_de:
+                ; modifies de, hl, bc
+                ; draws a masked (left and right nibble only) 18x16 bitmap onto screen
+                ; bitmap is already in 'optimized' format (butterfly sequence)
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; hl = bitmap data (could be anything; probably a tile)
+
+                IF DEBUG_DIRTY_FLASH
+                ; using a counter, flipflop the actual data with something else
+                ; to visually indicate which areas are being redrawn
+                push hl
+                ld hl, temp_dirty_flasher
+                bit 0, (hl)
+                pop hl
+                jr z, @+_normal
+                ld hl, tiles_bitmaps_hshift ; blank tile
+            @_normal:
+                ENDIF
+
+
+                ld b, 4
+                ld c, 255 ; just a dummy, to avoid LDI from decrementing B!
+    @evens:
+                ; first column, custom mask
+                ld a, (de)
+                and 0xf0
+                or (hl)
+                ld (de), a
+                inc e
+                inc hl
+
+                ; 14 pixels via LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+
+                ; last column, custom mask
+                ld a, (de)
+                and 0x0f
+                or (hl)
+                ld (de), a
+
+                inc d
+                inc hl
+                ld a, e
+                sub 8
+                ld e, a
+
+                ; first column, custom mask
+                ld a, (de)
+                and 0xf0
+                or (hl)
+                ld (de), a
+                inc e
+                inc hl
+
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+
+                ; last column, custom mask
+                ld a, (de)
+                and 0x0f
+                or (hl)
+                ld (de), a
+                inc hl
+
+                inc d
+                ld a, e
+                sub 8
+                ld e, a
+                djnz @-evens
+                dec d
+
+                ; move down one row of pixels
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 0
+                ld d, a
+
+                ld b, 4
+    @odds:
+                ld a, (de)
+                and 0xf0
+                or (hl)
+                ld (de), a
+                inc e
+                inc hl
+
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+
+                ld a, (de)
+                and 0x0f
+                or (hl)
+                ld (de), a
+                inc hl
+
+                dec d
+                ld a, e
+                sub 8
+                ld e, a
+
+                ld a, (de)
+                and 0xf0
+                or (hl)
+                ld (de), a
+                inc e
+                inc hl
+
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+                LDI
+
+                ld a, (de)
+                and 0x0f
+                or (hl)
+                ld (de), a
+                inc hl
+
+                dec d
+                ld a, e
+                sub 8
+                ld e, a
+                djnz @-odds
+                ret
+
 fillrect_16x2_black_at_de:
                 ; get a black (double) pixel
                 xor a

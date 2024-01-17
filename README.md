@@ -41,13 +41,13 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
 * Shiny glint of light on tiles, which occurs randomly during play
 * Different 'bricks' background for each level (Level 1 thru Level 8), with matching Border color
+* One-pixel-shifted versions of all tiles, and a corresponding 18x16 (masked left and right edge) bitmap draw routine - needed for horizontal sliders
 
 
 # TODO
 *  "time over" (lose) condition
 *  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
-*  Horizontal sliders.. very important and lots of work.
-*  This requires one-pixel-shifted versions of all tiles
+*  Horizontal sliders (25% done, since we now have one-pixel-shifted bitmaps and corresponding draw routine)
 *  ~both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)~  Won't Do, since I only have one variant of wall tiles now
 *  'background' bricks and anything else surrounding the play area (50% done - need to put a little outline around the "remaining tiles" section, and ensure it's blanked out)
 *  level select between stages / initial level select at start

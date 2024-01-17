@@ -1,3 +1,7 @@
 DS ALIGN 256
 tiles_bitmaps:
 MDAT "tiles.b"
+
+; tiles_bitmaps_hshift need not be aligned
+tiles_bitmaps_hshift:
+MDAT "tiles_hs.b"
