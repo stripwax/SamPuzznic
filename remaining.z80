@@ -190,7 +190,7 @@ render_remaining_tiles:
                 push de
 
                 push de
-                ld a, 0x66 ; RED
+                ld a, 0x00 ; BLACK
                 call fillrect_16x16_de_colorbyte_a
                 pop de
 
@@ -202,7 +202,7 @@ render_remaining_tiles:
                 ld e, a
                 
                 ; draw 16x8
-                ld a, 0x66 ; RED
+                ld a, 0x00 ; BLACK
                 call fillrect_16x8_de_colorbyte_a
 
                 pop de
@@ -218,7 +218,7 @@ render_remaining_tiles:
 
                 push de
                 push de
-                ld a, 0x66 ; RED
+                ld a, 0x00 ; BLACK
                 call fillrect_16x16_de_colorbyte_a
                 pop de
 
@@ -230,7 +230,7 @@ render_remaining_tiles:
                 ld e, a
 
                 ; draw 16x8
-                ld a, 0x66 ; RED
+                ld a, 0x00 ; BLACK
                 call fillrect_16x8_de_colorbyte_a
 
                 pop de
