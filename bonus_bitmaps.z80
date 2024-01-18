@@ -1,0 +1,3 @@
+defs ALIGN 256
+bonus_icon_bitmaps:
+MDAT "bonus.b"

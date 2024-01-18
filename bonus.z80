@@ -266,8 +266,3 @@ trigger_bonus_overlay:
                     ; (this flag is simply the frame counter for the animation)
                     ld (bonus_icon_frame), a
                     ret
-
-
-defs ALIGN 256
-bonus_icon_bitmaps:
-MDAT "bonus.b"

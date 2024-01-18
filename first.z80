@@ -128,8 +128,6 @@ INCLUDE "puzzle_init.z80"
 INCLUDE "clear.z80"
 INCLUDE "puzzles.z80"
 INCLUDE "text.z80"
-INCLUDE "bitmaps.z80"
-INCLUDE "palette.z80"
 INCLUDE "game_loop.z80"
 INCLUDE "glint.z80"
 INCLUDE "random.z80"
@@ -137,5 +135,12 @@ INCLUDE "random.z80"
 IF DEBUG==1
 INCLUDE "debug.z80"
 ENDIF
+
+INCLUDE "palette.z80"
+INCLUDE "bitmaps.z80"
+INCLUDE "text_bitmaps.z80"
+INCLUDE "bonus_bitmaps.z80"
+
+mmap_end: defb 0 ; help understand where bitmaps end in .map file
 
 INCLUDE "next_page.z80"

@@ -1,0 +1,9 @@
+ds ALIGN 256
+alpha_bitmap:
+MDAT "alpha.b"
+digit_bitmap: equ alpha_bitmap + 512 ; oh that's handy!
+
+ds ALIGN 256
+alpha_bitmap_shadow:
+MDAT "alpha2.b"
+digit_bitmap_shadow: equ alpha_bitmap_shadow + 512
