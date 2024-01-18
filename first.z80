@@ -54,7 +54,7 @@ main:
                 call clear_falling_tiles
                 call clear_queue_tiles_to_check
 
-                call debug_memcpy_level_data
+                call memcpy_level_data
                 call init_level_tileset
                 call init_game_state
                 call render_screen_layout

@@ -70,7 +70,7 @@ render_puzzle_tiles:
                 ret
 
 
-debug_memcpy_level_data:
+memcpy_level_data:
                 ; compute level index (from level:major:minor)
                 ; each level_number from i=0..7 contributes i sets of 4 problems
                 ; within which, major points to a set of 4 problems, and minor points to a level within that set of 4 problems
@@ -99,9 +99,6 @@ debug_memcpy_level_data:
                 ld a, (level_problem_minor_number)
                 add b
 
-                jp memcpy_level_data
-
-memcpy_level_data:
                 ; on entry, a = which level
                 add a, a ; pointers are two bytes, so need offset*2 into the index
                 ld hl, PUZZLEDATA_INDEX
@@ -121,24 +118,16 @@ memcpy_level_data:
                 ld de, tiles
                 ld a, 12 ; count number of rows
             @next:
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                LDI
-                inc de
+                ld bc, 10
+                LDIR
+                inc de; align to destination buffer
                 inc de
                 inc de
                 inc de
                 inc de
                 inc de
                 dec a
-                jp nz, @-next
+                jr nz, @-next
                 ; finally copy the remaining pieces
                 ld bc, puzzle_copy_len - 16*12
                 ldir
