@@ -34,6 +34,7 @@ stack:
 
 
 main:
+                ; start of game.  initialize score to zero; of course only do this once!
                 ; wait loop for setting breakpoints in simice
                 IF DEBUG==1
                     IF DEBUG_WAIT_ON_START==1
@@ -41,6 +42,9 @@ main:
                     ENDIF
                 ENDIF
 
+                call init_score
+
+    @start_of_level:
                 call init_clock
                 xor a
                 ld (score_changed), a ; poke a nop here
@@ -53,7 +57,6 @@ main:
                 call debug_memcpy_level_data
                 call init_level_tileset
                 call init_game_state
-                call init_score
                 call render_screen_layout
                 call render_puzzle_tiles ; also counts (and renders) remaining tiles
                 call sfx_init
@@ -101,7 +104,7 @@ main:
                 ; if Level Number==8, what now??
 
         @done_adjusting_level_major_minor:
-                jp main  ; round again!
+                jp @start_of_level  ; round again!
 
     @you_died:
                 ; TODO!
