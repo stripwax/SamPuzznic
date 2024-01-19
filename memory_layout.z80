@@ -54,6 +54,8 @@ ASSERT $ > 49152 ; we expect to be well into page 2 too
 ; 
 DS ALIGN 16384
 ; page 3 - puzzle data
+; when paged into section a, this would be offset 0x0000
+; question - do we need any code in this page? maybe something like puzzle_init could just live here too.
 INCLUDE "puzzles.z80"
 DEFB 0
 
