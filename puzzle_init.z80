@@ -71,6 +71,14 @@ render_puzzle_tiles:
 
 
 memcpy_level_data:
+                ; first, page in the puzzle data into LMPR
+                ; (make a backup of the old lmpr - use stack)
+                in a, (LMPR)
+                push af
+                ld a, 3+32
+                out (LMPR), a
+
+
                 ; compute level index (from level:major:minor)
                 ; each level_number from i=0..7 contributes i sets of 4 problems
                 ; within which, major points to a set of 4 problems, and minor points to a level within that set of 4 problems
@@ -100,21 +108,17 @@ memcpy_level_data:
                 add b
 
                 ; on entry, a = which level
-                add a, a ; pointers are two bytes, so need offset*2 into the index
-                ld hl, PUZZLEDATA_INDEX
-                add a, l
-                ld l, a
-                jr nc, @ok
-                inc h ; carry
-        @ok:
+                ; LEVEL DATA IS EXACTLY 128 BYTES
+                ASSERT PUZZLEDATA_START==0
+                ld l, 0
+                and a
+                rra
+                rr l
+                ld h, a
+
                 ; To save space, the levels are (slightly) compressed
                 ; Our grid in game state is 16x12 but our level data is just 10x12
                 ; so just copy 10 bytes, 12 times
-                ; TODO more compression but only if necessary
-                ld a, (hl)
-                inc hl
-                ld h, (hl)
-                ld l, a
                 ld de, tiles
                 ld a, 12 ; count number of rows
             @next:
@@ -131,6 +135,10 @@ memcpy_level_data:
                 ; finally copy the remaining pieces
                 ld bc, puzzle_copy_len - 16*12
                 ldir
+
+                ; finally page out the LMPR (revert to what it was before)
+                pop af  ; lmpr backup
+                out (LMPR), a
                 ret
 
 

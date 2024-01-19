@@ -9,8 +9,8 @@ ASSERT $ <= 65535
 ; DS ALIGN 16384 will get us to the start of page 3
 ; 
 DS ALIGN 16384
-; page 3 - not yet used.
-; puzzle data? spare (per-puzzle) bricks?
+; page 3 - puzzle data
+INCLUDE "puzzles.z80"
 DEFB 0
 
 DS ALIGN 16384
@@ -19,7 +19,7 @@ DS ALIGN 16384
 DEFB 0
 
 DS ALIGN 16384
-; page 6 - not yet used.
+; page 5 - not yet used.
 ; level select mechanism, menu system, high score table?
 DEFB 0
 
@@ -28,7 +28,7 @@ DS ALIGN 16384
 DEFB 0
 
 DS ALIGN 16384
-; page 6 - not yet used.
+; page 7 - not yet used.
 DEFB 0
 
 DS ALIGN 16384
