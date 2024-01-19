@@ -2,14 +2,53 @@
 ; laying out code that will be loaded into address 32768 onwards.
 
 org 32768   ; Org to same address.  No clever paging needed here.
-INCLUDE "first.z80"
+
+; page 1 - main game
+; (TODO page 1 will probably be splash / main menu / level select / etc)
+; but for now 'start game immediately and play level 1' is hardcoded
+INCLUDE "init.z80"
+INCLUDE "level.z80"
+INCLUDE "match.z80"
+INCLUDE "input.z80"
+INCLUDE "input_raw.z80"
+INCLUDE "draw.z80"
+INCLUDE "game_state.z80"
+INCLUDE "clock.z80"
+INCLUDE "vsync_utils.z80"
+INCLUDE "slider.z80"
+INCLUDE "cursor.z80"
+INCLUDE "music.z80"
+INCLUDE "sfx.z80"
+INCLUDE "dirty_tiles.z80"
+INCLUDE "falling.z80"
+INCLUDE "score.z80"
+INCLUDE "bonus.z80"
+INCLUDE "remaining.z80"
+INCLUDE "puzzle_init.z80"
+INCLUDE "clear.z80"
+INCLUDE "text.z80"
+INCLUDE "game_loop.z80"
+INCLUDE "glint.z80"
+INCLUDE "random.z80"
+
+IF DEBUG==1
+INCLUDE "debug.z80"
+ENDIF
+
+INCLUDE "palette.z80"
+INCLUDE "bitmaps.z80"
+INCLUDE "text_bitmaps.z80"
+INCLUDE "bonus_bitmaps.z80"
+
+bitmap_end: defb 0 ; help understand where bitmaps end in .map file
 
 ; we would have already assembled first/main/everything into pages 1 and 2
 ; so we're probably around the top of page 2 now
 ; ORG was 0x8000 so around the top of page 2 we're close to 0xFFFF
 ; check that we haven't accidentally wrapped to around 0x0000!
-ASSERT $ > 32768
-ASSERT $ <= 65535
+; but also check that we're indeed at the end of page 2 and NOT somewhere need just the end of page 1
+ASSERT $ > 32768 ; obv. we're beyond the start of page 1 - UNLESS WE WRAPPED (bad)
+ASSERT $ > 49152 ; we expect to be well into page 2 too
 
 ; DS ALIGN 16384 will get us to the start of page 3
 ; 

@@ -1,4 +1,8 @@
 dump 1,0    ; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
 autoexec    ; Set to automatically load and call when sent to SimCoupé
 
+INCLUDE "DEBUG_DEFS.z80"
+INCLUDE "consts.z80"
+INCLUDE "SAM_IO_defs.z80"
+
 INCLUDE "memory_layout.z80"

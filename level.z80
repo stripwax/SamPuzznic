@@ -1,35 +1,4 @@
-INCLUDE "DEBUG_DEFS.z80"
-INCLUDE "consts.z80"
-INCLUDE "SAM_IO_defs.z80"
-
-init:
-				di
-    @set_low_page:
-				ld a,8+32						; Set low pages as screen buffer, with ROM paged out
-				out (LMPR),a                     ; LMPR - pages A and B of address space
-                ld a, 8+96                      ; Set video output to same pages as above, with mode 4
-				out (VMPR),a                     ; VMPR - mapped to video output - same as above
-    @set_palette:
-                ld hl, palette_bottom+15
-                ld bc, 16*256+248
-                otdr
-    @enable_video:
-                ld a, %00100111 ; DARK BLUE border, screen enabled
-                out (BORDER),a
-	@set_stack:
-				ld sp,stack						; Use our own stack, point to below bottom of stack
-    @go:
-				jp main
-    
-    @stack_space:
-                defs 64
-
-stack:
-        ; point past stack space
-
-
-
-main:
+play_game:
                 ; start of game.  initialize score to zero; of course only do this once!
                 ; wait loop for setting breakpoints in simice
                 IF DEBUG==1
@@ -105,38 +74,3 @@ main:
     @you_died:
                 ; TODO!
                 jp @-you_died
-
-
-INCLUDE "match.z80"
-INCLUDE "input.z80"
-INCLUDE "input_raw.z80"
-INCLUDE "draw.z80"
-INCLUDE "game_state.z80"
-INCLUDE "clock.z80"
-INCLUDE "vsync_utils.z80"
-INCLUDE "slider.z80"
-INCLUDE "cursor.z80"
-INCLUDE "music.z80"
-INCLUDE "sfx.z80"
-INCLUDE "dirty_tiles.z80"
-INCLUDE "falling.z80"
-INCLUDE "score.z80"
-INCLUDE "bonus.z80"
-INCLUDE "remaining.z80"
-INCLUDE "puzzle_init.z80"
-INCLUDE "clear.z80"
-INCLUDE "text.z80"
-INCLUDE "game_loop.z80"
-INCLUDE "glint.z80"
-INCLUDE "random.z80"
-
-IF DEBUG==1
-INCLUDE "debug.z80"
-ENDIF
-
-INCLUDE "palette.z80"
-INCLUDE "bitmaps.z80"
-INCLUDE "text_bitmaps.z80"
-INCLUDE "bonus_bitmaps.z80"
-
-bitmap_end: defb 0 ; help understand where bitmaps end in .map file

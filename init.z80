@@ -1,0 +1,28 @@
+
+init:
+				di
+    @set_low_page:
+				ld a,8+32						; Set low pages as screen buffer, with ROM paged out
+				out (LMPR),a                     ; LMPR - pages A and B of address space
+                ld a, 8+96                      ; Set video output to same pages as above, with mode 4
+				out (VMPR),a                     ; VMPR - mapped to video output - same as above
+    @set_palette:
+                ld hl, palette_bottom+15
+                ld bc, 16*256+248
+                otdr
+    @enable_video:
+                ld a, %00100111 ; DARK BLUE border, screen enabled
+                out (BORDER),a
+	@set_stack:
+				ld sp,stack						; Use our own stack, point to below bottom of stack
+    @go:
+                ; TODO FIXME - obviously this should be splash screen, level select, etc
+				jp play_game
+    
+    @stack_space:
+                defs 64
+
+stack:
+        ; point past stack space
+
+
