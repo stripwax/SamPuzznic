@@ -155,8 +155,6 @@ update_game_state:
                 ; this will call decrement on remaining blocks upon completion, and trigger a redraw of remaining tiles
                 call check_final_steps_after_destruct
 
-                call check_falling_tiles_queue
-
                 IF DEBUG_VSYNC
                     ld a, 33
                     out (BORDER), a
@@ -188,6 +186,8 @@ update_game_state:
                     out (BORDER), a
                 ENDIF
                 call update_cursor_position
+
+                call check_falling_tiles_queue
 
                 IF DEBUG_VSYNC
                     ld a, 35
