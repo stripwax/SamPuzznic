@@ -1,4 +1,9 @@
-; (based on the import order)
+; we put the DUMP instruction in main.z80 but basically we're
+; laying out code that will be loaded into address 32768 onwards.
+
+org 32768   ; Org to same address.  No clever paging needed here.
+INCLUDE "first.z80"
+
 ; we would have already assembled first/main/everything into pages 1 and 2
 ; so we're probably around the top of page 2 now
 ; ORG was 0x8000 so around the top of page 2 we're close to 0xFFFF

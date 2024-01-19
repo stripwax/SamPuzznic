@@ -2,10 +2,6 @@ INCLUDE "DEBUG_DEFS.z80"
 INCLUDE "consts.z80"
 INCLUDE "SAM_IO_defs.z80"
 
-dump 1,0    ; Dump objectcode to Page 1 with no offset, ie 32768 in BASIC's terminology
-autoexec    ; Set to automatically load and call when sent to SimCoupé
-org 32768   ; Org to same address.  No clever paging needed here.
-
 init:
 				di
     @set_low_page:
@@ -143,6 +139,4 @@ INCLUDE "bitmaps.z80"
 INCLUDE "text_bitmaps.z80"
 INCLUDE "bonus_bitmaps.z80"
 
-mmap_end: defb 0 ; help understand where bitmaps end in .map file
-
-INCLUDE "next_page.z80"
+bitmap_end: defb 0 ; help understand where bitmaps end in .map file

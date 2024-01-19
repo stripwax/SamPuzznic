@@ -69,7 +69,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 
 # To build
 I use VSCode with pyz80 extension: https://marketplace.visualstudio.com/items?itemName=simonowen.pyz80
-Using the default settings, you can launch SimCoupe by opening first.z80 in VSCode and pressing Ctrl+F10 
+The main file to build is "main.z80".
+Using the default settings, you can assemble+launch SimCoupe by opening main.z80 in VSCode and pressing Ctrl+F10 
 
 # Thanks
 * Simon Owen
