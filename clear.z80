@@ -50,8 +50,18 @@ check_clear:
                 ; kill sfx
                 call sfx_kill
 
+                ;   CLEAR !!
+                ;   
+                ;    BONUS
+                ;    
+                ;   nnnn PTS
+                ;
+                ;  0'36" x 100
+                ;
+                ;   mmmm PTS
+
                 ld hl, message.CLEAR
-                ld de, 128*CLEAR_Y_OFFSET + GRID_X_OFFSET + 6*4
+                ld de, 128*CLEAR_Y_OFFSET + GRID_X_OFFSET + 4*4
                 ld c, 0x11  ;  WHITE
                 call print_text_hl_de
 
@@ -59,23 +69,27 @@ check_clear:
                 call wait_b
 
                 ld hl, message.BONUS
-                ld de, 128*CLEAR_Y_OFFSET + 16*128 + GRID_X_OFFSET + 7*4
+                ld de, 128*CLEAR_Y_OFFSET + 16*128 + GRID_X_OFFSET + 5*4
                 ld c, 0x99  ;  YELLOW
                 call print_text_hl_de
 
                 ld b, FPS/2
                 call wait_b
 
+                ; TODO technically this should right-aligned not left-aligned so we
+                ; (aligning on the PTS, where the S should be under the last ! of "CLEAR !!")
+                ; need to do some rejigging based on the length of the score string
                 ld hl, message.FAKE_CLEAR_BONUS_POINTS
-                ld de, 128*CLEAR_Y_OFFSET + 32*128 + GRID_X_OFFSET + 5*4
+                ld de, 128*CLEAR_Y_OFFSET + 32*128 + GRID_X_OFFSET + 4*4
                 ld c, 0x99  ;  YELLOW
                 call print_text_hl_de
 
                 ld b, FPS/2
                 call wait_b
 
+                ; TODO same right-alignment required here.
                 ld hl, message.FAKE_TIME_BONUS_POINTS
-                ld de, 128*CLEAR_Y_OFFSET + 48*128 + GRID_X_OFFSET + 5*4
+                ld de, 128*CLEAR_Y_OFFSET + 48*128 + GRID_X_OFFSET + 3*4
                 ld c, 0x11  ;  WHITE
                 call print_text_hl_de
 
