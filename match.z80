@@ -578,15 +578,26 @@ render_destruct:
                 ret
 
     check_final_steps_after_destruct:
+                ; figure out the very last bits of state changing that happens
+                ; at the end of a successful destruction sequence
+                ; In particular
+                ;  (1) updating the score
+                ;  (2) stopping the destruction sequence (because it's finished)
                 ld a, (destruct_frame)
-                cp 61 ; after A=61 (frame 60 completed)
-                ret nz
+                cp 60 ; A=60 (frame 59 done, frame 60 not yet rendered)
+                jr z, @+frame_60
+                cp 61 ; A=60 (frame 60 done, so finish up everything)
+                jr z, @+after_frame_60
+                ret
 
+        @frame_60:
                 ; on frame 60 - final steps (6, 6b, 7, 8)
                 ; we add the score
                 ld bc, (bonus_score)
                 call add_score
+                ret
 
+        @after_frame_60:
                 ; disable the destruct animation
                 ; that's finished playing out now (although a bonus overlay
                 ; might still be happening, but that's a separate routine)
@@ -645,9 +656,6 @@ render_destruct:
                 ; mark this xy as dirty (to redraw this xy as blank)
                 push hl
                 call push_dirty_tile
-                ; TODO FIXME this means we actually need to update again the dirty bitmaps
-                ; list after calling this render routine - seems wrong.  we've got the state
-                ; changes and the rendering interleaved still above.  :-( 
                 pop hl
 
                 ; (if any of the tiles being matched are actually the one the cursor

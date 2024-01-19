@@ -138,29 +138,21 @@ update_game_state:
                 ; very little to do if the level is clear - just play out animations
 
                 IF DEBUG_VSYNC
-                    ld a, 4
-                    out (BORDER), a
-                ENDIF
-                call move_tile
-
-                IF DEBUG_VSYNC
                     ld a, 5
                     out (BORDER), a
                 ENDIF
                 call slider_tile_detect
 
                 IF DEBUG_VSYNC
-                    ld a, 6
-                    out (BORDER), a
-                ENDIF
-                call fall_tile_detect
-                
-                IF DEBUG_VSYNC
                     ld a, 7
                     out (BORDER), a
                 ENDIF
                 call slider_update
 
+                ; if a match destruction sequence has just finished (so last frame was rendered
+                ; at the end of the PRIOR iteration of game loop draw) then finish up the state changes
+                ; - in particular, things like adding on the final amount of bonus score to the player score
+                ; this will call decrement on remaining blocks upon completion, and trigger a redraw of remaining tiles
                 call check_final_steps_after_destruct
 
                 call check_falling_tiles_queue
@@ -249,7 +241,7 @@ draw_everything:
                     ld a, 2
                     out (BORDER), a
                 ENDIF
-                call render_destruct ; this will call decrement on remaining blocks upon completion
+                call render_destruct
 
                 IF DEBUG_VSYNC
                     ld a, 7
@@ -272,15 +264,6 @@ draw_everything:
                 ret
 
                 
-; These are anticipatory, maybe we don't need them (or maybe we cannot disentangle
-; them from their current implementation; and maybe we don't need to)
-move_tile:
-                ; 
-                ret
-
-fall_tile_detect:
-                ret
-
 ; We might need this for performance, so that we render tiles from top-to-bottom,
 ; staying ahead of the raster at all times. (or staying behind the raster - whichever
 ; works out better, and we'll probably know once we have ticking clock graphics and
