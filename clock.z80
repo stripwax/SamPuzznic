@@ -38,20 +38,10 @@ draw_clock:
         @_draw_clock_main:
                 ; minutes
                 ld a, (clock_min_bcd)
-                ; top minute decimal
-                ; can we skip it? any puzzles with a time limit > 9:59 ?
-                and 240
-                rrca
-                rrca
-                rrca
-                rrca
-                ld de, CLOCK_Y_OFFSET*128 ; y*128+(x/2)
-                push bc ; color
-                call fatnum_digit_a_variant_c_xy_de
-                ; bottom minute decimal
-                ld a, (clock_min_bcd)
+                ; top minute decimal is ignored
                 and 15
-                ld de, CLOCK_Y_OFFSET*128 + 8
+                push bc ; color
+                ld de, CLOCK_Y_OFFSET*128
                 pop bc ; color
                 push bc ; color
                 call fatnum_digit_a_variant_c_xy_de
@@ -64,14 +54,14 @@ draw_clock:
                 rrca
                 rrca
                 rrca
-                ld de, CLOCK_Y_OFFSET*128 + 20 ; y*128+(x/2)
+                ld de, CLOCK_Y_OFFSET*128 + 12 ; y*128+(x/2)
                 pop bc ; color
                 push bc ; color
                 call fatnum_digit_a_variant_c_xy_de
                 ; bottom second decimal
                 ld a, (clock_sec_bcd)
                 and 15
-                ld de, CLOCK_Y_OFFSET*128 + 28 ; y*128+(x/2)
+                ld de, CLOCK_Y_OFFSET*128 + 20 ; y*128+(x/2)
                 pop bc ; color
                 call fatnum_digit_a_variant_c_xy_de ; TODO optimize maybe JP rather than call+ret?
                 ret
