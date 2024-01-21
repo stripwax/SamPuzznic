@@ -52,9 +52,6 @@
 ; pixel in the way will prevent the slider from moving (because slider-then-falling)?
 
 
-slider_tile_detect:
-                ret
-
 @temp: defb 0
 slider_moved_this_frame: defb 0
 screen_y_top_of_slider_tile: defw 0
@@ -216,9 +213,37 @@ init_slider_stack:
                 ; at the start of the level, the slider might already
                 ; have some tiles on top of it
                 ; so, initialize those now
-                ; JUST TO BE CLEAR: the height of 1 is fake for now.
-                ; Normally you would init to zero.
-                ld a, 1
+                ld a, (slider_info)
+                and a
+                ret z ; no slider info, nothing to do
+                
+                ld a, (slider_xy)
+                sub 16 ; start counting up from the row above the slider block
+                ld l, a
+                ld h, tiles/256
+                ld b, 0 ; stack height
+        @_more_above:
+                ld a, (hl)
+                cp NUM_NON_TILES
+                ; do nothing if this is not a (moveable) tile
+                jr c, @+done_counting_slider_stack
+
+                ; this is a (moveable) tile
+                ; not only do we add it to our slider stack (count)
+                ; we also mark the tile as sliding
+                dec h ; point to flags
+                ld a, (hl)
+                or IS_SLIDER_MASK
+                ld (hl), a
+                inc h ; back to tiles
+                inc b ; count the slider stack (taller by 1)
+                ld a, l
+                sub 16 ; move up to the row above it and keep checking
+                ld l, a
+                jp @-_more_above
+
+        @done_counting_slider_stack:
+                ld a, b
                 ld (slider_stack_height), a
                 ret
 

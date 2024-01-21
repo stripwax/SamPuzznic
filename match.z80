@@ -648,9 +648,10 @@ render_destruct:
                 cp 255
                 jr z, @+END_THIS_MATCH
                 ld l, a
-                ld (hl), 0 ; set tile to blank
+                xor a
+                ld (hl), a ; set tile to blank
                 dec h ; point to flags
-                ld (hl), 0 ; set flags to zero
+                ld (hl), a ; set flags to zero
                 inc h ; point back to tiles
 
                 ; mark this xy as dirty (to redraw this xy as blank)
@@ -692,6 +693,11 @@ render_destruct:
                 ; done with final sequence
                 ; anything falling? if so, controller is still locked!!!
                 ; we check that later, after checking the falling tiles queue
+                ; BUT last thing we should do is recalculate the stack on top of the slider
+                ; (because some of the above matched tiles might have been on the slider)
+                ; We have at this point zero'd out those tiles, so it
+                ; should be easy enough just to recalculate the slider stack 'from first principles'
+                call init_slider_stack
                 ret
 
 
