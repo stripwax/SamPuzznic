@@ -171,10 +171,8 @@ falling_rects_to_clear: defs 80
 falling_rects_to_clear_tail: defw falling_rects_to_clear
 
 update_falling_tiles:
-
-draw_falling_tiles:
                 ; step through list of falling tiles (x,y) coords
-                ; and erase (redraw) tile rects
+                ; and update the falling state / land them on solid blocks / land them on sliders
                 ld hl, falling_tiles
     @keep_seeing_if_any_found:
                 ld a, (hl)
@@ -266,7 +264,9 @@ draw_falling_tiles:
                 ; falling_tiles into separate update and draw steps)
                 push bc
                 call grid_xy_in_C_to_screen_de
-                call fillrect_16x16_black_at_de
+                push hl
+                call defer_fillrect_16x16_black_at_de
+                pop hl
                 pop bc
 
                 ; and update the stack
@@ -291,7 +291,7 @@ draw_falling_tiles:
                 if DEBUG
                 ; assert that the 'falling' bit is actually set
                 ; because we have had bugs here
-                bit 4, a
+                bit IS_FALLING_BIT, a
                 call z, fatal
                 ENDIF
 
@@ -306,7 +306,9 @@ draw_falling_tiles:
                 rra ; a = (y & 14) * 128 . really just srl a but rra is cheaper when carry is clear
                 add d
                 ld d, a
-                call fillrect_16x2_black_at_de
+                push hl
+                call defer_fillrect_16x16_black_at_de
+                pop hl
                 pop bc
                 pop de
 
@@ -421,7 +423,7 @@ draw_falling_tiles:
                 ENDIF
 
                 ld (bc), a
-                call draw_tile_at_de_tile_a
+                call defer_draw_tile_at_de_tile_a
                 pop hl
                 ; 2b. update the y coord of the falling info to point to this new y coord
                 ; should actually mark this entry as dead (after checking if it has finish falling)
@@ -482,7 +484,9 @@ draw_falling_tiles:
                 push de
                 push bc
                 push af
-                call fillrect_16x16_black_at_de
+                push hl
+                call defer_fillrect_16x16_black_at_de
+                pop hl
                 pop af
                 pop bc
                 pop de
@@ -511,7 +515,7 @@ draw_falling_tiles:
 
                 inc b
                 ld (bc), a
-                call draw_tile_at_de_tile_a
+                call defer_draw_tile_at_de_tile_a
 
                 ; update the slider stack FIXME this feels like it's in totally the wrong place
                 ld hl, slider_stack_height
@@ -552,7 +556,7 @@ draw_falling_tiles:
                 ENDIF
 
                 ld (bc), a
-                call draw_tile_at_de_tile_a
+                call defer_draw_tile_at_de_tile_a
                 pop hl
                 ; no longer falling, mark entry as dead
                 ld a, DEAD_ENTRY
@@ -591,7 +595,7 @@ draw_falling_tiles:
                 call z, fatal
                 ENDIF
 
-                call draw_tile_at_de_tile_a
+                call defer_draw_tile_at_de_tile_a
                 pop hl
                 inc hl ; point to next entry in falling tiles for @next loop
                 jp @-next

@@ -143,6 +143,17 @@ box_at_hl:
                 ld (hl), a
                 ret
 
+defer_fillrect_16x2_black_at_de:
+                ; see comment below, and this is even worse in terms of efficiency
+                ; because this just blacks out 16x16 instead of 16x2
+                ; (fall through to the same fn as below)
+defer_fillrect_16x16_black_at_de:
+                ; it's sortof fine for now because the blank tile IS the black 16x16
+                ; but this disregards alignment e.g. background images TODO
+                ; also, it's less efficient than the old plain black 16x16
+                xor a ; get the 'blank' tile
+                jp defer_draw_tile_at_de_tile_a
+
 ; TODO
 ; need a vertical slice, horizontal slice, and full 16x16 rect fill
 ; vertical slice is for horizontal sliders;
@@ -266,6 +277,21 @@ fillrect_16x16_de_colorbyte_a:
                 djnz @-odds
                 ret
 
+defer_draw_tile_at_de_tile_a:
+                ; Adds this tile to the draw_list to draw (in the draw routine)
+                ; modifies de, hl, bc
+                ; on entry, de = screen buffer topleft corner of tile destination
+                ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
+                ; w.r.t tile_bitmaps
+
+                ; multiply a by 128 to get offset into bitmap data
+                ld c, 0
+                sra a ; shift lowest bit of A into CARRY
+                rr c ; shift CARRY into c
+                add a, tiles_bitmaps/256
+                ld b,a
+                call push_draw_list_bc_de
+                ret
 
 draw_tile_at_de_tile_a:
                 ; modifies de, hl, bc

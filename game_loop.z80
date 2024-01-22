@@ -137,18 +137,6 @@ update_game_state:
                 ret z
                 ; very little to do if the level is clear - just play out animations
 
-                IF DEBUG_VSYNC
-                    ld a, 5
-                    out (BORDER), a
-                ENDIF
-                call slider_tile_detect
-
-                IF DEBUG_VSYNC
-                    ld a, 7
-                    out (BORDER), a
-                ENDIF
-                call slider_update
-
                 ; if a match destruction sequence has just finished (so last frame was rendered
                 ; at the end of the PRIOR iteration of game loop draw) then finish up the state changes
                 ; - in particular, things like adding on the final amount of bonus score to the player score
@@ -174,10 +162,20 @@ update_game_state:
                 call check_clock_game_over
 
                 IF DEBUG_VSYNC
-                    ld a, 36
+                    ld a, 7
                     out (BORDER), a
                 ENDIF
-                call sort_by_y
+                call slider_update
+
+                call check_falling_tiles_queue
+
+                ; moves the tiles that were already falling.
+                ; note that update_cursor_position can cause a tile to push into 'midair',
+                ; but it won't be tagged as falling yet, so that it gets one frame
+                ; 'suspended in mid air' (per original game).  the 'is it falling'
+                ; logic will catch up with it for the next frame - that's what
+                ; check_falling_tiles_queue does
+                call update_falling_tiles
 
                 ; update cursor position - must do this before redrawing dirty tiles
                 ; (since moving the cursor can make tiles dirty)
@@ -186,8 +184,6 @@ update_game_state:
                     out (BORDER), a
                 ENDIF
                 call update_cursor_position
-
-                call check_falling_tiles_queue
 
                 IF DEBUG_VSYNC
                     ld a, 35
@@ -227,15 +223,15 @@ draw_everything:
                     ld a, 39
                     out (BORDER), a
                 ENDIF
-                call render_draw_list ; static tiles that have been drawn over in previous frame and need to be redrawn cleanly now
+                ; static tiles that have been drawn over in previous frame and need to be redrawn cleanly now
+                ; also, falling tiles, which have already been added to the draw_list (via update_falling_tiles)
+                call render_draw_list
 
                 IF DEBUG_VSYNC
                     ld a, 1
                     out (BORDER), a
                 ENDIF
                 call draw_sliders ; the sliding block and the stack of blocks on top of it!
-
-                call draw_falling_tiles ; all non-static tiles i.e. things in motion (but not the things on top of a slider)
 
                 IF DEBUG_VSYNC
                     ld a, 2

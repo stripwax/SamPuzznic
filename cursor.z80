@@ -345,8 +345,7 @@ update_cursor_position:
                 ; Now for the movement (i.e. push left / push right)
                 ; There are a lot of cases to consider here
                 ; TODO optimise.  We should be able to make determination here pretty
-                ; quickly, and right know there's quite a lot of back-and-forth
-                ; and repeated multiplying-by-12 steps going on.
+                ; quickly, and right now there's quite a lot of back-and-forth
 
                 ; 1. determine if there is a (movable) tile at current position
                 ; (first get current position)
@@ -432,7 +431,7 @@ update_cursor_position:
                 inc h ; (point back to tiles data)
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit, a
-                jr z, @+check_push_right ; no
+                jp z, @+check_push_right ; no
 
                 ; yes, left was pressed (with fire)
                 push hl ; todo optimize this away
@@ -454,18 +453,18 @@ update_cursor_position:
                 and a ; check if it is zero.  you can only push a tile into zero
                 ret nz
                 ; yet another edge case - even if this space is zero now, if there's something
-                ; ABOVE it, that is falling INTO this space already, we can't move into it now.
+                ; ABOVE it, that is partially obstructing and falling INTO this space already, we can't move into it now.
                 ld a, l
                 sub 16
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                ; is it falling or slider? if so, we can't move into that space
+                ; is it falling or slider? if so, if it's already partially obstructing the space, we can't move into that space
                 bit IS_FALLING_BIT, a
                 ret nz
                 bit IS_SLIDER_BIT, a
                 jr z, @+done_checking_slider
-                ; urgh, we also have to check the slider y offset.  if it's zero, then we're actually
+                ; we also have to check the slider y offset.  if it's zero, then we're actually
                 ; fine to move into this space, because the slider is at a grid-aligned coordinate and
                 ; there's enough space to sneak in under it.
                 and 15 ; get the y-coordinate-offset of the slider
@@ -485,46 +484,9 @@ update_cursor_position:
                 ld (hl), a
                 inc l
                 ld (hl), 0
-                ; SLIDER - if this tile WAS in the slider stack, then we also need to
-                ; clear the 'is_slider' bit from the old position, and reduce the height of
-                ; the slider stack (to equal the remaining height of all tiles STRICTLY BELOW
-                ; this one), and clear the 'is_slider bit from all the tiles strictly above us
-                ; in the slider stack.
-                dec h ; point to flags
-                ld a, (hl)
-                and IS_SLIDER_MASK
-                jr z, @+done_checking_slider
-                ; clear the slider flag (in fact clear all flags, that old position is now empty)
-                ; clear the flags above us too, and call 'check falling tile' on those
-                push hl ; let's remember where we started
-        @next:
-                xor a
-                ld (hl), a
-                ld a, l
-                sub 16
-                ld l, a
-                ld a, (hl)
-                and IS_SLIDER_MASK
-                jr nz, @-next
-        @finished_clearing_flags_for_slider_stack:
-                ; now work out new height of the slider stack
-                ; get y-coord of slider and subtract y-coord of this tile
-                pop hl
-                ld a, l
-                srl a
-                srl a
-                srl a
-                srl a ; get y-coord only into a
-                ld b, a
-                ld a, (slider_xy)
-                srl a
-                srl a
-                srl a
-                srl a ; get y-coord only into a
-                sub b
-                dec a ; subtract one because we have removed a tile from the stack
-                ld (slider_stack_height), a
-        @done_checking_slider:
+
+                call @check_adjust_slider_for_moved_tile_in_stack
+
                 inc h ; point back to tiles
                 ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
@@ -581,9 +543,19 @@ update_cursor_position:
                 ld l, a
                 dec h ; (point to tiles_flags)
                 ld a, (hl)
-                ; bit 4 set -> tile at that location is falling
-                bit 4, a
+                ; is it falling or slider? if so, if it's already partially obstructing the space, we can't move into that space
+                bit IS_FALLING_BIT, a
                 ret nz
+                bit IS_SLIDER_BIT, a
+                jr z, @+done_checking_slider
+                ; we also have to check the slider y offset.  if it's zero, then we're actually
+                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
+                ; there's enough space to sneak in under it.
+                and 15 ; get the y-coordinate-offset of the slider
+                ret nz ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
+                       ; where we want to move our tile))
+
+        @done_checking_slider:
                 ; all good, we can move there
                 ; copy old tile to new place
                 inc h ; (point back to tiles)
@@ -592,12 +564,15 @@ update_cursor_position:
                            ; maybe we just keep a backup of this in a spare register
                 ld l, a
                 ld a, (hl)
-                inc l
+                inc l ; go right
                 ld (hl), a
                 dec l
                 ld (hl), 0
-                ; TODO MAKE A QUEUE OF TILES TO CHECK, LATER? RATHER THAN IN THE MOVE HANDLER
-                ; check if the one ABOVE us in the OLD location is now falling
+
+                call @check_adjust_slider_for_moved_tile_in_stack
+
+                inc h ; point back to tiles
+                ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 16
                 ld l, a
@@ -638,4 +613,61 @@ lock_controller:
 unlock_controller:
                 xor a
                 ld (controller_flags_disabled), a
+                ret
+
+@check_adjust_slider_for_moved_tile_in_stack:
+                ; SLIDER - if this tile WAS in the slider stack, then we also need to
+                ; clear the 'is_slider' bit from the old position, and reduce the height of
+                ; the slider stack (to equal the remaining height of all tiles STRICTLY BELOW
+                ; this one), and clear the 'is_slider bit from all the tiles strictly above us
+                ; in the slider stack.
+                dec h ; point to flags
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                ret z
+
+                ; clear the slider flag (in fact clear all flags, that old position is now empty)
+                ; clear the flags above us too, and call 'check falling tile' on those
+                push hl ; let's remember where we started
+        @next:
+                xor a
+                ld (hl), a
+                ld a, l
+                sub 16
+                ld l, a
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                jr nz, @-next
+        @finished_clearing_flags_for_slider_stack:
+                ; now work out new height of the slider stack
+                ; get y-coord of slider and subtract y-coord of this tile
+                pop hl
+                ld a, l
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca ; get y-coord only into a
+                ld b, a
+                ld a, (slider_xy)
+                and 240
+                rrca
+                rrca
+                rrca
+                rrca ; get y-coord only into a
+                sub b
+                dec a ; subtract one because we have removed a tile from the stack
+                ld (slider_stack_height), a
+
+                ; since the tile WAS in the slider (which is a thing that moves), the location of the tile
+                ; is somewhere between it xy position and the next xy position (true for both vert and horiz sliders)
+                ; because the tile was at a slider (intermediate) position, the regular push_dirty_tile
+                ; won't quite do what we want (because it checks the tile/flags/etc at render time, by which
+                ; time there WON'T be a tile there, because that's the tile we moved out of the stack)
+                ; So as a special case, clear the rect where the tile WAS.
+                push hl ; TODO optimize out the push/pop here
+                ld c, l
+                call grid_xy_in_C_to_screen_de
+                call defer_fillrect_16x16_black_at_de
+                pop hl
                 ret
