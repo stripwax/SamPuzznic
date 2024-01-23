@@ -483,12 +483,45 @@ update_cursor_position:
                 ld a, (hl)
                 dec l ; go left
                 ld (hl), a
-                inc l
+                inc l ; go right
                 ld (hl), 0
 
-                call @check_adjust_slider_for_moved_tile_in_stack
+                dec h
+                ; we're now pointing at the 'old' flags.
+                ; This contains the Y-offset if tile was sliding/falling
+                ; so blank out this old location (whatever it was)
+                ; before clearing the flags
+                push hl ; TODO optimize out the push/pop here
+                push de
+                ld c, l
+                call grid_xy_in_C_to_screen_de
+                ld a, (hl)
+                and IS_FALLING_MASK + IS_SLIDER_MASK
+                jr z, @+no_yoffset
+                ld a, (hl)
+                and 15
+                rra
+                jr nc, @+no_carry
+                set 7, e
+        @no_carry:
+                add d
+                ld d, a
+        @no_yoffset:
+                call defer_fillrect_16x16_black_at_de
+                pop de
+                pop hl
 
                 inc h ; point back to tiles
+                push hl ; TODO optimize out the push/pop here
+                call @check_adjust_slider_for_moved_tile_in_stack
+                pop hl
+
+                ; finally, clear old flags
+                ; (we can't do that before the above call, because it needs to check if the flag was set)
+                dec h
+                ld (hl), 0
+                inc h
+
                 ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 16
@@ -568,12 +601,45 @@ update_cursor_position:
                 ld a, (hl)
                 inc l ; go right
                 ld (hl), a
-                dec l
+                dec l ; go left
                 ld (hl), 0
 
-                call @check_adjust_slider_for_moved_tile_in_stack
+                dec h
+                ; we're now pointing at the 'old' flags.
+                ; This contains the Y-offset if tile was sliding/falling
+                ; so blank out this old location (whatever it was)
+                ; before clearing the flags
+                push hl ; TODO optimize out the push/pop here
+                push de
+                ld c, l
+                call grid_xy_in_C_to_screen_de
+                ld a, (hl)
+                and IS_FALLING_MASK + IS_SLIDER_MASK
+                jr z, @+no_yoffset
+                ld a, (hl)
+                and 15
+                rra
+                jr nc, @+no_carry
+                set 7, e
+        @no_carry:
+                add d
+                ld d, a
+        @no_yoffset:
+                call defer_fillrect_16x16_black_at_de
+                pop de
+                pop hl
 
                 inc h ; point back to tiles
+                push hl
+                call @check_adjust_slider_for_moved_tile_in_stack
+                pop hl
+
+                ; finally, clear old flags
+                ; (we can't do that before the above call, because it needs to check if the flag was set)
+                dec h
+                ld (hl), 0
+                inc h
+
                 ; add a check to see if the one ABOVE us in the OLD location is now falling
                 ld a, l
                 sub 16
@@ -660,16 +726,4 @@ unlock_controller:
                 sub b
                 dec a ; subtract one because we have removed a tile from the stack
                 ld (slider_stack_height), a
-
-                ; since the tile WAS in the slider (which is a thing that moves), the location of the tile
-                ; is somewhere between it xy position and the next xy position (true for both vert and horiz sliders)
-                ; because the tile was at a slider (intermediate) position, the regular push_dirty_tile
-                ; won't quite do what we want (because it checks the tile/flags/etc at render time, by which
-                ; time there WON'T be a tile there, because that's the tile we moved out of the stack)
-                ; So as a special case, clear the rect where the tile WAS.
-                push hl ; TODO optimize out the push/pop here
-                ld c, l
-                call grid_xy_in_C_to_screen_de
-                call defer_fillrect_16x16_black_at_de
-                pop hl
                 ret

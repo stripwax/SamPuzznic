@@ -322,7 +322,7 @@ update_falling_tiles:
                 add d
                 ld d, a
                 push hl
-                call defer_fillrect_16x16_black_at_de
+                call defer_fillrect_16x16_black_at_de  ; TODO FIXME use 16x2 not 16x16
                 pop hl
                 pop bc
                 pop de
