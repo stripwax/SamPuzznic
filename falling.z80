@@ -70,6 +70,12 @@ check_falling_tile_hl:
                 ;         then allow the tile to fall.  We will probably end up
                 ;         calling this same routine again later.
                 ;
+
+                ; first checks - is this even a tile?  if not (weird), do nothing
+                ld a, (hl)
+                cp NUM_NON_TILES
+                ret c
+                
                 ; 1. look one row below
                 ld a, l
                 add 16
@@ -106,7 +112,7 @@ check_falling_tile_hl:
                 ld a, l
                 sub 16
                 ld l, a
-                ld a, IS_SLIDER_BIT + 0 ; 0 y offset
+                ld a, IS_SLIDER_MASK + 0 ; 0 y offset
                 ld h, tiles_flags/256
                 ld (hl), a
                 ld a, (slider_stack_height)
@@ -208,12 +214,21 @@ update_falling_tiles:
                 ;             so we can just put a into c (since bc is aligned to 256-bytes)
                 ;
 
+                ; if this is already sliding, skip entirely the falling checks
+                ; because it's ON THE SLIDER ALREADY (this can happen when moving a tile onto a slider
+                ; if (for any reason) that tile is also marked as one to check for falling tiles)
+                ld c, a
+                ld b, tiles_flags/256
+                ld a, (bc)
+                bit IS_SLIDER_BIT, a
+                ret nz                
+
                 ; check if the slider is immediately below us and moving up
                 ; if so, we actually don't do anything (no update, nothing to redraw)
                 ; have I landed on a slider?
+                ld a, c
                 add 16
                 ld c, a
-                ld b, tiles_flags/256
                 ld a, (bc)
                 bit IS_SLIDER_BIT, a
                 jr z, @+not_landed_on_slider
@@ -235,7 +250,7 @@ update_falling_tiles:
         @landed_exactly_on_upward_slider:
                 ld c, (hl)
                 ld b, tiles_flags/256
-                ld a, IS_SLIDER_BIT + 0 ; 0 y-offset - this also clears the 'falling'bit
+                ld a, IS_SLIDER_MASK + 0 ; 0 y-offset - this also clears the 'falling'bit
                 ld (bc), a
                 ld a, (slider_stack_height)
                 inc a
