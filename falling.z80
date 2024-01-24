@@ -492,7 +492,7 @@ update_falling_tiles:
                 ld (bc), a
 
                 ; blank the old location of the tile
-                ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; FIXME we shouldn't need to blank the whole 16x16 because the tile
                 ; landed on a y coordinate within that range
                 ; FIXME or we could use the dirty_tiles mechanism (by splitting
                 ; falling_tiles into separate update and draw steps)
