@@ -392,6 +392,26 @@ slider_update:
                 and a
                 jr nz, @+blocked
 
+                ; also check one row ABOVE this one,
+                ; in case THAT row has a falling tile with
+                ; yoffset > 0
+                ld a, l
+                sub 16
+                ld l, a
+                dec h ; point to flags
+                ld a, (hl)
+                and IS_FALLING_MASK
+                jr z, @+check_blocked_no_falling_tile_found
+                ld a, (hl)
+                and 15
+                jr nz, @+blocked
+            @check_blocked_no_falling_tile_found:
+                inc h ; back to tiles
+                ld a, l
+                add 16
+                ld l, a ; back to how it was
+                ; TODO wouldn't push/pop be quicker here?
+
                 ; keep going.
                 ; say that the slider did move this frame (and in which direction)
                 ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
@@ -699,6 +719,31 @@ sanity_check_slider:
 
         @reached_the_top_of_slider_stack:
                 ; now assert that things above here are NOT sliding
+                ; and also, if the next thing above the stack is 'falling',
+                ; it shouldn't have a yoffset (it should be ==0)
+
+        @check_one_above_stack:
+                ld a, l
+                and 240
+                jr z, @reached_the_top_of_grid
+
+                ld a, l
+                sub 16
+                ld l, a
+
+                ; slider flag should not be set!
+                dec h
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                call nz, fatal
+
+                ; slider y-offset should be zero in all cases
+                ld a, (hl)
+                and 15
+                call nz, fatal
+
+                inc h
+
         @check_next_above_stack:
                 ld a, l
                 and 240
@@ -717,11 +762,11 @@ sanity_check_slider:
                 ; slider y-offset should be zero, unless falling flag is set
                 ld a, (hl)
                 and IS_FALLING_MASK
-                jr @+not_falling
+                jr nz, @+skip_falling_check
                 ld a, (hl)
                 and 15
                 call nz, fatal
-                @not_falling: equ $
+                @skip_falling_check: equ $
 
                 inc h
                 jp @-check_next_above_stack
