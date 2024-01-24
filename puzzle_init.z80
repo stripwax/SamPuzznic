@@ -233,6 +233,9 @@ render_screen_layout:
                 ld de, 0+((LEVEL_Y_OFFSET+8)*128)+(LEVEL_X_OFFSET/2)
                 ld hl, strings.PROBLEM
                 call print_text_hl_de
+
+                call init_draw_retry
+
                 ret
 
 strings.PLAYER: defm "PLAYER-1"

@@ -8,6 +8,7 @@ play_game:
                 ENDIF
 
                 call init_score
+                call init_retries
 
     @start_of_level:
                 call init_clock

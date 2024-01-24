@@ -7,6 +7,10 @@ IMPENETRABLE_TILE: equ 2
 GRID_X_OFFSET: equ 48 ; how many bytes (pixels/2) in from the left-hand-edge of the screen should the grid be drawn
 CLOCK_Y_OFFSET: equ 48; how many rows down from the top of the screen should the clock be shown
 TIME_LABEL_Y_OFFSET: equ 40
+RETRY_LABEL_Y_OFFSET: equ 72
+RETRY_LABEL_X_OFFSET: equ 0
+RETRY_Y_OFFSET: equ 72
+RETRY_X_OFFSET: equ 20
 PLAYER_Y_OFFSET: equ 0
 LEVEL_Y_OFFSET: equ 20
 LEVEL_X_OFFSET: equ 16

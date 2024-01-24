@@ -1,0 +1,21 @@
+init_draw_retry:
+            ld de, 0+(RETRY_LABEL_Y_OFFSET*128)+RETRY_LABEL_X_OFFSET
+            ld hl, retry_label
+            ld c, 0x11 ; white
+            call print_text_hl_de
+
+            ld a, (retries_remaining)
+            ld c, 2 ; color green
+            ld de, 0+(RETRY_Y_OFFSET*128)+RETRY_X_OFFSET
+            call fatnum_digit_a_variant_c_xy_de
+            ret
+
+init_retries:
+            ld a, 2
+            ld (retries_remaining), a
+            ret
+
+retry_label: defm "RETRY"
+defb 0
+
+retries_remaining: defb 2
