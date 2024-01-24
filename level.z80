@@ -59,7 +59,7 @@ play_game:
                 ld b, a
                 ld a, (level_number)
                 cp b
-                jr nz, @+done_adjusting_level_major_minor
+                jr nc, @+done_adjusting_level_major_minor
                 xor a
                 ld (level_problem_major_number), a
                 ld a, (level_number)
