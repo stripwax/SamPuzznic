@@ -69,7 +69,7 @@ draw_sliders:
                 ; do nothing if slider disabled for this level
                 ld a, (slider_info)
                 and a
-                ret z 
+                ret z
                 ;
 
                 ; FIRST, blank out a 1-pixel-high row at the top or bottom of the stack,
@@ -640,6 +640,12 @@ slider_update:
 IF DEBUG
 sanity_check_slider:
                 ; debug a bad state that we're getting into
+
+                ; do nothing if no slider!
+                ld a, (slider_info)
+                and a
+                ret z
+
                 ld a, (slider_xy)
                 ld l, a
                 ld h, tiles/256
