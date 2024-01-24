@@ -53,13 +53,13 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 *  level select between stages / initial level select at start
 *  retry (i.e. abort, start again) and count of remaining retries
 *  high score table
-*  music (50% done)
+*  music (50% done, but not commited to github yet)
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
 *  diagonal cursor movement not yet done.
 *  joystick not yet done (50% done)
-*  minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed (but would only be a small optimization, since the flashing "panic mode" clock needs to be fully redrawn every 4th frame anyway)
+*  minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed (but would only be a small benefit, since the flashing "panic mode" clock needs to be fully redrawn every 4th frame anyway)
 
 # TODO LATER
 *  Passwords for level skip
