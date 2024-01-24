@@ -213,9 +213,18 @@ init_slider_stack:
                 ; at the start of the level, the slider might already
                 ; have some tiles on top of it
                 ; so, initialize those now
+                ; and also initialize any internal state/etc
+                xor a
+                ld (slider_stack_height), a
+
                 ld a, (slider_info)
                 and a
                 ret z ; no slider info, nothing to do
+
+                xor a
+                ld (slider_moved_this_frame), a
+                ld (slider_wait_frame), a
+                ld (slider_motion_frame), a
                 
                 ; (starting with the slider block itself) set the SLIDING flag
                 ld a, (slider_xy)
