@@ -273,7 +273,7 @@ update_falling_tiles:
                 ld (bc), a
 
                 ; blank the old location of the tile
-                ; FIXME we shouldn't need to blank the whole 32x32 because the tile
+                ; FIXME we shouldn't need to blank the whole 16x16 because the tile
                 ; landed on a y coordinate within that range
                 ; FIXME or we could use the dirty_tiles mechanism (by splitting
                 ; falling_tiles into separate update and draw steps)
@@ -419,7 +419,7 @@ update_falling_tiles:
                 ld c, a
                 ; mark as zero offset and falling
                 dec b
-                ld a, IS_FALLING_MASK
+                ld a, IS_FALLING_MASK+0
                 ld (bc), a
                 inc b
                 ; also get the correct tile ID in a (and we still need to draw this tile...)
@@ -492,23 +492,31 @@ update_falling_tiles:
                 ld (bc), a
 
                 ; blank the old location of the tile
-                ; FIXME we shouldn't need to blank the whole 16x16 because the tile
-                ; landed on a y coordinate within that range
-                ; FIXME or we could use the dirty_tiles mechanism (by splitting
-                ; falling_tiles into separate update and draw steps)
-                push de
-                push bc
-                push af
-                push hl
-                call defer_fillrect_16x16_black_at_de
-                pop hl
-                pop af
-                pop bc
-                pop de
+                ; TODO FIXME technically this has already been done, because I mentioned
+                ; earlier that I used a 16x16 black instead of a 16x2
+                ; (so we can actually skip this)
+                ; ; FIXME we shouldn't need to blank the whole 16x16 because the tile
+                ; ; landed on a y coordinate within that range
+                ; ; FIXME or we could use the dirty_tiles mechanism (by splitting
+                ; ; falling_tiles into separate update and draw steps)
+                ; push de
+                ; push bc
+                ; push af
+                ; push hl
+                ; call defer_fillrect_16x16_black_at_de
+                ; pop hl
+                ; pop af
+                ; pop bc
+                ; pop de
 
                 ; next work out what actual y-coordinate we are now at (on the slider)
                 ; this should be easy, it's the same as the other tiles on the slider
                 ; but we need to adjust de to point to the correct screen pixel now
+                ; As per the similar logic in @not_landed, DE still points to the old grid-aligned
+                ; position of the tile BEFORE this overflowed into the next grid_aligned position
+                ; So we need to move DE down 16 pixels (256*8) *AND* adjust for the new y-offset
+                ; which might be nonzero (in the case where we landed on the downward-moving slider
+                ; that's at a non-zero offset))
                 and 15 ; clears carry
                 rra ; a*=128 . really just srl a but rra is cheaper when carry is clear
                 jr nc, @+even
@@ -516,6 +524,7 @@ update_falling_tiles:
                 set 7, e
     @even:
                 add a, d
+                add 8 ; because de WAS pointing to the OLD grid-aligned cell and we overflowed into the next cell below
                 ld d, a
 
                 ; also get the correct tile ID in a (and we still need to draw this tile...)
