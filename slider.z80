@@ -215,17 +215,18 @@ init_slider_stack:
                 ; so, initialize those now
                 ; and also initialize any internal state/etc
                 xor a
+                ld (slider_moved_this_frame), a
+                ld (slider_wait_frame), a
+                ld (slider_motion_frame), a
+                
+        reinit_slider_stack: ; called after a match, for example. don't reset frame counters/etc to zero, but rebuild the pile
+                xor a
                 ld (slider_stack_height), a
 
                 ld a, (slider_info)
                 and a
                 ret z ; no slider info, nothing to do
 
-                xor a
-                ld (slider_moved_this_frame), a
-                ld (slider_wait_frame), a
-                ld (slider_motion_frame), a
-                
                 ; (starting with the slider block itself) set the SLIDING flag
                 ld a, (slider_xy)
                 ld l, a

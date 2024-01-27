@@ -697,7 +697,7 @@ render_destruct:
                 ; (because some of the above matched tiles might have been on the slider)
                 ; We have at this point zero'd out those tiles, so it
                 ; should be easy enough just to recalculate the slider stack 'from first principles'
-                call init_slider_stack
+                call reinit_slider_stack
                 ret
 
 
