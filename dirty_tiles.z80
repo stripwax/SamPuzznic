@@ -103,6 +103,7 @@ transform_dirty_to_draw_list:
                 call grid_xy_in_C_to_screen_de
 
                 ; get sprite ptr in bc
+    @draw_tile_anyway:
                 inc b ; point to tiles
                 ld a, (bc) ; the actual tile to draw
                 ; multiply a by 128 to get offset into bitmap data
@@ -121,6 +122,8 @@ transform_dirty_to_draw_list:
                 ; determine how many pixels rows below top left grid-aligned we need to draw at
                 ld a, (bc)
                 and 15 ; a = 0000pppp where p = number of pixel rows offset
+                ; if EXACTLY ZERO then we should actually just draw the real tile (rather than a blank)
+                jr z, @draw_tile_anyway
                 ; modify DE accordingly: multiply a by 128 and add to E with overflow to D
                 ; but really that just means flip the top bit of E if A is odd; and 
                 ; add the remaining bits to D
