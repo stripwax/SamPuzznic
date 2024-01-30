@@ -1,0 +1,151 @@
+IF DEBUG
+sanity_check_slider:
+                ; debug a bad state that we're getting into
+
+                ; do nothing if no slider!
+                ld a, (slider_info)
+                and a
+                ret z
+
+                ld a, (slider_xy)
+                ld l, a
+                ld h, tiles/256
+
+                ld a, (slider_stack_height)
+                ld c, a
+                
+                ; expected slider y-offset (get from the slider block itself. ideally we just
+                ; recalculate it here though, to ensure it matches expectations, but that's extra work right now
+                dec h
+                ld a, (hl)
+                and 15
+                ld d, a
+                inc h
+                
+                ; first check the actual slider block itself
+                ; the slider square should be a slider tile
+                ld a, (hl)
+                and a
+                call z, fatal ; slider is a blank!
+                cp NUM_NON_TILES
+                call nc, fatal ; slider is a regular tile!
+
+                ; the slider square should be sliding
+                dec h
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                call z, fatal
+
+                ; slider y-offset matches expected
+                ld a, (hl)
+                and 15
+                cp d
+                call nz, fatal
+
+                inc h
+
+                ; now check everything in the stack
+                ; the number of tiles in the stack should match the stack height
+                ; they should all have the same flag and Y offset
+                ; and anything NOT in the stack should NOT have the slider flag
+                ; (and Y offset should be zero)
+        @check_next_in_stack:
+                ld a, l
+                and 240
+                jp z, @reached_the_top_of_grid
+
+                ld a, c
+                and a
+                jp z, @reached_the_top_of_slider_stack
+
+                ld a, l
+                sub 16
+                ld l, a
+
+                ld a, (hl)
+                and a
+                call z, fatal ; tile on stack is a blank!
+                cp NUM_NON_TILES
+                call c, fatal ; tile on stack is a non-tile!
+
+                dec h
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                call z, fatal
+
+                ; slider y-offset matches expected
+                ld a, (hl)
+                and 15
+                cp d
+;;;;                call nz, fatal  ; TODO WELL WHY IS THIS FAILING?
+
+                inc h
+
+                dec c
+                jp @-check_next_in_stack
+
+        @reached_the_top_of_slider_stack:
+                ; now assert that things above here are NOT sliding
+                ; and also, if the next thing above the stack is 'falling',
+                ; it shouldn't have a yoffset (it should be ==0)
+
+        @check_one_above_stack:
+                ld a, l
+                and 240
+                jr z, @reached_the_top_of_grid
+
+                ld a, l
+                sub 16
+                ld l, a
+
+                ; slider flag should not be set!
+                dec h
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                call nz, fatal
+
+                ; slider y-offset should be zero in all cases
+                ld a, (hl)
+                and 15
+                call nz, fatal
+
+                inc h
+
+        @check_next_above_stack:
+                ld a, l
+                and 240
+                jr z, @reached_the_top_of_grid
+
+                ld a, l
+                sub 16
+                ld l, a
+
+                ; slider flag should not be set!
+                dec h
+                ld a, (hl)
+                and IS_SLIDER_MASK
+                call nz, fatal
+
+                ; slider y-offset should be zero, unless falling flag is set
+                ld a, (hl)
+                and IS_FALLING_MASK
+                jr nz, @+skip_falling_check
+                ld a, (hl)
+                and 15
+                call nz, fatal
+                @skip_falling_check: equ $
+
+                inc h
+                jp @-check_next_above_stack
+
+        @reached_the_top_of_grid:
+                ; stack height (in C) should be 0
+                ld a, c
+                and a
+                call nz, fatal
+
+                ret
+ELSE
+sanity_check_slider:
+                ret
+ENDIF

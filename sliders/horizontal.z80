@@ -1,0 +1,8 @@
+update_slider_horizontal:
+                ret
+        @blocked:
+                ; x decreasing, change direction
+                ret
+        @blocked:
+                ; x increasing, change direction
+                ret

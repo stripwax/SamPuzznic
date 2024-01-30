@@ -1011,6 +1011,22 @@ fillrect_8x8_de_colorbyte_a:
                 djnz @-odds
                 ret
 
+grid_xy_in_C_flags_in_B_to_screen_de:
+                call grid_xy_in_C_to_screen_de
+                ld a, b
+                and IS_FALLING_MASK + IS_SLIDER_MASK
+                ret z ; no adjust
+                ; TODO NEED TO HANDLE HORIZ SLIDER HERE
+                ld a, (hl)
+                and 15
+                rra
+                jr nc, @+no_carry
+                set 7, e
+        @no_carry:
+                add d
+                ld d, a
+                ret
+
 grid_xy_in_C_to_screen_de:
                 ; modifies a, de
                 ; Converts grid xy coords to screen memory in DE

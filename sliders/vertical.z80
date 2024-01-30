@@ -1,0 +1,302 @@
+update_slider_vertical:
+                ld b, a ; backup slider_info
+                ; get x/y of slider and point to tiles grid
+                ld a, (slider_xy)
+                ld l, a
+                ld h, tiles/256
+
+                ; which direction are we going?
+                ; (=0: y is decreasing, =1: y is increasing) 
+                bit SLIDER_DIRECTION_BIT, b
+                jp nz, @y_increasing
+            @y_decreasing:
+            y_decreasing:
+                ; is slider currently in-motion between grid points?
+                ; if so, just keep doing that
+                ld a, (slider_motion_frame)
+                and a
+                jr z, @+finished_moving_between_cells
+
+                dec a
+                ld (slider_motion_frame), a
+                dec h ; point to flags
+                ; update the y-coordinate in the tile flags
+                ; (this is also the same value as the slider_motion_frame
+                ; but with the 'I am sliding' flag set too)
+                ; We update the slider block and the blocks in the stack
+                or IS_SLIDER_MASK
+                ld c, a ; backup
+
+                ; say that the slider did move this frame (and in which direction)
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
+                ld (slider_moved_this_frame), a
+
+                ld a, (slider_stack_height)
+                inc a ; including slider itself
+                ld b, a
+                ld a, l
+            @more_on_stack:
+                ld (hl), c
+                sub 16
+                ld l, a
+                djnz @-more_on_stack
+
+                ret
+
+            @finished_moving_between_cells:
+                ; can the slider move one more place in this direction?
+                ; check N rows up (up = decreasing y value)
+                ; where N is the size of the stack on the slider
+                ld a, (hl)
+                ld b, a ; b = the slider's tile icon
+                ld a, (slider_stack_height)
+                inc a ; we need to look one row BEYOND the stack height
+                rla
+                rla
+                rla
+                rla 
+                ld c, a ; c = (slider stack height+1) * 16
+
+                ld a, l
+                sub c ; this many rows up
+                ld l, a
+
+                ld a, (hl)
+                and a
+                jr nz, @+blocked
+
+                ; also check one row ABOVE this one,
+                ; in case THAT row has a falling tile with
+                ; yoffset > 0
+                ld a, l
+                sub 16
+                ld l, a
+                dec h ; point to flags
+                ld a, (hl)
+                and IS_FALLING_MASK
+                jr z, @+check_blocked_no_falling_tile_found
+                ld a, (hl)
+                and 15
+                jr nz, @+blocked
+            @check_blocked_no_falling_tile_found:
+                inc h ; back to tiles
+                ld a, l
+                add 16
+                ld l, a ; back to how it was
+                ; TODO wouldn't push/pop be quicker here?
+
+                ; keep going.
+                ; say that the slider did move this frame (and in which direction)
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_UP_VALUE
+                ld (slider_moved_this_frame), a
+
+                ; (move the cursor too, if it is captured)
+                ; (it feels like this logic is in totally the wrong place)
+                ; ===========
+                push hl
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @+done_checking_slider_captured
+                ld a, (controller_flags_xy_pos)
+                ld l, a
+                ld h, tiles_flags/256
+                bit IS_SLIDER_BIT, (hl)
+                jr z, @+done_checking_slider_captured
+            @slider_is_captured:
+                ; move the cursor to the new spot
+                sub 16 ; subtract 1 from Y
+                ld (controller_flags_xy_pos), a
+                
+            @done_checking_slider_captured:
+                pop hl
+                ; ==============
+
+                ; we move our tile AND everything in the stack, up to the next cell
+                ; (start at the end furthest from the slider)
+                ld a, (slider_stack_height)
+                inc a ; need to move the slider block itself too
+                ld b, a
+                ld a, l
+                add 16 ; point to the thing moving FROM
+                ld l, a
+                ld d, 15 + IS_SLIDER_MASK
+        @move_next_thing_in_stack:
+        
+                ld c, (hl)
+                sub 16
+                ld l, a ; point to where it is moving TO
+                ld (hl), c
+                ; and set the y coordinate and the 'I am slider' flag
+                dec h ; point to flags
+                ld (hl), d
+                inc h ; point back to tiles
+
+                add 32 ; point to the NEXT THING moving from
+                ld l, a
+                djnz @-move_next_thing_in_stack
+
+                ; zero the place where the bottom piece (the slider) was before
+                sub 16
+                ld l, a
+                xor a
+                ld (hl), a
+                dec h ; point back to flags
+                ld (hl), a ; a still zero                
+
+                ; slider's xy has officially changed
+                ld a, (slider_xy)
+                sub 16
+                ld (slider_xy), a
+
+                ; and start counting another 15 frames after this one
+                ld a, 15
+                ld (slider_motion_frame), a
+                
+                ret
+
+        @blocked:
+                ; y decreasing, change direction
+                ld a, (slider_wait_1)
+                ld (slider_wait_frame), a
+                ld a, (slider_info)
+                or SLIDER_DIRECTION_MASK ; flip direction
+                ld (slider_info), a
+                xor a ; the next motion frame is zero (to then trigger the "move between cells" case)
+                ld (slider_motion_frame), a
+                ret
+
+        @y_increasing:
+        y_increasing:
+
+                ; is slider currently in-motion between grid points?
+                ; if so, just keep doing that
+                ld a, (slider_motion_frame)
+                and a
+                jr z, @+finished_moving_between_cells
+                dec a
+                ld (slider_motion_frame), a
+
+                ; update the y-coordinate in the tile flags
+                ; (this is 16-the slider_motion_frame
+                ; but with the 'I am sliding' flag set too)
+                ; We update the slider block and the blocks in the stack
+                ; When going down, there is an additional special case:
+                ; on frame 16, we're now grid aligned ONE ROW BELOW
+                jr z, @frame_16_going_down
+        @going_down_one_pixel_row:
+                neg
+                add 16 ; a = (-frame)+16 = 16-frame
+                or IS_SLIDER_MASK
+                ld c, a ; backup
+
+                ; say that the slider did move this frame (and in which direction)
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_DOWN_VALUE
+                ld (slider_moved_this_frame), a
+
+                ld a, (slider_stack_height)
+                inc a ; including slider itself
+                ld b, a
+                ld a, l
+                dec h ; point to flags
+            @more_on_stack:
+                ld (hl), c
+                sub 16
+                ld l, a
+                djnz @-more_on_stack
+
+                ret
+            @frame_16_going_down:
+                ; say that the slider did move this frame (and in which direction)
+                ld a, SLIDER_MOVED_YES_VALUE + SLIDER_MOVED_DOWN_VALUE
+                ld (slider_moved_this_frame), a
+
+                ; (move the cursor too, if it is captured)
+                ; (it feels like this logic is in totally the wrong place)
+                ; ===========
+                push hl
+                ld a, (controller_flags_tile_captured)
+                and a
+                jr z, @+done_checking_slider_captured
+                ld a, (controller_flags_xy_pos)
+                ld l, a
+                ld h, tiles_flags/256
+                bit IS_SLIDER_BIT, (hl)
+                jr z, @+done_checking_slider_captured
+            @slider_is_captured:
+                ; move the cursor to the new spot
+                add 16 ; add 1 to Y
+                ld (controller_flags_xy_pos), a
+                
+            @done_checking_slider_captured:
+                pop hl
+                ; ==============
+
+                ; we move our slider tile down AND everything in the stack
+                ; (start at the slider itself and work thru the stack)
+                ld a, (slider_stack_height)
+                inc a ; need to move the slider block itself too
+                ld b, a
+                ; hl points to the slider itself (in tiles) already
+                ; however, we manipulate l register thru this loop, so get into accumulator
+                ld a, l
+                ld d, 0 + IS_SLIDER_MASK
+        @move_next_thing_in_stack:
+                ld c, (hl)
+                add 16
+                ld l, a ; point to where it is moving TO
+                ld (hl), c
+                ; and set the y coordinate and the 'I am slider' flag
+                dec h ; point to flags
+                ld (hl), d
+                inc h ; point back to tiles
+
+                sub 32 ; point to the NEXT THING moving from
+                ld l, a
+                djnz @-move_next_thing_in_stack
+
+                ; zero the grid entry that used to be where the top of the stack was
+                add 16
+                ld l, a
+                xor a
+                ld (hl), a
+                dec h ; point back to flags
+                ld (hl), a ; a still zero                
+
+                ; slider's xy has officially changed
+                ld a, (slider_xy)
+                add 16
+                ld (slider_xy), a
+
+                ret
+
+            @finished_moving_between_cells:
+                ; can the slider move one more place in this direction?
+                ; check 1 row down (down = increasing y value)
+                ld a, l
+                ld b, a ; backup
+                add 16 ; one row down
+                ld l, a
+                ld a, (hl)
+                and a
+                jr nz, @+blocked
+
+                ; not blocked, put hl back where it was
+                ld l, b
+
+                ; and start counting another 15 frames after this one
+                ld a, 15
+                ld (slider_motion_frame), a
+                
+                ; and jump back to the part where we move everything down by one pixel
+                jp @-going_down_one_pixel_row
+
+        @blocked:
+                ; y increasing, change direction
+                ld a, (slider_wait_2)
+                ld (slider_wait_frame), a
+                ld a, (slider_info)
+                and 255-SLIDER_DIRECTION_MASK ; flip direction
+                ld (slider_info), a
+                xor a ; the next motion frame is zero (to then trigger the "move between cells" case)
+                ld (slider_motion_frame), a
+                ret

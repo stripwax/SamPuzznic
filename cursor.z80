@@ -428,132 +428,24 @@ update_cursor_position:
     @check_push_left:
                 ; This implements the shove_left action.
 
-                inc h ; (point back to tiles data)
                 ; was LEFT pressed 
                 bit controller_flags_dirs_left_bit, a
                 jp z, @+check_push_right ; no
 
                 ; yes, left was pressed (with fire)
-                push hl ; todo optimize this away
                 call trigger_sfx_cursor
-                pop hl
 
-                ; get new position (left = dec l, right = inc l)
-                ; TODO more edge cases here.  what happens when the tile being shoved is part
-                ; of the stack on top of a vertical slider?  it seems to do the following:
-                ;  if the slider is grid-aligned then this just works (look left or right and
-                ;  see a space), but if the slider is part-way then the tile will move to the
-                ;  nearest grid-aligned y-coordinate after being shoved.  So in some cases that
-                ;  means the tile y-coordinate will be 'rounded up' and jump up, or 'rounded down'
-                ;  and jump down.  In either case, the tile might find itself immediately on
-                ;  solid ground, or it might start to fall, etc.
-                ; ....
-                dec l
-                ld a, (hl)
-                and a ; check if it is zero.  you can only push a tile into zero
+                ; get new position
+                ; with 'old' position in D and 'new' position in E
+                ld d, l
+                ld e, l
+                dec e ; dec = 'left'
+                call can_I_push_here
                 ret nz
-                ; yet another edge case - even if this space is zero now, if there's something
-                ; ABOVE it, that is partially obstructing and falling INTO this space already, we can't move into it now.
-                ld a, l
-                sub 16
-                ld l, a
-                dec h ; (point to tiles_flags)
-                ld a, (hl)
-                ; is it falling or slider? if so, if it's already partially obstructing the space, we can't move into that space
-                bit IS_FALLING_BIT, a
-                ret nz
-                bit IS_SLIDER_BIT, a
-                jr z, @+done_checking_slider
-                ; we also have to check the slider y offset.  if it's zero, then we're actually
-                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
-                ; there's enough space to sneak in under it.
-                ; TODO CHECK THAT SLIDER IS VERT NOT HORIZ (HORIZ DOESN'T MATTER HERE)
-                and 15 ; get the y-coordinate-offset of the slider
-                ret nz ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
-                       ; where we want to move our tile))
-                
-        @done_checking_slider:
+
                 ; all good, we can move there
                 ; copy old tile to new place
-                inc h ; (point back to tiles)
-                ld a, l
-                add 16 + 1 ; back down one row, and move right (back to our original location)
-                           ; maybe we just keep a backup of this in a spare register
-                ld l, a
-                ld a, (hl)
-                dec l ; go left
-                ld (hl), a
-                inc l ; go right
-                ld (hl), 0
-
-                dec h
-                ; we're now pointing at the 'old' flags.
-                ; This contains the Y-offset if tile was sliding/falling
-                ; so blank out this old location (whatever it was)
-                ; before clearing the flags
-                push hl ; TODO optimize out the push/pop here
-                push de
-                ld c, l
-                call grid_xy_in_C_to_screen_de
-                ld a, (hl)
-                and IS_FALLING_MASK + IS_SLIDER_MASK
-                jr z, @+no_yoffset
-                ld a, (hl)
-                and 15
-                rra
-                jr nc, @+no_carry
-                set 7, e
-        @no_carry:
-                add d
-                ld d, a
-        @no_yoffset:
-                call defer_fillrect_16x16_black_at_de
-                pop de
-                pop hl
-
-                inc h ; point back to tiles
-                push hl ; TODO optimize out the push/pop here
-                call @check_adjust_slider_for_moved_tile_in_stack
-                pop hl
-
-                ; finally, clear old flags
-                ; (we can't do that before the above call, because it needs to check if the flag was set)
-                dec h
-                ld (hl), 0
-                inc h
-
-                ; add a check to see if the one ABOVE us in the OLD location is now falling
-                ld a, l
-                sub 16
-                ld l, a
-                ld a, (hl)
-                cp NUM_NON_TILES
-                jr c, @+above_is_not_a_tile
-                push hl
-                ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
-                call queue_check_falling_tile_l
-                pop hl
-@above_is_not_a_tile:
-                ; move to the new location
-                ld a,l
-                add 16 - 1 ; down one row and left one column
-                ld l, a
-                ; add a check for the tile we push in its new location, if it's falling
-                push hl ; TODO use a reg instead of push/pop
-                call queue_check_falling_tile_l
-                pop hl
-                ; and mark this as our new cursor position
-                ld a, l
-                ld (controller_flags_xy_pos), a
-                ; mark the OLD location as dirty
-                inc a
-                call push_dirty_tile
-                ; mark the new locations as dirty also
-                dec a ; TODO hm am I drawing twice, if it's also falling?
-                call push_dirty_tile
-                ld a, 1 ; TODO optimize, a is already nonzero
-                ld (cursor_moved), a
-                ret
+                jp shove_block_h_d_e
 
     @check_push_right:
                 ; was RIGHT pressed?
@@ -561,116 +453,18 @@ update_cursor_position:
                 ret z ; no, RIGHT was not pressed, and we already checked LEFT, so we're done
 
                 ; yes, right was pressed (with fire)
-                push hl ; todo optimize this away
                 call trigger_sfx_cursor
-                pop hl
 
                 ; get new position (left = dec l, right = inc l)
-                inc l
-                ld a, (hl)
-                and a ; check if it is zero.  you can only push a tile into zero
+                ld d, l
+                ld e, l
+                inc e ; inc = 'right'
+                call can_I_push_here
                 ret nz
-                ; yet another edge case - even if this space is zero now, if there's something
-                ; ABOVE it, that is falling INTO this space already, we can't move into it now.
-                ld a, l
-                sub 16
-                ld l, a
-                dec h ; (point to tiles_flags)
-                ld a, (hl)
-                ; is it falling or slider? if so, if it's already partially obstructing the space, we can't move into that space
-                bit IS_FALLING_BIT, a
-                ret nz
-                bit IS_SLIDER_BIT, a
-                jr z, @+done_checking_slider
-                ; we also have to check the slider y offset.  if it's zero, then we're actually
-                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
-                ; there's enough space to sneak in under it.
-                ; TODO CHECK THAT SLIDER IS VERT NOT HORIZ (HORIZ DOESN'T MATTER HERE)
-                and 15 ; get the y-coordinate-offset of the slider
-                ret nz ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
-                       ; where we want to move our tile))
 
-        @done_checking_slider:
                 ; all good, we can move there
                 ; copy old tile to new place
-                inc h ; (point back to tiles)
-                ld a, l
-                add 16 - 1 ; back down one row, and move left (back to our original location)
-                           ; maybe we just keep a backup of this in a spare register
-                ld l, a
-                ld a, (hl)
-                inc l ; go right
-                ld (hl), a
-                dec l ; go left
-                ld (hl), 0
-
-                dec h
-                ; we're now pointing at the 'old' flags.
-                ; This contains the Y-offset if tile was sliding/falling
-                ; so blank out this old location (whatever it was)
-                ; before clearing the flags
-                push hl ; TODO optimize out the push/pop here
-                push de
-                ld c, l
-                call grid_xy_in_C_to_screen_de
-                ld a, (hl)
-                and IS_FALLING_MASK + IS_SLIDER_MASK
-                jr z, @+no_yoffset
-                ld a, (hl)
-                and 15
-                rra
-                jr nc, @+no_carry
-                set 7, e
-        @no_carry:
-                add d
-                ld d, a
-        @no_yoffset:
-                call defer_fillrect_16x16_black_at_de
-                pop de
-                pop hl
-
-                inc h ; point back to tiles
-                push hl
-                call @check_adjust_slider_for_moved_tile_in_stack
-                pop hl
-
-                ; finally, clear old flags
-                ; (we can't do that before the above call, because it needs to check if the flag was set)
-                dec h
-                ld (hl), 0
-                inc h
-
-                ; add a check to see if the one ABOVE us in the OLD location is now falling
-                ld a, l
-                sub 16
-                ld l, a
-                ld a, (hl)
-                cp NUM_NON_TILES
-                jr c, @+above_is_not_a_tile
-                push hl
-                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
-                pop hl
-@above_is_not_a_tile:
-                ; move to the new location
-                ld a,l
-                add 16 + 1 ; down one row and right one column
-                ld l, a
-                ; check if it's falling
-                push hl ; TODO use a reg instead of push/pop
-                call queue_check_falling_tile_l
-                pop hl
-                ; and mark this as our new cursor position
-                ld a, l
-                ld (controller_flags_xy_pos), a
-                ; mark the OLD location as dirty
-                dec a
-                call push_dirty_tile
-                ; mark the new locations as dirty also
-                inc a ; TODO hm am I drawing twice, if it's also falling?
-                call push_dirty_tile
-                ld a, 1 ; TODO optimize, a is already nonzero
-                ld (cursor_moved), a
-                ret
+                jp shove_block_h_d_e
 
 
 lock_controller:
@@ -682,6 +476,7 @@ unlock_controller:
                 xor a
                 ld (controller_flags_disabled), a
                 ret
+
 
 @check_adjust_slider_for_moved_tile_in_stack:
                 ; SLIDER - if this tile WAS in the slider stack, then we also need to
@@ -726,4 +521,139 @@ unlock_controller:
                 sub b
                 dec a ; subtract one because we have removed a tile from the stack
                 ld (slider_stack_height), a
+                ret
+
+
+can_I_push_here:
+                ; on entry, D is the grid YX of the source
+                ;           E is the grid YX of the destination
+                ;
+                ; return:  Z FLAG set if it's ok to move a tile into destination
+                ;          Z FLAG clear (i.e. NZ condition) if you cannot
+                ;
+                ; TODO more edge cases here.  what happens when the tile being shoved is part
+                ; of the stack on top of a vertical slider?  it seems to do the following:
+                ;  if the slider is grid-aligned then this just works (look left or right and
+                ;  see a space), but if the slider is part-way then the tile will move to the
+                ;  nearest grid-aligned y-coordinate after being shoved.  So in some cases that
+                ;  means the tile y-coordinate will be 'rounded up' and jump up, or 'rounded down'
+                ;  and jump down.  In either case, the tile might find itself immediately on
+                ;  solid ground, or it might start to fall, etc.
+                ; ....
+                ld h, tiles/256 ; TODO optimize out if that's what it is already (per caller)
+                ld l, e
+                ld a, (hl)
+                and a ; check if it is zero.  you can only push a tile into zero
+                ret nz
+                ; yet another edge case - even if this space is zero now, if there's something
+                ; ABOVE it, that is partially obstructing and falling INTO this space already, we can't move into it now.
+                ld a, l
+                sub 16
+                ld l, a
+                dec h ; (point to tiles_flags)
+                ld a, (hl)
+                ; is it falling or slider? if so, it might be already partially obstructing the space, we can't move into that space
+                bit IS_FALLING_BIT, a
+                jr z, @+_not_falling
+
+                ; falling block above the dest square.  is it encroaching?
+                and 15 ; get the y-coordinate-offset of the falling block
+                ret ; if it's nonzero, then falling block is not grid-aligned (it's poking downwards into
+                    ; where we want to move our tile)
+                    ; if it's zero, then we're good
+
+        @_not_falling:
+                ; block above the dest is not a faller.
+                ; if sliders are vertical, we need to check if it's a slider
+                ; (if sliders are horiz, we need a different check)
+                ld a, (slider_info)
+                and a
+                ret z ; no slider, nothing else to check
+
+                ; get current type
+                bit SLIDER_AXIS_BIT, a
+                jr nz, @_horiz_slider_checks
+
+                ; vert slider type
+                ; ok so see if the block above the dest is a slider
+                ld a, (hl)
+                bit IS_SLIDER_BIT, a
+                ret z ; not a slider above us, so we're done - this is SUCCESS - you can move here!
+
+                ; we also have to check the slider y offset.  if it's zero, then we're actually
+                ; fine to move into this space, because the slider is at a grid-aligned coordinate and
+                ; there's enough space to sneak in under it.
+                ; TODO CHECK THAT SLIDER IS VERT NOT HORIZ (HORIZ DOESN'T MATTER HERE)
+                and 15 ; get the y-coordinate-offset of the slider
+                ret ; if it's nonzero, then slider is not grid-aligned (it's poking downwards into
+                    ; where we want to move our tile)
+                    ; if it's zero, then we're good
+
+        @_horiz_slider_checks:
+                ; TODO
+                ret
+
+
+shove_block_h_d_e:
+                ; move the tile info pointed to by YX in D to the new YX in E
+                ;
+                push de
+                ld h, tiles/256
+                ld l, d
+                ld a, (hl)
+                ld l, e
+                ld (hl), a
+                ld l, d
+                ld (hl), 0
+
+                dec h
+                ; we're now pointing at the 'old' flags.
+                ; This contains the Y-offset if tile was sliding/falling
+                ; so blank out this old location (whatever it was)
+                ; before clearing the flags
+                ; TODO NEED TO HANDLE HORIZ SLIDER HERE i.e. THAT MIGHT NEED THE 18x16 CASE
+                ; TODO JUST NEED A GENERIC "BLANK THIS OLD THING" ROUTINE ACTUALLY, THAT FIGURES OUT WHAT TO DO
+                ; (SHOULDN'T NEED TO BE PART OF CURSOR.Z80)
+                push hl ; TODO optimize out the push/pop here
+                ld c, l
+                ld a, (hl)
+                ld b, a
+                call grid_xy_in_C_flags_in_b_to_screen_de
+                call defer_fillrect_16x16_black_at_de
+                pop hl
+
+                inc h ; point back to tiles
+                push hl
+                call @check_adjust_slider_for_moved_tile_in_stack
+                pop hl
+
+                ; finally, clear old flags
+                ; (we can't do that before the above call, because it needs to check if the flag was set)
+                dec h
+                ld (hl), 0
+                inc h
+
+                ; and mark this as our new cursor position
+                pop de
+                ld a, e
+                ld (controller_flags_xy_pos), a
+                ; mark the new location as dirty
+                call push_dirty_tile
+                ld a, 1 ; TODO optimize, a is already nonzero
+                ld (cursor_moved), a
+
+                ; add a check if the newly-shoved tile is now maybe falling
+                ld l, e
+                call queue_check_falling_tile_l
+
+                ; add a check to see if the one ABOVE us in the OLD location is now falling
+                ld a, d
+                sub 16
+                ld l, a
+                ld e, l ; need this again in a sec
+                call queue_check_falling_tile_l ; FIX ME, INEFFICIENT, WE SUB 16 ABOVE AND THIS CALL JUST ADDS IT BACK AGAIN
+
+                ; mark the old location as dirty
+                ld a, e ; from backup
+                call push_dirty_tile
                 ret

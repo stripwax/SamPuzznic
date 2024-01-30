@@ -1,0 +1,340 @@
+; This is all about the sliders, which is what I call
+; those up-and-down elevators or left-to-right travelling blocks
+
+; A point of note: each level has either no slider, or exactly one slider
+; The slider will be either up/down, or left/right .
+; The slider has some predefined range, which it won't deviate from, but it can be
+; partially or completely blocked from moving (e.g. when there's a block in its way)
+; Also, the slider will travel in one direction, hit an obstacle (block or wall), and then
+; pause briefly, before reversing direction (and hit obstacle, pause, and then reverse again).
+
+; Data structures:
+; The slider has a regular entry in the tiles and tiles_flags grids.
+; In the tiles_flags grid, the slider tile has the IS_SLIDER_MASK bit set,
+; as well as the lower 4 bits being x (or y) coordinate
+; if slider_info@SLIDER_AXIS_BIT is 0, slider is vertical, so the lower 4 bits are y
+; if slider_info@SLIDER_AXIS_BIT is 1, slider is horizontal, so the lower 4 bits are x
+; In both cases, the y (or x) coordinate is added onto the coarser grid y (or x) coordinate
+; This is important, for the falling logic, because it needs to know if a horizontal slider
+; is near with a non-zero x coordinate, because this will impede any block immediately
+; above from falling down the cell.
+; Example:  if tile is at 7:3 and a (vertical) slider is at 7:4 (one row down), regardless of slider y
+;           coordinate (0-15), then the tile at 7:3 is blocked from falling down
+; Example2: if tile is at 7:3 and a (horizontal) slider is at 6:4 (one row down and diagonally left), then
+;           the tile at 7:3 is NOT blocked from falling down IF THE SLIDER X COORDINATE is ZERO
+;           but the tile at 7:3 IS blocked from falling down IF THE SLIDER X COORDINATE is NONZERO
+;
+; Video evidence:
+; https://www.youtube.com/watch?v=Wpy5U2_O55E
+; 22:34 - there is one frame where the downward-triangle block has fallen already (2 pixels)
+;         in the same frame where the horizontal slider has just moved left one pixel to a position
+;         that allows the downward-triangle block to fall.  Therefore, the order of execution
+;         seems to be horizontal sliders THEN falling blocks
+; 12:08 - another example of the same timing effect as above
+;
+;  4:40 - falling tile (green pipe) jumps onto horizontal slider and aligns itself.
+;       - Note that there is one frame when the tile is "on" the slider but not yet aligned
+;         (you can tell because the bottom of the red cursor is the same as the bottom
+;          of the tile), and it aligns itself one frame later
+;
+; Note that tiles on a horizontal slider don't quite reach the side walls
+; - there is a one pixel gap and the tile remains misaligned until the slider
+;   reverses direction.  I don't yet know if this technically prevents tiles in the
+; next-column-along from falling (it should, unless it's just a cosmetic bug)
+; Looking for examples!
+;
+; Also looking for example of what happens when a falling tile just misses
+; a horizontal slider.  Does it confirm that the order of processing is "slider then falling tile"
+; i.e. a falling tile at exactly the boundary pixel above a horizontal slider will not
+; fall in the way of the slider (the slider will pass horizontally under the piece which
+; will land on the slider)?  What about what happens when the falling tile is just missing
+; the bottom pixel of the horizontal slider coming towards it - any example confiming that just one
+; pixel in the way will prevent the slider from moving (because slider-then-falling)?
+
+
+@temp: defb 0
+slider_moved_this_frame: defb 0
+screen_y_top_of_slider_tile: defw 0
+screen_y_top_of_slider_stack: defw 0
+SLIDER_MOVED_YESNO_BIT: equ 0
+SLIDER_MOVED_YESNO_MASK: equ 1
+SLIDER_MOVED_NO_VALUE: equ 0
+SLIDER_MOVED_YES_VALUE: equ 1
+SLIDER_MOVED_UPDOWN_BIT: equ 1
+SLIDER_MOVED_UPDOWN_MASK: equ 2
+SLIDER_MOVED_UP_VALUE: equ 0
+SLIDER_MOVED_DOWN_VALUE: equ 2
+
+draw_sliders:
+                ; do nothing if slider disabled for this level
+                ld a, (slider_info)
+                and a
+                ret z
+                ;
+
+                ; FIRST, blank out a 1-pixel-high row at the top or bottom of the stack,
+                ; according to where the stack was last frame. (and according to the stack
+                ; height last frame))
+                ; if slider went up, we need to blank a 1-pixel-high row at the bottom below the slider
+                ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
+                ; If slider didn't move this frame, we should not blank anything
+                ; I encode these facts into two bits in slider_moved_this_frame
+                ld a, (slider_moved_this_frame)
+                bit SLIDER_MOVED_YESNO_BIT, a
+                jr z, @neither_up_nor_down
+                and SLIDER_MOVED_UPDOWN_MASK
+                jr z, @going_up
+        @going_down:
+                ; if we went down, the pixel row to blank is the top of the slider stack (from last frame)
+                ld de, (screen_y_top_of_slider_stack)
+                call fillrect_16x1_black_at_de
+                jp @+done_blank
+
+        @going_up:
+                ; if we went up, the pixel row to blank is the bottom of the slider tile (from last frame)
+                ; which is 15 pixel rows (=7*256 + 128)
+                ld de, (screen_y_top_of_slider_tile)
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 7
+                ld d, a
+                call fillrect_16x1_black_at_de
+
+        @done_blank:
+        @neither_up_nor_down:
+
+                ; ok now draw the slider tile and the stack of tiles on top of it.
+
+                ld a, (slider_xy)
+
+                ; copy and pasted from dirty_tiles (with some small changes):
+
+                ; draw this tile
+                ; a = YYYYxxxx
+                ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
+                ;             and put into de
+                ; for tiles: a is (conveniently) already the low byte offset into table
+                ;             so we can just put a into c (since bc is aligned to 256-bytes)
+                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later                
+                ld b, tiles_flags / 256
+                ld a, (bc)
+                and 15 ; y-offset (in this case it's y... for horiz slider it would be x though...)
+                
+                ; now, get h= (y_offset/2) and l = 128*(y_offset % 2)
+                ; put the lsb of y into l IN THE TOP BIT
+                ; and the rest of the bits (i.e. y/2) into h
+                ld l, 0
+                rra
+                ld h, a
+                rr l
+
+                call grid_xy_in_C_to_screen_de
+                ld a, l
+                add e
+                ld e, a
+                ld a, d
+                add h
+                ld d, a
+
+                inc b ; point to tiles
+                ld a, (bc) ; the actual tile to draw
+
+                ld (screen_y_top_of_slider_tile), de
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ; if gameplay is paused (due to destruct) then do nothing else
+                ; FIXME this feels wrong, but is necessary here because the destruct
+                ; overlay renderer should now be taking ownership of the slider and stack
+                ; (in the case where something in the stack is part of the match/destruct)
+                ; but we still need to draw the slider in THIS position (otherwise slider
+                ; will be one-frame-behind where the destructing tiles are))
+                ld a, (destruct_frame)
+                and a
+                ret nz
+
+
+                ; loop for the rest of the tiles on the stack
+                ld a, (slider_stack_height)
+                and a
+                jr z, @done_drawing_stack
+                ld (@temp), a
+        @more_on_the_stack:
+                ; navigate up one tile row in tiles, and 16 pixel rows on-screen
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, d
+                sub 8
+                ld d, a
+                ld a, (bc)
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ld hl, @temp
+                dec (hl)
+                jr nz, @more_on_the_stack
+
+        @done_drawing_stack:
+                ld (screen_y_top_of_slider_stack), de
+                ret
+
+
+slider_stack_height: defb 0 ; maybe redundant, but convenient.
+
+; these are the bitmask definitions for slider_info
+SLIDER_ENABLED_BIT: equ 0
+SLIDER_AXIS_BIT: equ 1
+SLIDER_DIRECTION_BIT: equ 2
+
+SLIDER_ENABLED_MASK: equ 1
+SLIDER_AXIS_MASK: equ 2
+SLIDER_DIRECTION_MASK: equ 4
+
+; how many frames to wait before changing direction
+; TODO - is it always the same for every level?
+slider_wait_frame: defb 0 
+
+; what frame is the slider on;  TODO combine with slider_flags?
+slider_motion_frame: defb 0
+
+init_slider_stack:
+                ; called as part of the puzzle init
+                ; at the start of the level, the slider might already
+                ; have some tiles on top of it
+                ; so, initialize those now
+                ; and also initialize any internal state/etc
+                xor a
+                ld (slider_moved_this_frame), a
+                ld (slider_wait_frame), a
+                ld (slider_motion_frame), a
+                
+        reinit_slider_stack: ; called after a match, for example. don't reset frame counters/etc to zero, but rebuild the pile
+                xor a
+                ld (slider_stack_height), a
+
+                ld a, (slider_info)
+                and a
+                ret z ; no slider info, nothing to do
+
+                ; (starting with the slider block itself) set the SLIDING flag
+                ld a, (slider_xy)
+                ld l, a
+                ld h, tiles_flags/256
+                ld a, (hl)
+                or IS_SLIDER_MASK
+                ld (hl), a
+
+                ld a, l
+                sub 16 ; start counting up from the row above the slider block
+                ld l, a
+                inc h ; point to tiles
+                ld b, 0 ; stack height
+        @_more_above:
+                ld a, (hl)
+                cp NUM_NON_TILES
+                ; do nothing if this is not a (moveable) tile
+                jr c, @+done_counting_slider_stack
+
+                ; this is a (moveable) tile
+                ; not only do we add it to our slider stack (count)
+                ; we also mark the tile as sliding
+                dec h ; point to flags
+                ld a, (hl)
+                or IS_SLIDER_MASK
+                ld (hl), a
+                inc h ; back to tiles
+                inc b ; count the slider stack (taller by 1)
+                ld a, l
+                sub 16 ; move up to the row above it and keep checking
+                ld l, a
+                jp @-_more_above
+
+        @done_counting_slider_stack:
+                ld a, b
+                ld (slider_stack_height), a
+                ret
+
+slider_update:
+                ; update position of the slider
+                ; and any tiles on the slider
+                ; (including tiles pushed sideways off the slider
+                ; if the slider goes into a narrow gap)
+                ; and trigger falling for tiles that fall off the slider
+
+                ; state of a tile:
+                ; 1. it could be stationary on solid ground, or on top of a tile
+                ; 2. it could be 'hovering' due to a tile below it falling (there's
+                ;    a latency, the current tile might not be falling YET but it will
+                ;    fall when the falling tile below it has fallen sufficiently far)
+                ; 3. it could be actually falling itself already
+                ; 4. it could be standing directly on the slider (vertical or horizontal)
+                ; 5. it could be perched atop a block (or a stack of blocks) that in turn is on the slider
+                ;    (note that a tile below it might be blocked from moving, in the case of
+                ;     horizontal sliders; and the tiles ABOVE it inherit the same 'blocked' status
+                ;     of the tile/stack immediately below it)
+
+                ; This routine needs to handle the movement of the slider,
+                ; including when the slider itself is blocked (by blocks)
+                ; the movement of blocks standing onto the slider (and correcting the x/y
+                ; coordinates accordingly for blocks that have 'just landed on the slider'),
+                ; as well as sending the correct data to the falling
+                ; routine (as to the whereabouts of the slider) so that falling blocks
+                ; know when to fall/land/hover for vertical sliders;
+                ; as well handle cases 4 and 5 - in particular for horizontal sliders
+                ; where blocks can fall off (i.e. this routine also initiates falling
+                ; in those cases)
+
+                ; It should be noted that (it seems) the slider can only be obstructed
+                ; at grid boundaries.  There does not appear to be a way (or a need) for
+                ; the slider to be blocked by something else in motion at non-grid boundaries
+                ; This simplifies our tests.
+
+                ; For vertical sliders:
+                ; The whole stack moves up and down in unison.
+                ; Just like falling tiles, we update the real grid position when the tiles
+                ; align with the real grid position.  (note that sliding tiles are NOT involved
+                ; in matches UNLESS they are at real grid positions)
+
+                ld a, SLIDER_MOVED_NO_VALUE
+                ld (slider_moved_this_frame), a
+
+                ; if gameplay is paused (due to destruct) then do nothing
+                ld a, (destruct_frame)
+                and a
+                ret nz
+
+                ; if the slider is currently "waiting" at one end
+                ; decrease the wait count
+                ld a, (slider_wait_frame)
+                and a
+                jp z, @no_wait
+            @still_waiting:
+                dec a
+                ld (slider_wait_frame), a
+                ret
+
+        @no_wait:
+                ld a, (slider_info)
+                and a
+                ret z ; no slider info, nothing to update
+
+                ; get current type
+                bit SLIDER_AXIS_BIT, a
+                jp nz, update_slider_horizontal
+                jp update_slider_vertical
+                
+
+INCLUDE "vertical.z80"
+INCLUDE "horizontal.z80"
+INCLUDE "debug.z80"
