@@ -40,7 +40,7 @@ digit_a_xy_de:
             ; !!!
             push af
             push de
-            ld a, 0x66 ; RED
+            ld a, 0x00 ; BLACK
             call fillrect_8x8_de_colorbyte_a
             pop de
             pop af

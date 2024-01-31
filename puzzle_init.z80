@@ -2,6 +2,8 @@ render_puzzle_tiles:
                 IF DEBUG_DIRTY_FLASH
                 call reset_dirty_flasher
                 ENDIF
+
+                call init_remaining_tiles_region
                 
                 ld a, REMAINING_REDRAW_ALL_FORCE
                 ld (redraw_remaining_tiles_flags), a

@@ -14,6 +14,33 @@ REMAINING_REORDERED: equ 1
 REMAINING_REDRAW_ALL_FORCE: equ 2
 REMAINING_REDRAW_TRIGGER: equ 4
 
+init_remaining_tiles_region:
+                ld c, 6
+                ld de, REMAINING_TILES_Y_OFFSET*128+(REMAINING_TILES_X_OFFSET_LEFT/2) - 2 - 4*128
+            @l2:
+                push de
+                ld b, 5
+            @l1:
+                push de
+                push bc
+                ld a, 0x00 ; BLACK
+                call fillrect_16x16_de_colorbyte_a
+                pop bc
+                pop de
+                ld a, e
+                add 8
+                ld e, a
+                djnz @-l1
+            
+                pop de
+                ld a, d
+                add 8
+                ld d, a
+                dec c
+                jp nz, @-l2
+
+                ret
+
 @draw_the_x:
                 ld hl, remaining_x+1
                 ld a, (ix+0)
