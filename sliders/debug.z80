@@ -77,7 +77,7 @@ sanity_check_slider:
                 ld a, (hl)
                 and 15
                 cp d
-;;;;                call nz, fatal  ; TODO WELL WHY IS THIS FAILING?
+                call nz, fatal  ; TODO WELL WHY IS THIS FAILING?
 
                 inc h
 

@@ -300,3 +300,123 @@ update_slider_vertical:
                 xor a ; the next motion frame is zero (to then trigger the "move between cells" case)
                 ld (slider_motion_frame), a
                 ret
+
+
+
+draw_slider_vertical:
+                ; FIRST, blank out a 1-pixel-high row at the top or bottom of the stack,
+                ; according to where the stack was last frame. (and according to the stack
+                ; height last frame))
+                ; if slider went up, we need to blank a 1-pixel-high row at the bottom below the slider
+                ; if slider went down, we need to blank a 1-pixel-high row at the top (of the stack)
+                ; If slider didn't move this frame, we should not blank anything
+                ; I encode these facts into two bits in slider_moved_this_frame
+                ld a, (slider_moved_this_frame)
+                bit SLIDER_MOVED_YESNO_BIT, a
+                jr z, @neither_up_nor_down
+                and SLIDER_MOVED_UPDOWN_MASK
+                jr z, @going_up
+        @going_down:
+                ; if we went down, the pixel row to blank is the top of the slider stack (from last frame)
+                ld de, (screen_y_top_of_slider_stack)
+                call fillrect_16x1_black_at_de
+                jp @+done_blank
+
+        @going_up:
+                ; if we went up, the pixel row to blank is the bottom of the slider tile (from last frame)
+                ; which is 15 pixel rows (=7*256 + 128)
+                ld de, (screen_y_top_of_slider_tile)
+                ld a, e
+                add 128
+                ld e, a
+                ld a, d
+                adc 7
+                ld d, a
+                call fillrect_16x1_black_at_de
+
+        @done_blank:
+        @neither_up_nor_down:
+
+                ; ok now draw the slider tile and the stack of tiles on top of it.
+
+                ld a, (slider_xy)
+
+                ; copy and pasted from dirty_tiles (with some small changes):
+
+                ; draw this tile
+                ; a = YYYYxxxx
+                ; for screen: multiply both x and y by 8 (and add GRID_X_OFFSET in x direction)
+                ;             and put into de
+                ; for tiles: a is (conveniently) already the low byte offset into table
+                ;             so we can just put a into c (since bc is aligned to 256-bytes)
+                ld c, a ; used for bc address AND ALSO used as a backup of a that we need later                
+                ld b, tiles_flags / 256
+                ld a, (bc)
+                and 15 ; y-offset (in this case it's y... for horiz slider it would be x though...)
+                
+                ; now, get h= (y_offset/2) and l = 128*(y_offset % 2)
+                ; put the lsb of y into l IN THE TOP BIT
+                ; and the rest of the bits (i.e. y/2) into h
+                ld l, 0
+                rra
+                ld h, a
+                rr l
+
+                call grid_xy_in_C_to_screen_de
+                ld a, l
+                add e
+                ld e, a
+                ld a, d
+                add h
+                ld d, a
+
+                inc b ; point to tiles
+                ld a, (bc) ; the actual tile to draw
+
+                ld (screen_y_top_of_slider_tile), de
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ; if gameplay is paused (due to destruct) then do nothing else
+                ; FIXME this feels wrong, but is necessary here because the destruct
+                ; overlay renderer should now be taking ownership of the slider and stack
+                ; (in the case where something in the stack is part of the match/destruct)
+                ; but we still need to draw the slider in THIS position (otherwise slider
+                ; will be one-frame-behind where the destructing tiles are))
+                ld a, (destruct_frame)
+                and a
+                ret nz
+
+
+                ; loop for the rest of the tiles on the stack
+                ld a, (slider_stack_height)
+                and a
+                jr z, @done_drawing_stack
+                ld (slidr_temp), a
+        @more_on_the_stack:
+                ; navigate up one tile row in tiles, and 16 pixel rows on-screen
+                ld a, c
+                sub 16
+                ld c, a
+                ld a, d
+                sub 8
+                ld d, a
+                ld a, (bc)
+
+                push de
+                push bc
+                call draw_tile_at_de_tile_a
+                pop bc
+                pop de
+
+                ld hl, slidr_temp
+                dec (hl)
+                jr nz, @more_on_the_stack
+
+        @done_drawing_stack:
+                ld (screen_y_top_of_slider_stack), de
+                ret

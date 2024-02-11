@@ -144,10 +144,12 @@ box_at_hl:
                 ret
 
 defer_fillrect_16x2_black_at_de:
+                ; modifies hl, bc
                 ; see comment below, and this is even worse in terms of efficiency
                 ; because this just blacks out 16x16 instead of 16x2
                 ; (fall through to the same fn as below)
 defer_fillrect_16x16_black_at_de:
+                ; modifies hl, bc
                 ; it's sortof fine for now because the blank tile IS the black 16x16
                 ; but this disregards alignment e.g. background images TODO
                 ; also, it's less efficient than the old plain black 16x16
@@ -279,7 +281,7 @@ fillrect_16x16_de_colorbyte_a:
 
 defer_draw_tile_at_de_tile_a:
                 ; Adds this tile to the draw_list to draw (in the draw routine)
-                ; modifies de, hl, bc
+                ; modifies hl, bc
                 ; on entry, de = screen buffer topleft corner of tile destination
                 ; a = which tile to draw (0 = blank space, 1 = wall, 2 = triangle etc etc)
                 ; w.r.t tile_bitmaps
@@ -1012,12 +1014,13 @@ fillrect_8x8_de_colorbyte_a:
                 ret
 
 grid_xy_in_C_flags_in_B_to_screen_de:
+                ; modifies a, de
                 call grid_xy_in_C_to_screen_de
                 ld a, b
                 and IS_FALLING_MASK + IS_SLIDER_MASK
                 ret z ; no adjust
                 ; TODO NEED TO HANDLE HORIZ SLIDER HERE
-                ld a, (hl)
+                ld a, b
                 and 15
                 rra
                 jr nc, @+no_carry
