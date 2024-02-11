@@ -56,7 +56,7 @@ update_slider_horizontal:
                 jr z, @+check_blocked_no_falling_tile_found
                 ld a, (hl)
                 and 15
-                jr nz, @blocked_left
+                jp nz, @blocked_left
             @check_blocked_no_falling_tile_found:
                 inc h ; back to tiles
                 ld a, l
@@ -86,6 +86,8 @@ update_slider_horizontal:
                 ; solution: work up the stack, and clear the IS_SLIDER_BIT if a tile can't slide further
                 ; left. (and if so, clear IS_SLIDER_BIT from all those tiles above it too)
                 ; THEN we can run the "check_slider_captured" piece.
+                ;
+                ; we also track/update the screen_y_top_of_stack along the way
                 ;
                 ld b, 0
                 ld a, (slider_xy)
@@ -125,6 +127,15 @@ update_slider_horizontal:
             @_done:
                 ld a, b
                 ld (slider_stack_height), a
+                ; update the top of the slider stack by counting up from the top of the slider tile
+                ld de, (screen_y_top_of_slider_tile)
+                add a,a
+                add a,a
+                add a,a
+                sub d
+                neg
+                ld d, a
+                ld (screen_y_top_of_slider_stack), de
 
                 ; (now move the cursor too, if it is captured, and the tile is still tagged as IS_SLIDER_BIT)
                 ; note that we haven't actually moved the tile yet, so the tile's flags are still in the right place
@@ -304,6 +315,15 @@ update_slider_horizontal:
             @_done:
                 ld a, b
                 ld (slider_stack_height), a
+                ; update the top of the slider stack by counting up from the top of the slider tile
+                ld de, (screen_y_top_of_slider_tile)
+                add a,a
+                add a,a
+                add a,a
+                sub d
+                neg
+                ld d, a
+                ld (screen_y_top_of_slider_stack), de
 
                 ; (now move the cursor too, if it is captured, and the tile is still tagged as IS_SLIDER_BIT)
                 ; note that we haven't actually moved the tile yet, so the tile's flags are still in the right place
