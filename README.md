@@ -17,7 +17,7 @@ mostly because I didn't have the requisite skills back then. This is the first '
 I've done.
 
 # Status
-Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win" detection but no "you lose" implemented yet
+Work-In-Progress.  Playable on multiple puzzles, with basic "you win" detection advancing to the next level, but no "you lose" implemented yet, and no way to retry if you make a mistake and get stuck!
 
 # DONE
 * Tile bitmaps .  NOW IN THE CORRECT ORDER (including the 'remaining tiles' panel)
@@ -33,7 +33,8 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * bonus icon/animation now using 1-pixel vertical scrolling
 * bonus icon/animation now using colourizing bonus bitmaps!
 * sfx
-* Vertical sliders (90% complete) although still some bugs with pushing blocks onto/off existing stacks
+* Vertical sliders (belived to be bug-free!)
+* Horizontal sliders (also believed to be bug-free!)
 * "Clear" (you win) condition when all tiles have been matched
 * "next level" after win condition
 * Clock font - nice shiny fat 16x16 bitmaps! Several colours (yellow, red, green), as required.  (green is used for Retry count when you lose a life)
@@ -41,25 +42,23 @@ Work-In-Progress.  Essentially playable on a single-puzzle, with basic "you win"
 * Information (which puzzle you're on, "Player 1"). Implemented the multiple nested level numbers e.g. "Level 5 [1-3]"
 * Shiny glint of light on tiles, which occurs randomly during play
 * Different 'bricks' background for each level (Level 1 thru Level 8), with matching Border color
-* One-pixel-shifted versions of all tiles, and a corresponding 18x16 (masked left and right edge) bitmap draw routine - needed for horizontal sliders
 
 
 # TODO
 *  "time over" (lose) condition
-*  end of level scoring (clear bonus, time remaining, tick tick tick kerching!)
-*  Horizontal sliders (25% done, since we now have one-pixel-shifted bitmaps and corresponding draw routine)
+*  end of level scoring (clear bonus, time remaining, tick tick tick kerching! currently faking this)
 *  ~both variants of wall tiles in both blocking and non-blocking versions (i.e. one kind cursor cannot pass, one kind cursor can pass)~  Won't Do, since I only have one variant of wall tiles now
-*  'background' bricks and anything else surrounding the play area (50% done - need to put a little outline around the "remaining tiles" section, and ensure it's blanked out)
+*  'background' bricks and anything else surrounding the play area (99% done - need to put a little outline around the "remaining tiles" section)
 *  level select between stages / initial level select at start
 *  retry (i.e. abort, start again) and count of remaining retries
-*  high score table
+*  high score table, and HiScore display during game
 *  music (50% done, but not commited to github yet)
 *  attract screen / demo mode
 *  intro screen
 *  two player mode
 *  diagonal cursor movement not yet done.
 *  joystick not yet done (50% done)
-*  minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed (but would only be a small benefit, since the flashing "panic mode" clock needs to be fully redrawn every 4th frame anyway)
+*  ~minimize redrawing things that haven't changed - in particular re-rendering all the clock digits if only one clock digit has changed (but would only be a small benefit, since the flashing "panic mode" clock needs to be fully redrawn every 4th frame anyway)~ Not really sure anything to do here now
 
 # TODO LATER
 *  Passwords for level skip
