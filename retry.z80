@@ -15,6 +15,32 @@ init_retries:
             ld (retries_remaining), a
             ret
 
+
+check_retry_request:
+                ld a, (controller_retry)
+                and a
+                ret z
+
+                ld a, (retries_remaining)
+                and a
+                ret z
+
+                call prompt_for_retry
+                ; ...
+                ret
+
+
+prompt_for_retry:
+                ; called when the player presses the RETRY button
+                ; displays something appropriate on-screen
+                ; Time continues to tick!  But games is (otherwise) inactive!
+                ; sets the level_clear_process accordingly:
+                ; LEVEL_USE_RETRY if you used up a retry
+                ; LEVEL_GAME_OVER if you ran out of retries
+                ; ...
+                ret
+
+
 retry_label: defm "RETRY"
 defb 0
 

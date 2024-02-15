@@ -3,6 +3,10 @@ is_panic: defb 0
 panic_flash_counter: defb 0
 clock_color: defb 0
 
+NO_PANIC: equ 0
+MILD_PANIC: equ 1
+FULL_PANIC: equ 2
+
 init_clock:
                 ; clock_tick_frame counts from 49 (or 59...) to 0 (inclusive).
                 ; When counter==0, update() will reset it to FPS-1 .
@@ -24,8 +28,8 @@ draw_clock:
                 ; if we're in full panic mode, we'll actually redraw the time every 4 frames
                 ; (as well as if clock_frame == 0)
                 ld a, (is_panic)
-                and a
-                jp nz, @check_panic_clock
+                cp FULL_PANIC
+                jp z, @check_panic_clock
 
                 ; not a panic mode, so just redraw clock when frame counter resets
                 ld a, (clock_tick_frame)
@@ -87,37 +91,58 @@ update_clock:
                 ; no? ok, just save back the number of seconds
                 ld (clock_sec_bcd), a
 
-                ; quick check - are we in panic mode?
+                ; quick check - are we in panic mode?  or indeed, run out of time
+                ; time > 0:30 : normal
+                ; time <= 0:30 and time > 0:10 : mild panic
+                ; time <= 0:10 : full panic
+                ; time = 0:00 : time over
                 ld a, (clock_min_bcd)
                 and a
-                ret nz ; time >= 1:00 remaining
+                ret nz ; time >= 1:00 remaining, all normal
+
                 ld a, (clock_sec_bcd)
+                and a
+                jr z, @time_over
+
                 cp 0x31 ; bcd
                 ret nc ; time >= 0:30 remaining
+
                 ; either mild panic or full panic!
                 ; assume mild panic
                 cp 0x11 ; bcd
                 jr nc, @mild_panic ; 0:11 <= time <= 0:30 remaining, mild panic only
-                ld a, 1
+
+                ld (is_panic), a
+                cp FULL_PANIC
+                call nz, @initiate_full_panic
+                ld a, FULL_PANIC
                 ld (is_panic), a ; time <= 0:10 remaining!! panic!!
                 xor a
                 ld (clock_color), a
                 ret
     @mild_panic:
                 ; <= 30 seconds remaining. red clock!
+                ld (is_panic), a
+                cp MILD_PANIC
+                call nz, @initiate_mild_panic
+                ld a, MILD_PANIC
+                ld (is_panic), a
                 ld a, 1
                 ld (clock_color), a
                 ret
 
     @next_min:
                 ld a, (clock_min_bcd)
-                and a; set Z if a is zero
-                ret z ; clock is done, we're on last minute and seconds just decremented to 0
                 sub 1
                 daa
                 ld (clock_min_bcd), a
                 ld a, 0x59 ; bcd
                 ld (clock_sec_bcd), a
+                ret
+
+    @time_over:
+                ld a, 3 ; 3 = failed (time over)  (if there are retries, this will be prompted, otherwise game over)
+                ld (level_clear_process), a
                 ret
 
 @check_panic_clock:
@@ -148,9 +173,65 @@ update_clock:
                 ld c, a
                 jp @_draw_clock_main
 
-check_clock_30:
+@initiate_mild_panic:
+                ; called (once) when clock hits 30s remaining
+                ; - trigger sfx / music change
                 ret
 
-check_clock_game_over:
+@initiate_full_panic:
+                ; called (once) when clock hits 10s remaining
+                ; - trigger sfx / music change
+                ld a, 24 ; just some number
+                ld (glint_period), a
                 ret
 
+time_over:
+                ; called (from game loop) when time is up
+                ld hl, message.TIME_OVER
+                ld de, 128*TIMEOVER_Y_OFFSET + TIMEOVER_X_OFFSET
+                ld c, 0x99  ;  YELLOW
+                call print_text_hl_de
+                ld hl, message.CONTINUE
+                ld de, 128*TIMEOVER_CONTINUE_Y_OFFSET + TIMEOVER_CONTINUE_X_OFFSET
+                ld c, 0x11  ;  WHITE
+                call print_text_hl_de
+                ; you can insert another coin to continue
+                ; 10 second "continue" timer
+                ; ...
+                ld b, 10
+                ld c, 0x11  ;  WHITE
+            @countdown:
+                push bc
+                ld a, b
+                cp 10
+                jr c, @only_one_digit
+                ld a, 1
+                ld de, 128*TIMEOVER_CONTINUE_SECONDS_Y_OFFSET + TIMEOVER_CONTINUE_SECONDS_X_OFFSET
+                call digit_a_xy_de
+            @second_digit:
+                pop bc
+                push bc
+                ld a, b
+                add a, 0
+                daa
+                and 15
+                ld de, 128*TIMEOVER_CONTINUE_SECONDS_Y_OFFSET + TIMEOVER_CONTINUE_SECONDS_X_OFFSET + 4
+                call digit_a_xy_de
+                ld b, FPS
+                call wait_b
+                pop bc
+                djnz @-countdown
+                ret
+            @only_one_digit:
+                ld de, 128*TIMEOVER_CONTINUE_SECONDS_Y_OFFSET + TIMEOVER_CONTINUE_SECONDS_X_OFFSET
+                ld a, 0x00 ; BLACK
+                call fillrect_8x8_de_colorbyte_a
+                jp @second_digit
+                
+
+message.TIME_OVER: defm "TIME OVER"
+defb 0
+message.CONTINUE: defm "CONTINUE?"
+defb 0
+message.SPACE: defm " "
+defb 0

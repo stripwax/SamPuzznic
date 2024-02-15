@@ -26,11 +26,6 @@
 ; Level 8 time bonus : p = 800
 
 
-wait_b:
-                call wait_frame_slow
-                djnz wait_b
-                ret
-
 check_clear:
                 ; if no "remaining tiles" were drawn, then there are no remaining tiles!
                 ld a, (tiles_drawn_last_time)
@@ -107,6 +102,17 @@ check_clear:
                 ld a, 2 ; done - onto the next level!
                 ld (level_clear_process), a
 
+                ret
+
+check_sorry_cant_clear:
+                ; called when you have an unmatchable number of tiles remaining (e.g. if you have only 1 tile of a certain kind)
+                ; It does not cover everything - inaccessible unmatcheable pieces are not detected - only (it seems)
+                ; the case where you have a tile with a remaining count of 1.
+                ; Note that this only "does something" if you have no retries remaining
+                ; If you have any retries remaining, nothing happens here
+                ; - it seems to be assumed you'll just use one of your retries without needing a friendly nudge.
+                ; (Of course, it's an arcade machine, so that means you're more likely to run out of time and insert another coin)
+                ; TODO probably we should set something when doing tile redraw i.e. "there's an unmatchable tile count"
                 ret
 
 message.CLEAR: defm "CLEAR !!"

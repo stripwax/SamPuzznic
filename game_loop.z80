@@ -58,6 +58,14 @@ game_loop:
                 ENDIF
                 call get_input
 
+                call check_retry_request  ; blocking (effectively) if Retry has been requested;  will set level_clear_process on exit
+                ld a, (level_clear_process)
+                ; 4 = failed (retry selected) , 5 = failed (no more retries, game over)
+                cp 4
+                ret z
+                cp 5
+                ret z
+
                 if DEBUG==1
                     if DEBUG_FREEZEFRAME_ENABLED
                         ; if key is pressed, halt
@@ -100,12 +108,12 @@ game_loop:
                 call draw_everything
 
                 ld a, (level_clear_process)
-                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = failed
+                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = failed (time over)
                 ; if 0 or 1, still run the game loop (which includes the rendering etc for animations)
                 cp 2
                 ret z
                 cp 3
-                ret z
+                call z, time_over
 
                 IF DEBUG_VSYNC
                     ld a, 3
@@ -130,10 +138,12 @@ update_game_state:
                 call check_clear
 
                 ld a, (level_clear_process)
-                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level)
+                ; 0 = level not clear; 1 = doing the "Clear!" animation; 2 = done (jump to next level); 3 = time over (failed)
                 cp 2
                 ret z
                 cp 1
+                ret z
+                cp 3
                 ret z
                 ; very little to do if the level is clear - just play out animations
 
@@ -150,16 +160,14 @@ update_game_state:
                 call update_clock
 
                 IF DEBUG_VSYNC
-                    ld a, 34
-                    out (BORDER), a
-                ENDIF
-                call check_clock_30
-
-                IF DEBUG_VSYNC
                     ld a, 38    
                     out (BORDER), a
                 ENDIF
-                call check_clock_game_over
+                ; check for time_over condition:
+                ld a, (level_clear_process)
+                ; 3 = failed (time over)
+                cp 3
+                ret z
 
                 IF DEBUG_VSYNC
                     ld a, 7
