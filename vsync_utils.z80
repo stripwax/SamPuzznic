@@ -10,23 +10,34 @@ wait_frame_slow:
                 bit STATUS_FRAME_BIT, a
                 jr nz, @-busy_wait
                 IF DEBUG_VSYNC
+                ld a, 7
+                out (BORDER), a
+                ENDIF
+    @busy_wait_2:
+                in a,(STATUS)
+                bit STATUS_FRAME_BIT, a
+                jr z, @-busy_wait_2
+                IF DEBUG_VSYNC
                 ld a, 6
                 out (BORDER), a
                 ENDIF
 
                 if DEBUG_SLOWMO > 0
+                push bc ; just because usually wait_frame_slow doesn't corrupt BC
                 ld b, DEBUG_SLOWMO
     @busy_wait_slowmo:
                 in a,(STATUS)
                 bit STATUS_FRAME_BIT, a
                 jr nz, @-busy_wait_slowmo
                 djnz @-busy_wait_slowmo
+                pop bc
                 ENDIF
 
                 ret
 
 
 wait_frame:
+                ; modifies BC
                 ; wait until the start of the next frame
                 ; (specifically, wait until scan line is after the bottom main screen area)
                 ;
@@ -72,4 +83,9 @@ wait_frame:
 
                 ret
 
-
+wait_b:
+                ; pass in number of frames in B
+                ; doesn't use any other registers (see wait_frame_slow)
+                call wait_frame_slow
+                djnz wait_b
+                ret
