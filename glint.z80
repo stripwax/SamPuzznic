@@ -2,6 +2,20 @@ glint_frame: defb 0
 glint_de: defw 0
 glint_hl: defw 0
 glint_xy: defb 0
+glint_zdata_end: equ $
+glint_period: defb 220
+
+
+init_glint:
+            xor a
+            ld (glint_frame), a
+            ld hl, glint_frame
+            ld de, glint_frame+1
+            ld bc, glint_zdata_end-glint_frame
+            ldir
+            ld a, 220
+            ld (glint_period), a
+            ret
 
 render_glint:
             ; do nothing if no frame required
@@ -49,9 +63,11 @@ update_glint:
             and a
             jr nz, @already_glinting
 
+            ; interesting obsevation, glinting is much more frequent when clock is in panic (last 10 seconds)
             call random
-            cp 220
-            ret c ; do nothing if random was <= 220
+            ld hl, glint_period
+            cp (hl)
+            ret c ; do nothing if random was <= the period cutoff
             ; (this prevents just continuously glinting stuff
             ;  so there's a high probability that glints are rare)
 

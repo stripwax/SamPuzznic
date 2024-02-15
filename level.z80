@@ -23,6 +23,7 @@ play_game:
                 call memcpy_level_data
                 call init_level_tileset
                 call init_game_state
+                call init_glint
                 call render_screen_layout
                 call render_puzzle_tiles ; also counts (and renders) remaining tiles
                 call sfx_init
